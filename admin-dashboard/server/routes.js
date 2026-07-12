@@ -223,10 +223,16 @@ router.get('/dashboard/sales-series', (_req, res) => {
 
 router.get('/dashboard/recent-orders', (req, res) => {
   const db = getDb()
-  const query = parseSorting({ ...req.query })
+  const query = parseSorting({
+    ...req.query,
+    sorting: req.query.sorting || JSON.stringify([{ id: 'date', desc: true }]),
+  })
   const list = paginateList(db.orders, query, {
     searchFields: ['id', 'customerName', 'customerEmail'],
-    filterFn: () => true,
+    filterFn: (row, q) => {
+      if (q.date && !String(row.date).startsWith(String(q.date))) return false
+      return true
+    },
   })
   list.rows = list.rows.map((o) => ({
     id: o.id,

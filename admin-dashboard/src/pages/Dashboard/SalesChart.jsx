@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -8,6 +8,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Cell,
 } from 'recharts'
 
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,6 +16,7 @@ import { formatCurrency, formatDate, formatNumber } from '@/lib/utils'
 
 const REVENUE_COLOR = '#4F46E5'
 const ORDERS_COLOR = '#C7D2FE'
+const SELECTED_BAR_COLOR = '#818CF8'
 const GRID_COLOR = '#E5E7EB'
 const AXIS_COLOR = '#94A3B8'
 
@@ -91,9 +93,7 @@ function SelectedDaySummary({ point, onClear }) {
   )
 }
 
-export function SalesChart({ data, isLoading }) {
-  const [selectedDate, setSelectedDate] = useState(null)
-
+export function SalesChart({ data, isLoading, selectedDate, onSelectedDateChange }) {
   const selectedPoint = useMemo(
     () => data?.find((entry) => entry.date === selectedDate) ?? null,
     [data, selectedDate]
@@ -104,7 +104,7 @@ export function SalesChart({ data, isLoading }) {
   }
 
   const selectPoint = (point) => {
-    if (point?.date) setSelectedDate(point.date)
+    if (point?.date) onSelectedDateChange?.(point.date)
   }
 
   return (
@@ -150,7 +150,14 @@ export function SalesChart({ data, isLoading }) {
             maxBarSize={22}
             className="cursor-pointer"
             onClick={selectPoint}
-          />
+          >
+            {data?.map((entry) => (
+              <Cell
+                key={entry.date}
+                fill={entry.date === selectedDate ? SELECTED_BAR_COLOR : ORDERS_COLOR}
+              />
+            ))}
+          </Bar>
           <Line
             yAxisId="revenue"
             type="monotone"
@@ -170,11 +177,11 @@ export function SalesChart({ data, isLoading }) {
         </ComposedChart>
       </ResponsiveContainer>
 
-      <SelectedDaySummary point={selectedPoint} onClear={() => setSelectedDate(null)} />
+      <SelectedDaySummary point={selectedPoint} onClear={() => onSelectedDateChange?.(null)} />
 
       {!selectedPoint && (
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          Hover a day for details · Click to pin a day
+          Hover a day for details · Click a day to filter orders below
         </p>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 
 import { DataTable } from '@/components/common/DataTable'
@@ -44,10 +44,22 @@ const columns = [
   }),
 ]
 
-export function RecentOrdersTable() {
+export function RecentOrdersTable({ selectedDate }) {
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 })
 
-  const params = useMemo(() => ({ page: pagination.pageIndex, pageSize: pagination.pageSize }), [pagination])
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+  }, [selectedDate])
+
+  const params = useMemo(
+    () => ({
+      page: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      sorting: [{ id: 'date', desc: true }],
+      date: selectedDate || null,
+    }),
+    [pagination, selectedDate]
+  )
   const { data, isLoading, isFetching } = useRecentOrders(params)
 
   return (
@@ -60,6 +72,13 @@ export function RecentOrdersTable() {
       onPaginationChange={setPagination}
       isLoading={isLoading}
       isFetching={isFetching}
+      emptyState={
+        <span className="text-sm text-muted-foreground">
+          {selectedDate
+            ? `No orders on ${formatDate(selectedDate)}.`
+            : 'No recent orders found.'}
+        </span>
+      }
     />
   )
 }

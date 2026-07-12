@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { CurrencyDollar, ShoppingCartSimple, Users, ChartLineUp, ArrowsClockwise } from '@phosphor-icons/react'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -7,9 +8,10 @@ import { KpiCard } from '@/components/common/KpiCard'
 import { SalesChart } from '@/pages/Dashboard/SalesChart'
 import { RecentOrdersTable } from '@/pages/Dashboard/RecentOrdersTable'
 import { useDashboardStats, useSalesSeries } from '@/hooks/useDashboard'
-import { formatCurrency, formatNumber, cn } from '@/lib/utils'
+import { formatCurrency, formatNumber, formatDate, cn } from '@/lib/utils'
 
 export default function Dashboard() {
+  const [selectedDate, setSelectedDate] = useState(null)
   const stats = useDashboardStats()
   const sales = useSalesSeries()
 
@@ -84,17 +86,26 @@ export default function Dashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <SalesChart data={sales.data} isLoading={sales.isLoading} />
+          <SalesChart
+            data={sales.data}
+            isLoading={sales.isLoading}
+            selectedDate={selectedDate}
+            onSelectedDateChange={setSelectedDate}
+          />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Orders</CardTitle>
-          <CardDescription>The latest orders placed across your store</CardDescription>
+          <CardTitle>{selectedDate ? `Orders on ${formatDate(selectedDate)}` : 'Recent Orders'}</CardTitle>
+          <CardDescription>
+            {selectedDate
+              ? 'Orders placed on the selected chart day, newest first'
+              : 'The latest orders placed across your store'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <RecentOrdersTable />
+          <RecentOrdersTable selectedDate={selectedDate} />
         </CardContent>
       </Card>
     </div>
