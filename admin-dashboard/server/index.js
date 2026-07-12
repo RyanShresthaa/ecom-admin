@@ -4,20 +4,14 @@ import { fileURLToPath } from 'node:url'
 
 import express from 'express'
 
-import { loadDb } from './db.js'
-import apiRouter from './routes.js'
+import { createApp } from './app.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT) || 3000
 const DIST_DIR = join(__dirname, '..', 'dist')
 const serveFrontend = existsSync(join(DIST_DIR, 'index.html'))
 
-loadDb()
-
-const app = express()
-app.use(express.json({ limit: '10mb' }))
-
-app.use('/api', apiRouter)
+const app = createApp()
 
 if (serveFrontend) {
   app.use(express.static(DIST_DIR))

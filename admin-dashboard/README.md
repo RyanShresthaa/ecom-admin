@@ -67,6 +67,22 @@ npm start        # serves the app + API on http://localhost:3000
 
 Data persists in `server/data/store.json`. Set `PORT` to change the listen port.
 
+## Deploying to Vercel
+
+The repo root (`admin/`) includes a `vercel.json` that builds `admin-dashboard/` automatically.
+
+1. Push the repo to GitHub and import it in [Vercel](https://vercel.com).
+2. Leave **Root Directory** empty (repo root) — or set it to `admin-dashboard` if you prefer.
+3. Add environment variable: `VITE_API_URL=/api` (optional; this is the default).
+4. Deploy.
+
+**What was fixed for Vercel:**
+- SPA fallback rewrites so routes like `/login` and `/orders` serve `index.html` instead of 404
+- `/api/*` runs as a serverless function (`api/index.js`) backed by the same Express routes
+- On Vercel, demo data is seeded into `/tmp` (resets between cold starts — fine for demos)
+
+For a persistent production database, deploy with `npm run build && npm start` on Railway, Render, or a VPS instead.
+
 ## 📁 Project structure
 
 ```

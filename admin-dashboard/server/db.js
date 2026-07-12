@@ -6,7 +6,7 @@ import { createSeedData } from './seed.js'
 import { isComplaintText } from './utils.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const DATA_DIR = join(__dirname, 'data')
+const DATA_DIR = process.env.VERCEL ? join('/tmp', 'matina-crafts-data') : join(__dirname, 'data')
 const DB_PATH = join(DATA_DIR, 'store.json')
 
 let state = null
