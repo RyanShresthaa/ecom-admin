@@ -72,16 +72,20 @@ Data persists in `server/data/store.json`. Set `PORT` to change the listen port.
 The repo root (`admin/`) includes a `vercel.json` that builds `admin-dashboard/` automatically.
 
 1. Push the repo to GitHub and import it in [Vercel](https://vercel.com).
-2. Leave **Root Directory** empty (repo root) — or set it to `admin-dashboard` if you prefer.
-3. Add environment variable: `VITE_API_URL=/api` (optional; this is the default).
-4. Deploy.
+2. Leave **Root Directory** empty (repo root), or set it to `admin-dashboard`.
+3. Add this environment variable in **Project → Settings → Environment Variables** (all environments: Production, Preview, Development):
 
-**What was fixed for Vercel:**
-- SPA fallback rewrites so routes like `/login` and `/orders` serve `index.html` instead of 404
-- `/api/*` runs as a serverless function (`api/index.js`) backed by the same Express routes
-- On Vercel, demo data is seeded into `/tmp` (resets between cold starts — fine for demos)
+   | Name | Value |
+   |------|-------|
+   | `VITE_API_URL` | `/api` |
 
-For a persistent production database, deploy with `npm run build && npm start` on Railway, Render, or a VPS instead.
+   No backend secrets are required for the demo API.
+
+4. Redeploy after adding env vars (or changing server code).
+
+**Note:** `VITE_*` variables are baked in at build time — if login/API calls fail after deploy, confirm `VITE_API_URL=/api` is set and trigger a new deployment.
+
+On Vercel, demo data is seeded into `/tmp` (resets on cold starts). For persistent data, use Railway, Render, or a VPS with `npm run build && npm start`.
 
 ## 📁 Project structure
 
