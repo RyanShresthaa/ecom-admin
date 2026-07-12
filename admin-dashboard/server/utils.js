@@ -94,10 +94,18 @@ export function computeSalesSeries(db, days = 14) {
     d.setDate(d.getDate() - i)
     const key = d.toISOString().split('T')[0]
     const dayOrders = db.orders.filter((o) => o.date.startsWith(key))
+    const revenue = Math.round(dayOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100
+    const orders = dayOrders.length
+    const itemsSold = dayOrders.reduce(
+      (sum, order) => sum + (order.items || []).reduce((qty, item) => qty + (item.qty || 0), 0),
+      0
+    )
     series.push({
       date: key,
-      revenue: Math.round(dayOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100,
-      orders: dayOrders.length,
+      revenue,
+      orders,
+      itemsSold,
+      avgOrderValue: orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0,
     })
   }
   return series

@@ -72,18 +72,45 @@ Data persists in `server/data/store.json`. Set `PORT` to change the listen port.
 The repo root (`admin/`) includes a `vercel.json` that builds `admin-dashboard/` automatically.
 
 1. Push the repo to GitHub and import it in [Vercel](https://vercel.com).
-2. Leave **Root Directory** empty (repo root), or set it to `admin-dashboard`.
-3. Add this environment variable in **Project → Settings → Environment Variables** (all environments: Production, Preview, Development):
+2. In **Project → Settings → General**, use **one** of these setups (do not mix them):
+
+   **Option A — repo root (recommended)**
+
+   | Setting | Value |
+   |---------|-------|
+   | Root Directory | *(leave empty)* |
+   | Build Command | *(leave empty — uses `vercel.json`)* |
+   | Output Directory | *(leave empty — uses `vercel.json`)* |
+   | Install Command | *(leave empty — uses `vercel.json`)* |
+
+   **Option B — app subfolder**
+
+   | Setting | Value |
+   |---------|-------|
+   | Root Directory | `admin-dashboard` |
+   | Build Command | *(leave empty)* |
+   | Output Directory | `dist` *(not `admin-dashboard/dist`)* |
+   | Install Command | *(leave empty)* |
+
+   If Root Directory is `admin-dashboard`, do **not** set Output Directory to `admin-dashboard/dist` — that double-nests the path and causes a site-wide **404**.
+
+3. Add this environment variable in **Project → Settings → Environment Variables** (Production + Preview + Development):
 
    | Name | Value |
    |------|-------|
    | `VITE_API_URL` | `/api` |
 
-   No backend secrets are required for the demo API.
-
-4. Redeploy after adding env vars (or changing server code).
+4. Redeploy after changing settings or env vars.
 
 **Note:** `VITE_*` variables are baked in at build time — if login/API calls fail after deploy, confirm `VITE_API_URL=/api` is set and trigger a new deployment.
+
+### Troubleshooting 404
+
+- Use the **Production** URL from Vercel (e.g. `your-project.vercel.app`), not `localhost` or a machine IP.
+- In Vercel → **Deployments**, confirm the latest deployment status is **Ready** (not Error).
+- Open the deployment **Build Logs** and verify `admin-dashboard/dist/index.html` was produced.
+- Clear **Root Directory** / **Output Directory** overrides in the dashboard if they conflict with the table above.
+- After fixing settings, use **Deployments → … → Redeploy**.
 
 On Vercel, demo data is seeded into `/tmp` (resets on cold starts). For persistent data, use Railway, Render, or a VPS with `npm run build && npm start`.
 
