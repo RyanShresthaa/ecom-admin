@@ -8,12 +8,19 @@ export function createApp() {
 
   const app = express()
   app.use(express.json({ limit: '10mb' }))
-  app.use('/api', apiRouter)
 
-  // Vercel serverless rewrites can strip the /api prefix before the handler runs.
   if (process.env.VERCEL) {
-    app.use('/', apiRouter)
+    // Vercel may forward /api/* with or without the /api prefix depending on routing.
+    app.use((req, _res, next) => {
+      const path = req.url?.split('?')[0] || ''
+      if (!path.startsWith('/api')) {
+        req.url = `/api${path.startsWith('/') ? path : `/${path}`}${req.url?.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`
+      }
+      next()
+    })
   }
+
+  app.use('/api', apiRouter)
 
   app.use((err, _req, res, _next) => {
     console.error('API error:', err)

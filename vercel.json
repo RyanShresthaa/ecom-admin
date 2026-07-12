@@ -4,11 +4,12 @@
   "buildCommand": "npm run build --prefix admin-dashboard",
   "outputDirectory": "admin-dashboard/dist",
   "functions": {
-    "api/[...path].js": {
+    "api/index.js": {
       "includeFiles": "admin-dashboard/server/**"
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
