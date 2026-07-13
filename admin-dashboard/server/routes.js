@@ -200,18 +200,18 @@ function returnOrderStock(db, order, author) {
 }
 
 // --- Auth ---
-router.post('/auth/login', (req, res) => {
+router.post('/auth/login', async (req, res) => {
   const db = getDb()
   const { email, password } = req.body || {}
   const match = db.users.find((u) => u.email === email && u.password === password)
   if (!match) return res.status(401).json({ message: 'Invalid email or password' })
   const token = randomBytes(32).toString('hex')
   db.sessions[token] = match.id
-  saveDb()
+  await saveDb()
   res.json({ user: toPublicUser(match), token })
 })
 
-router.get('/auth/session', (req, res) => {
+router.get('/auth/session', async (req, res) => {
   const db = getDb()
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, '')
   const user = getUserFromToken(db, token)
@@ -219,25 +219,25 @@ router.get('/auth/session', (req, res) => {
   res.json({ user })
 })
 
-router.post('/auth/logout', requireAuth, (req, res) => {
-  updateDb((db) => {
+router.post('/auth/logout', requireAuth, async (req, res) => {
+  await updateDb((db) => {
     delete db.sessions[req.token]
   })
   res.json({ success: true })
 })
 
-router.post('/auth/forgot-password', (req, res) => {
+router.post('/auth/forgot-password', async (req, res) => {
   const db = getDb()
   const { email } = req.body || {}
   const user = db.users.find((u) => u.email === email)
   if (!user) return res.status(404).json({ message: 'No account found with that email' })
   const token = randomBytes(16).toString('hex')
   db.resetTokens[token] = { email, expires: Date.now() + 3600000 }
-  saveDb()
+  await saveDb()
   res.json({ success: true, devResetToken: token })
 })
 
-router.post('/auth/reset-password', (req, res) => {
+router.post('/auth/reset-password', async (req, res) => {
   const db = getDb()
   const { token, password } = req.body || {}
   const reset = db.resetTokens[token]
@@ -248,20 +248,20 @@ router.post('/auth/reset-password', (req, res) => {
   if (!user) return res.status(400).json({ message: 'Invalid reset token' })
   user.password = password
   delete db.resetTokens[token]
-  saveDb()
+  await saveDb()
   res.json({ success: true })
 })
 
 // --- Dashboard ---
-router.get('/dashboard/stats', (_req, res) => {
+router.get('/dashboard/stats', async (_req, res) => {
   res.json(computeDashboardStats(getDb()))
 })
 
-router.get('/dashboard/sales-series', (_req, res) => {
+router.get('/dashboard/sales-series', async (_req, res) => {
   res.json(computeSalesSeries(getDb()))
 })
 
-router.get('/dashboard/recent-orders', (req, res) => {
+router.get('/dashboard/recent-orders', async (req, res) => {
   const db = getDb()
   const query = parseSorting({
     ...req.query,
@@ -288,7 +288,7 @@ router.get('/dashboard/recent-orders', (req, res) => {
 })
 
 // --- Customers ---
-router.get('/customers', (req, res) => {
+router.get('/customers', async (req, res) => {
   const db = getDb()
   const query = parseSorting({
     ...req.query,
@@ -308,22 +308,22 @@ router.get('/customers', (req, res) => {
   res.json(list)
 })
 
-router.get('/customers/:id', (req, res) => {
+router.get('/customers/:id', async (req, res) => {
   const customer = getDb().customers.find((c) => c.id === req.params.id)
   if (!customer) return res.status(404).json({ message: 'Customer not found' })
   res.json(customer)
 })
 
-router.get('/customers/:id/orders', (req, res) => {
+router.get('/customers/:id/orders', async (req, res) => {
   const db = getDb()
   const query = parseSorting({ ...req.query })
   const rows = db.orders.filter((o) => o.customerId === req.params.id)
   res.json(paginateList(rows, query))
 })
 
-router.patch('/customers/:id', (req, res) => {
+router.patch('/customers/:id', async (req, res) => {
   let updated = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const idx = db.customers.findIndex((c) => c.id === req.params.id)
     if (idx === -1) return
     db.customers[idx] = { ...db.customers[idx], ...req.body, id: req.params.id }
@@ -334,7 +334,7 @@ router.patch('/customers/:id', (req, res) => {
 })
 
 // --- Products ---
-router.get('/products/options', (req, res) => {
+router.get('/products/options', async (req, res) => {
   const db = getDb()
   const status = req.query.status || 'active'
   const rows = db.products
@@ -353,7 +353,7 @@ router.get('/products/options', (req, res) => {
   res.json({ rows })
 })
 
-router.get('/products', (req, res) => {
+router.get('/products', async (req, res) => {
   const db = getDb()
   const query = parseSorting({
     ...req.query,
@@ -372,11 +372,11 @@ router.get('/products', (req, res) => {
   )
 })
 
-router.get('/products/categories', (_req, res) => {
+router.get('/products/categories', async (_req, res) => {
   res.json(getDb().categories)
 })
 
-router.get('/products/export/csv', (_req, res) => {
+router.get('/products/export/csv', async (_req, res) => {
   const db = getDb()
   const header = 'id,name,category,price,stock,sku,status'
   const lines = db.products.map((p) =>
@@ -387,14 +387,14 @@ router.get('/products/export/csv', (_req, res) => {
   res.json({ csv: [header, ...lines].join('\n'), filename: 'products.csv' })
 })
 
-router.post('/products/import/csv', (req, res) => {
+router.post('/products/import/csv', async (req, res) => {
   const { csv } = req.body || {}
   const lines = String(csv || '')
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
   let imported = 0
-  updateDb((db) => {
+  await updateDb((db) => {
     for (const line of lines) {
       const cols = line.match(/("([^"]|"")*"|[^,]+)/g)?.map((c) => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) || []
       if (cols.length < 6) continue
@@ -442,7 +442,7 @@ router.post('/products/import/csv', (req, res) => {
   res.json({ imported })
 })
 
-router.get('/products/:id/analytics', (req, res) => {
+router.get('/products/:id/analytics', async (req, res) => {
   const db = getDb()
   const product = db.products.find((entry) => entry.id === req.params.id)
   if (!product) return res.status(404).json({ message: 'Product not found' })
@@ -468,15 +468,15 @@ router.get('/products/:id/analytics', (req, res) => {
   })
 })
 
-router.get('/products/:id', (req, res) => {
+router.get('/products/:id', async (req, res) => {
   const product = getDb().products.find((p) => p.id === req.params.id)
   if (!product) return res.status(404).json({ message: 'Product not found' })
   res.json(product)
 })
 
-router.post('/products', (req, res) => {
+router.post('/products', async (req, res) => {
   let product = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const id = nextId(db, 'product', 'PRD')
     product = {
       id,
@@ -498,9 +498,9 @@ router.post('/products', (req, res) => {
   res.status(201).json(product)
 })
 
-router.put('/products/:id', (req, res) => {
+router.put('/products/:id', async (req, res) => {
   let updated = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const idx = db.products.findIndex((p) => p.id === req.params.id)
     if (idx === -1) return
     updated = {
@@ -517,9 +517,9 @@ router.put('/products/:id', (req, res) => {
   res.json(updated)
 })
 
-router.delete('/products/:id', (req, res) => {
+router.delete('/products/:id', async (req, res) => {
   let found = false
-  updateDb((db) => {
+  await updateDb((db) => {
     const before = db.products.length
     db.products = db.products.filter((p) => p.id !== req.params.id)
     db.inventory = db.inventory.filter((i) => i.productId !== req.params.id)
@@ -532,9 +532,9 @@ router.delete('/products/:id', (req, res) => {
   res.status(204).end()
 })
 
-router.post('/products/:id/image', (req, res) => {
+router.post('/products/:id/image', async (req, res) => {
   let updated = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const idx = db.products.findIndex((p) => p.id === req.params.id)
     if (idx === -1) return
     db.products[idx].image = req.body?.imageDataUrl ?? db.products[idx].image
@@ -545,7 +545,7 @@ router.post('/products/:id/image', (req, res) => {
 })
 
 // --- Orders ---
-router.get('/orders', (req, res) => {
+router.get('/orders', async (req, res) => {
   const db = getDb()
   const query = parseSorting({
     ...req.query,
@@ -566,16 +566,16 @@ router.get('/orders', (req, res) => {
   )
 })
 
-router.get('/orders/:id', (req, res) => {
+router.get('/orders/:id', async (req, res) => {
   const order = getDb().orders.find((o) => o.id === req.params.id)
   if (!order) return res.status(404).json({ message: 'Order not found' })
   res.json(order)
 })
 
-router.patch('/orders/:id/status', (req, res) => {
+router.patch('/orders/:id/status', async (req, res) => {
   let updated = null
   try {
-    updateDb((db) => {
+    await updateDb((db) => {
       const idx = db.orders.findIndex((o) => o.id === req.params.id)
       if (idx === -1) return
       const order = db.orders[idx]
@@ -618,11 +618,11 @@ router.patch('/orders/:id/status', (req, res) => {
   res.json(updated)
 })
 
-router.post('/orders/bulk-status', (req, res) => {
+router.post('/orders/bulk-status', async (req, res) => {
   const { ids = [], deliveryStatus, paymentStatus } = req.body || {}
   let updated = 0
   try {
-    updateDb((db) => {
+    await updateDb((db) => {
       for (const id of ids) {
         const order = db.orders.find((o) => o.id === id)
         if (!order) continue
@@ -654,9 +654,9 @@ router.post('/orders/bulk-status', (req, res) => {
   res.json({ updated })
 })
 
-router.post('/orders/:id/notes', (req, res) => {
+router.post('/orders/:id/notes', async (req, res) => {
   let updated = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const order = db.orders.find((o) => o.id === req.params.id)
     if (!order) return
     const note = {
@@ -680,10 +680,10 @@ router.post('/orders/:id/notes', (req, res) => {
   res.json(updated)
 })
 
-router.post('/orders', (req, res) => {
+router.post('/orders', async (req, res) => {
   let order = null
   try {
-    updateDb((db) => {
+    await updateDb((db) => {
       const customer = db.customers.find((c) => c.id === req.body.customerId)
       if (!customer) return
       const items = (req.body.items || []).map((item) => {
@@ -707,7 +707,7 @@ router.post('/orders', (req, res) => {
         customerEmail: customer.email,
         date: now,
         totalAmount,
-        paymentStatus: req.body.paymentStatus || 'Unpaid',
+        paymentStatus: req.body.paymentStatus || 'Paid',
         deliveryStatus: req.body.deliveryStatus || 'Pending',
         shippingAddress: `${customer.addresses?.[0]?.line1 || ''}, ${customer.addresses?.[0]?.city || ''}`,
         items,
@@ -741,7 +741,7 @@ router.post('/orders', (req, res) => {
 })
 
 // --- Inventory ---
-router.get('/inventory', (req, res) => {
+router.get('/inventory', async (req, res) => {
   const db = getDb()
   const query = parseSorting({ ...req.query })
   res.json(
@@ -757,15 +757,15 @@ router.get('/inventory', (req, res) => {
   )
 })
 
-router.get('/inventory/warehouses', (_req, res) => {
+router.get('/inventory/warehouses', async (_req, res) => {
   res.json(getDb().warehouses)
 })
 
-router.get('/inventory/adjustment-reasons', (_req, res) => {
+router.get('/inventory/adjustment-reasons', async (_req, res) => {
   res.json(getDb().adjustmentReasons)
 })
 
-router.get('/inventory/movements', (req, res) => {
+router.get('/inventory/movements', async (req, res) => {
   const db = getDb()
   const query = parseSorting({ ...req.query })
   res.json(
@@ -780,10 +780,10 @@ router.get('/inventory/movements', (req, res) => {
   )
 })
 
-router.post('/inventory/adjust', (req, res) => {
+router.post('/inventory/adjust', async (req, res) => {
   const { inventoryId, delta, reasonCode, note, author } = req.body || {}
   let result = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const item = db.inventory.find((i) => i.id === inventoryId)
     if (!item) return
     const reason = db.adjustmentReasons.find((r) => r.code === reasonCode)
@@ -832,11 +832,11 @@ router.post('/inventory/adjust', (req, res) => {
   res.json(result)
 })
 
-router.get('/inventory/reorder-suggestions', (req, res) => {
+router.get('/inventory/reorder-suggestions', async (req, res) => {
   res.json(getReorderSuggestions(getDb(), req.query.urgency))
 })
 
-router.get('/inventory/purchase-orders', (req, res) => {
+router.get('/inventory/purchase-orders', async (req, res) => {
   const db = getDb()
   const query = parseSorting({ ...req.query })
   res.json(
@@ -850,15 +850,15 @@ router.get('/inventory/purchase-orders', (req, res) => {
   )
 })
 
-router.get('/inventory/purchase-orders/:id', (req, res) => {
+router.get('/inventory/purchase-orders/:id', async (req, res) => {
   const po = getDb().purchaseOrders.find((p) => p.id === req.params.id)
   if (!po) return res.status(404).json({ message: 'Purchase order not found' })
   res.json(po)
 })
 
-router.post('/inventory/purchase-orders', (req, res) => {
+router.post('/inventory/purchase-orders', async (req, res) => {
   let po = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const items = req.body.items || []
     const totalCost = Math.round(items.reduce((s, i) => s + i.qtyOrdered * i.unitCost, 0) * 100) / 100
     po = {
@@ -876,9 +876,9 @@ router.post('/inventory/purchase-orders', (req, res) => {
   res.status(201).json(po)
 })
 
-router.patch('/inventory/purchase-orders/:id/status', (req, res) => {
+router.patch('/inventory/purchase-orders/:id/status', async (req, res) => {
   let updated = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const po = db.purchaseOrders.find((p) => p.id === req.params.id)
     if (!po) return
     po.status = req.body.status
@@ -899,13 +899,13 @@ router.patch('/inventory/purchase-orders/:id/status', (req, res) => {
 })
 
 // --- Settings ---
-router.get('/settings', (_req, res) => {
+router.get('/settings', async (_req, res) => {
   res.json(getDb().settings)
 })
 
-router.put('/settings', (req, res) => {
+router.put('/settings', async (req, res) => {
   let settings = null
-  updateDb((db) => {
+  await updateDb((db) => {
     db.settings = { ...db.settings, ...req.body }
     syncInventoryLowStock(db)
     settings = db.settings
@@ -914,7 +914,7 @@ router.put('/settings', (req, res) => {
 })
 
 // --- Search ---
-router.get('/search', (req, res) => {
+router.get('/search', async (req, res) => {
   const db = getDb()
   const q = String(req.query.q || '').toLowerCase()
   const limit = Number(req.query.limit) || 5
@@ -939,13 +939,13 @@ router.get('/search', (req, res) => {
 })
 
 // --- Notifications ---
-router.get('/notifications', (_req, res) => {
+router.get('/notifications', async (_req, res) => {
   res.json(getDb().notifications)
 })
 
-router.patch('/notifications/:id/read', (req, res) => {
+router.patch('/notifications/:id/read', async (req, res) => {
   let updated = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const n = db.notifications.find((x) => x.id === req.params.id)
     if (!n) return
     n.read = true
@@ -955,21 +955,21 @@ router.patch('/notifications/:id/read', (req, res) => {
   res.json(updated)
 })
 
-router.post('/notifications/read-all', (_req, res) => {
-  updateDb((db) => {
+router.post('/notifications/read-all', async (_req, res) => {
+  await updateDb((db) => {
     for (const n of db.notifications) n.read = true
   })
   res.json({ success: true })
 })
 
 // --- Account ---
-router.get('/account', requireAuth, (req, res) => {
+router.get('/account', requireAuth, async (req, res) => {
   res.json(req.user)
 })
 
-router.patch('/account', requireAuth, (req, res) => {
+router.patch('/account', requireAuth, async (req, res) => {
   let updated = null
-  updateDb((db) => {
+  await updateDb((db) => {
     const idx = db.users.findIndex((u) => u.id === req.user.id)
     if (idx === -1) return
     db.users[idx] = { ...db.users[idx], name: req.body.name ?? db.users[idx].name, email: req.body.email ?? db.users[idx].email }
@@ -978,7 +978,7 @@ router.patch('/account', requireAuth, (req, res) => {
   res.json(updated)
 })
 
-router.post('/account/password', requireAuth, (req, res) => {
+router.post('/account/password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {}
   const db = getDb()
   const user = db.users.find((u) => u.id === req.user.id)
@@ -986,7 +986,7 @@ router.post('/account/password', requireAuth, (req, res) => {
     return res.status(400).json({ message: 'Current password is incorrect' })
   }
   user.password = newPassword
-  saveDb()
+  await saveDb()
   res.json({ success: true })
 })
 

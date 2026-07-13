@@ -94,15 +94,26 @@ The repo root (`admin/`) includes a `vercel.json` that builds `admin-dashboard/`
 
    If Root Directory is `admin-dashboard`, do **not** set Output Directory to `admin-dashboard/dist` — that double-nests the path and causes a site-wide **404**.
 
-3. Add this environment variable in **Project → Settings → Environment Variables** (Production + Preview + Development):
+3. Add these environment variables in **Project → Settings → Environment Variables** (Production + Preview + Development):
 
    | Name | Value |
    |------|-------|
    | `VITE_API_URL` | `/api` |
+   | `DATABASE_URL` | *(auto-set if you linked Vercel Postgres / Neon Storage)* |
+
+   If you created **Vercel Postgres / Neon** under **Storage**, `DATABASE_URL` / `POSTGRES_URL` are added automatically. Redeploy after linking.
 
 4. Redeploy after changing settings or env vars.
 
 **Note:** `VITE_*` variables are baked in at build time — if login/API calls fail after deploy, confirm `VITE_API_URL=/api` is set and trigger a new deployment.
+
+### Persistent data (Postgres)
+
+The API stores all demo data in a single Postgres JSONB document (`app_store` table) when `DATABASE_URL` or `POSTGRES_URL` is set. On first connection it creates the table and seeds demo data.
+
+- **Vercel:** link Neon/Postgres in Storage, then redeploy.
+- **Local:** copy `.env.example` → `.env` and paste your pooled `DATABASE_URL`.
+- Without a DB URL, local/dev still uses `server/data/store.json`.
 
 ### Troubleshooting 404
 
@@ -112,12 +123,10 @@ The repo root (`admin/`) includes a `vercel.json` that builds `admin-dashboard/`
 - Clear **Root Directory** / **Output Directory** overrides in the dashboard if they conflict with the table above.
 - After fixing settings, use **Deployments → … → Redeploy**.
 
-On Vercel, demo data is seeded into `/tmp` (resets on cold starts). For persistent data, use Railway, Render, or a VPS with `npm run build && npm start`.
-
 ## 📁 Project structure
 
 ```
-server/              # Express API + JSON persistence (see server/routes.js)
+server/              # Express API + Postgres/JSON persistence (see server/db.js)
 src/
 ├── components/
 │   ├── ui/            # shadcn/ui-style primitives (button, dialog, table, select, tabs, ...)

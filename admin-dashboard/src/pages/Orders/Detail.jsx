@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { PageLoader } from '@/components/common/PageLoader'
 import { PaymentStatusBadge } from '@/components/common/StatusBadge'
 import { OrderStatusDropdown } from '@/pages/Orders/OrderStatusDropdown'
+import { PaymentStatusDropdown } from '@/pages/Orders/PaymentStatusDropdown'
 import { OrderTimeline } from '@/pages/Orders/OrderTimeline'
 import { OrderNotes } from '@/pages/Orders/OrderNotes'
 import { OrderInvoice } from '@/pages/Orders/OrderInvoice'
@@ -83,7 +84,11 @@ export default function OrderDetail() {
             <CardContent className="grid grid-cols-1 gap-3 pt-0">
               <div className="rounded-lg border border-border p-3">
                 <p className="mb-1.5 text-xs text-muted-foreground">Payment</p>
-                <PaymentStatusBadge status={order.paymentStatus} />
+                {canWrite ? (
+                  <PaymentStatusDropdown order={order} />
+                ) : (
+                  <PaymentStatusBadge status={order.paymentStatus} />
+                )}
               </div>
               <div className="rounded-lg border border-border p-3">
                 <p className="mb-1.5 text-xs text-muted-foreground">Delivery</p>

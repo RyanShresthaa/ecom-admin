@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CurrencyDollar, ShoppingCartSimple, Users, ChartLineUp, ArrowsClockwise } from '@phosphor-icons/react'
+import { useQueryClient } from '@tanstack/react-query'
+import { CurrencyDollar, ShoppingCartSimple, Users, Package, ArrowsClockwise } from '@phosphor-icons/react'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,16 +9,17 @@ import { KpiCard } from '@/components/common/KpiCard'
 import { SalesChart } from '@/pages/Dashboard/SalesChart'
 import { RecentOrdersTable } from '@/pages/Dashboard/RecentOrdersTable'
 import { useDashboardStats, useSalesSeries } from '@/hooks/useDashboard'
+import { queryKeys } from '@/lib/queryKeys'
 import { formatCurrency, formatNumber, formatDate, cn } from '@/lib/utils'
 
 export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState(null)
+  const queryClient = useQueryClient()
   const stats = useDashboardStats()
   const sales = useSalesSeries()
 
   const refreshAll = () => {
-    stats.refetch()
-    sales.refetch()
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
   }
 
   const isFetching = stats.isFetching || sales.isFetching
@@ -53,18 +55,18 @@ export default function Dashboard() {
           accent="success"
         />
         <KpiCard
-          label="Total Users"
-          value={stats.data ? formatNumber(stats.data.totalUsers) : '—'}
-          change={stats.data?.usersChange}
-          icon={Users}
+          label="Total Products"
+          value={stats.data ? formatNumber(stats.data.totalProducts) : '—'}
+          change={stats.data?.productsChange}
+          icon={Package}
           isLoading={stats.isLoading}
           accent="warning"
         />
         <KpiCard
-          label="Conversion Rate"
-          value={stats.data ? `${stats.data.conversionRate}%` : '—'}
-          change={stats.data?.conversionChange}
-          icon={ChartLineUp}
+          label="Total Users"
+          value={stats.data ? formatNumber(stats.data.totalUsers) : '—'}
+          change={stats.data?.usersChange}
+          icon={Users}
           isLoading={stats.isLoading}
           accent="destructive"
         />

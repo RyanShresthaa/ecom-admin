@@ -60,8 +60,9 @@ export function toPublicUser({ password: _password, ...user }) {
 export function computeDashboardStats(db) {
   const orders = db.orders
   const customers = db.customers
+  const products = db.products || []
   const totalRevenue = orders.reduce(
-    (sum, o) => sum + (isPaidRevenueOrder(o) ? o.totalAmount : 0),
+    (sum, o) => sum + (isRevenueOrder(o) ? o.totalAmount : 0),
     0
   )
   const thirtyDaysAgo = new Date()
@@ -75,8 +76,8 @@ export function computeDashboardStats(db) {
     return d >= sixtyDaysAgo && d < thirtyDaysAgo
   })
 
-  const recentRevenue = recentOrders.reduce((s, o) => s + (isPaidRevenueOrder(o) ? o.totalAmount : 0), 0)
-  const priorRevenue = priorOrders.reduce((s, o) => s + (isPaidRevenueOrder(o) ? o.totalAmount : 0), 0)
+  const recentRevenue = recentOrders.reduce((s, o) => s + (isRevenueOrder(o) ? o.totalAmount : 0), 0)
+  const priorRevenue = priorOrders.reduce((s, o) => s + (isRevenueOrder(o) ? o.totalAmount : 0), 0)
   const revenueChange = priorRevenue > 0 ? Math.round(((recentRevenue - priorRevenue) / priorRevenue) * 1000) / 10 : 0
   const ordersChange =
     priorOrders.length > 0
@@ -91,6 +92,14 @@ export function computeDashboardStats(db) {
   const usersChange =
     priorCustomers > 0 ? Math.round(((recentCustomers - priorCustomers) / priorCustomers) * 1000) / 10 : 0
 
+  const recentProducts = products.filter((p) => new Date(p.createdAt || 0) >= thirtyDaysAgo).length
+  const priorProducts = products.filter((p) => {
+    const d = new Date(p.createdAt || 0)
+    return d >= sixtyDaysAgo && d < thirtyDaysAgo
+  }).length
+  const productsChange =
+    priorProducts > 0 ? Math.round(((recentProducts - priorProducts) / priorProducts) * 1000) / 10 : 0
+
   const conversionRate = customers.length > 0 ? Math.round((orders.length / customers.length) * 1000) / 10 : 0
 
   return {
@@ -100,6 +109,8 @@ export function computeDashboardStats(db) {
     ordersChange,
     totalUsers: customers.length,
     usersChange,
+    totalProducts: products.length,
+    productsChange,
     conversionRate,
     conversionChange: 0,
   }
@@ -112,10 +123,10 @@ export function computeSalesSeries(db, days = 14) {
     d.setDate(d.getDate() - i)
     const key = d.toISOString().split('T')[0]
     const dayOrders = db.orders.filter((o) => o.date.startsWith(key))
-    const paidOrders = dayOrders.filter(isPaidRevenueOrder)
-    const revenue = Math.round(paidOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100
+    const revenueOrders = dayOrders.filter(isRevenueOrder)
+    const revenue = Math.round(revenueOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100
     const orders = dayOrders.length
-    const itemsSold = paidOrders.reduce(
+    const itemsSold = revenueOrders.reduce(
       (sum, order) => sum + (order.items || []).reduce((qty, item) => qty + (item.qty || 0), 0),
       0
     )
@@ -134,18 +145,24 @@ export function syncCustomerStats(db, customerId) {
   const customer = db.customers.find((c) => c.id === customerId)
   if (!customer) return
   const customerOrders = db.orders.filter((o) => o.customerId === customerId)
+  const activeOrders = customerOrders.filter((o) => isRevenueOrder(o))
   customer.orderCount = customerOrders.length
-  customer.lifetimeValue = Math.round(customerOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100
+  customer.lifetimeValue = Math.round(activeOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100
   customer.lastOrderDate =
     customerOrders.length > 0
       ? customerOrders.reduce((latest, o) => (o.date > latest ? o.date : latest), customerOrders[0].date)
       : null
   customer.avgOrderValue =
-    customer.orderCount > 0 ? Math.round((customer.lifetimeValue / customer.orderCount) * 100) / 100 : 0
+    activeOrders.length > 0 ? Math.round((customer.lifetimeValue / activeOrders.length) * 100) / 100 : 0
 }
 
-function isPaidRevenueOrder(order) {
-  return order.paymentStatus === 'Paid' && order.deliveryStatus !== 'Returned'
+function isRefundedOrder(order) {
+  return order.paymentStatus === 'Refunded' || order.deliveryStatus === 'Returned'
+}
+
+/** Active orders count toward revenue/sold; refunds and returns are excluded. */
+function isRevenueOrder(order) {
+  return !isRefundedOrder(order)
 }
 
 export function removeProductFromOrders(db, productId) {
@@ -194,12 +211,8 @@ export function getEffectiveStock(product) {
   return product.stock || 0
 }
 
-function isRefundedOrder(order) {
-  return order.paymentStatus === 'Refunded' || order.deliveryStatus === 'Returned'
-}
-
 function isSoldOrder(order) {
-  return order.paymentStatus === 'Paid' && !isRefundedOrder(order)
+  return isRevenueOrder(order)
 }
 
 function getOrderLinesForProduct(order, productId) {

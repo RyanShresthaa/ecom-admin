@@ -31,7 +31,7 @@ const EMPTY_ITEM = { productId: '', variantId: '', qty: 1 }
 export function CreateOrderDialog({ open, onOpenChange }) {
   const [customerId, setCustomerId] = useState('')
   const [items, setItems] = useState([{ ...EMPTY_ITEM }])
-  const [paymentStatus, setPaymentStatus] = useState('Unpaid')
+  const [paymentStatus, setPaymentStatus] = useState('Paid')
   const [deliveryStatus, setDeliveryStatus] = useState('Pending')
   const [note, setNote] = useState('')
 
@@ -51,7 +51,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
       refetchProducts()
       setCustomerId('')
       setItems([{ ...EMPTY_ITEM }])
-      setPaymentStatus('Unpaid')
+      setPaymentStatus('Paid')
       setDeliveryStatus('Pending')
       setNote('')
     }

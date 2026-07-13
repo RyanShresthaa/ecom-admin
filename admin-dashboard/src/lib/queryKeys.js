@@ -3,6 +3,7 @@ export const queryKeys = {
     session: ['auth', 'session'],
   },
   dashboard: {
+    all: ['dashboard'],
     stats: ['dashboard', 'stats'],
     sales: ['dashboard', 'sales'],
     recentOrders: (params) => ['dashboard', 'recent-orders', params],

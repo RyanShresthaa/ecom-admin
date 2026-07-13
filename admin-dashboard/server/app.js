@@ -1,11 +1,9 @@
 import express from 'express'
 
-import { loadDb } from './db.js'
+import { ensureDb, isUsingPostgres } from './db.js'
 import apiRouter from './routes.js'
 
 export function createApp() {
-  loadDb()
-
   const app = express()
   app.use(express.json({ limit: '10mb' }))
 
@@ -19,6 +17,19 @@ export function createApp() {
       next()
     })
   }
+
+  app.use(async (_req, res, next) => {
+    try {
+      await ensureDb()
+      next()
+    } catch (error) {
+      console.error('Database bootstrap failed:', error)
+      res.status(500).json({
+        message: error.message || 'Database unavailable',
+        storage: isUsingPostgres() ? 'postgres' : 'file',
+      })
+    }
+  })
 
   app.use('/api', apiRouter)
 

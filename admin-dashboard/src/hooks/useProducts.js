@@ -7,7 +7,7 @@ import { queryKeys } from '@/lib/queryKeys'
 function invalidateProductRelatedQueries(queryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
   queryClient.invalidateQueries({ queryKey: ['products', 'options'] })
-  queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
   queryClient.invalidateQueries({ queryKey: queryKeys.orders.all })
   queryClient.invalidateQueries({ queryKey: queryKeys.customers.all })
   queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })

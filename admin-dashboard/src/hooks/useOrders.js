@@ -25,8 +25,9 @@ function invalidateOrderRelatedQueries(queryClient, orderId) {
   queryClient.invalidateQueries({ queryKey: queryKeys.customers.all })
   queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
   queryClient.invalidateQueries({ queryKey: ['products', 'analytics'] })
-  queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats })
+  queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
   queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
+  queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all })
   if (orderId) {
     queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(orderId) })
   }
