@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Plus, SpinnerGap, Trash } from '@phosphor-icons/react'
+import { useEffect, useRef, useState } from 'react'
+import { MagnifyingGlass, Plus, SpinnerGap, Trash, X } from '@phosphor-icons/react'
 
 import {
   Dialog,
@@ -23,26 +23,32 @@ import {
 import { useCreateOrder } from '@/hooks/useOrders'
 import { useCustomersQuery } from '@/hooks/useCustomers'
 import { useProductOptionsQuery } from '@/hooks/useProducts'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useAuth } from '@/context/AuthContext'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 
 const EMPTY_ITEM = { productId: '', variantId: '', qty: 1 }
 
 export function CreateOrderDialog({ open, onOpenChange }) {
   const [customerId, setCustomerId] = useState('')
+  const [customerLabel, setCustomerLabel] = useState('')
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerMenuOpen, setCustomerMenuOpen] = useState(false)
   const [items, setItems] = useState([{ ...EMPTY_ITEM }])
   const [paymentStatus, setPaymentStatus] = useState('Paid')
   const [deliveryStatus, setDeliveryStatus] = useState('Pending')
   const [note, setNote] = useState('')
+  const customerBoxRef = useRef(null)
 
   const createOrder = useCreateOrder()
   const { user } = useAuth()
+  const debouncedCustomerSearch = useDebouncedValue(customerSearch, 250)
 
-  const { data: customersData } = useCustomersQuery({
+  const { data: customersData, isFetching: customersFetching } = useCustomersQuery({
     page: 0,
-    pageSize: 200,
-    sorting: [{ id: 'createdAt', desc: true }],
-    search: '',
+    pageSize: 20,
+    sorting: [{ id: 'name', desc: false }],
+    search: debouncedCustomerSearch,
   })
   const { data: productsData, refetch: refetchProducts } = useProductOptionsQuery({ status: 'active' })
 
@@ -50,12 +56,39 @@ export function CreateOrderDialog({ open, onOpenChange }) {
     if (open) {
       refetchProducts()
       setCustomerId('')
+      setCustomerLabel('')
+      setCustomerSearch('')
+      setCustomerMenuOpen(false)
       setItems([{ ...EMPTY_ITEM }])
       setPaymentStatus('Paid')
       setDeliveryStatus('Pending')
       setNote('')
     }
   }, [open, refetchProducts])
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!customerBoxRef.current?.contains(event.target)) {
+        setCustomerMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
+
+  function selectCustomer(customer) {
+    setCustomerId(customer.id)
+    setCustomerLabel(`${customer.name} (${customer.email})`)
+    setCustomerSearch('')
+    setCustomerMenuOpen(false)
+  }
+
+  function clearCustomer() {
+    setCustomerId('')
+    setCustomerLabel('')
+    setCustomerSearch('')
+    setCustomerMenuOpen(true)
+  }
 
   function updateItem(index, field, value) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)))
@@ -79,6 +112,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
   }
 
   const total = items.reduce((sum, item) => sum + getLineTotal(item), 0)
+  const customerMatches = customersData?.rows || []
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -110,20 +144,68 @@ export function CreateOrderDialog({ open, onOpenChange }) {
             <DialogDescription>Build an order by selecting a customer and line items.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-1.5">
-            <Label>Customer</Label>
-            <Select value={customerId} onValueChange={setCustomerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select customer" />
-              </SelectTrigger>
-              <SelectContent>
-                {customersData?.rows?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} ({c.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-1.5" ref={customerBoxRef}>
+            <Label htmlFor="customer-search">Customer</Label>
+            {customerId ? (
+              <div className="flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm">
+                <span className="truncate">{customerLabel}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  onClick={clearCustomer}
+                  aria-label="Clear customer"
+                >
+                  <X size={14} />
+                </Button>
+              </div>
+            ) : (
+              <div className="relative">
+                <MagnifyingGlass
+                  size={14}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  id="customer-search"
+                  value={customerSearch}
+                  onChange={(e) => {
+                    setCustomerSearch(e.target.value)
+                    setCustomerMenuOpen(true)
+                  }}
+                  onFocus={() => setCustomerMenuOpen(true)}
+                  placeholder="Type customer name or email…"
+                  className="pl-8"
+                  autoComplete="off"
+                />
+                {customerMenuOpen && (
+                  <div className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-md">
+                    {customersFetching && customerMatches.length === 0 ? (
+                      <p className="px-2 py-3 text-center text-xs text-muted-foreground">Searching…</p>
+                    ) : customerMatches.length === 0 ? (
+                      <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+                        {debouncedCustomerSearch ? 'No customers found' : 'Start typing to search customers'}
+                      </p>
+                    ) : (
+                      customerMatches.map((customer) => (
+                        <button
+                          key={customer.id}
+                          type="button"
+                          className={cn(
+                            'flex w-full flex-col items-start rounded-sm px-2 py-1.5 text-left text-sm',
+                            'hover:bg-accent hover:text-accent-foreground'
+                          )}
+                          onClick={() => selectCustomer(customer)}
+                        >
+                          <span className="font-medium">{customer.name}</span>
+                          <span className="text-xs text-muted-foreground">{customer.email}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">

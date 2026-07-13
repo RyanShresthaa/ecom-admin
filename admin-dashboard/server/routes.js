@@ -992,13 +992,21 @@ router.post('/account/password', requireAuth, async (req, res) => {
 
 function syncInventoryFromProducts(db) {
   const threshold = db.settings.lowStockThreshold
+  const warehouses = db.warehouses?.length ? db.warehouses : ['Main Warehouse']
+
   for (const product of db.products) {
-    const items = db.inventory.filter((i) => i.productId === product.id)
+    const targetStock = product.variants?.length
+      ? product.variants.reduce((sum, variant) => sum + (Number(variant.stock) || 0), 0)
+      : Number(product.stock) || 0
+    product.stock = targetStock
+
+    let items = db.inventory.filter((i) => i.productId === product.id)
+
     if (items.length === 0) {
-      const warehouseCount = db.warehouses.length || 1
-      const baseQty = Math.floor(product.stock / warehouseCount)
-      let remainder = product.stock % warehouseCount
-      for (const warehouse of db.warehouses) {
+      const warehouseCount = warehouses.length
+      const baseQty = Math.floor(targetStock / warehouseCount)
+      let remainder = targetStock % warehouseCount
+      for (const warehouse of warehouses) {
         const stockQuantity = baseQty + (remainder > 0 ? 1 : 0)
         remainder = Math.max(0, remainder - 1)
         db.inventory.push({
@@ -1013,15 +1021,28 @@ function syncInventoryFromProducts(db) {
           lowStock: stockQuantity <= threshold,
         })
       }
-    } else {
-      for (const item of items) {
-        item.productName = product.name
-        item.category = product.category
-        item.sku = product.sku
-        item.lowStock = item.stockQuantity <= threshold
-      }
-      product.stock = items.reduce((sum, item) => sum + item.stockQuantity, 0)
+      continue
     }
+
+    const currentTotal = items.reduce((sum, item) => sum + item.stockQuantity, 0)
+    if (currentTotal !== targetStock) {
+      const baseQty = Math.floor(targetStock / items.length)
+      let remainder = targetStock % items.length
+      for (const item of items) {
+        item.stockQuantity = baseQty + (remainder > 0 ? 1 : 0)
+        remainder = Math.max(0, remainder - 1)
+      }
+    }
+
+    for (const item of items) {
+      item.productName = product.name
+      item.category = product.category
+      item.sku = product.sku
+      item.threshold = threshold
+      item.lowStock = item.stockQuantity <= threshold
+    }
+
+    product.stock = items.reduce((sum, item) => sum + item.stockQuantity, 0)
   }
 }
 

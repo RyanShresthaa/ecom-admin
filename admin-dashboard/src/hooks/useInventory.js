@@ -58,6 +58,7 @@ export function useAdjustStock() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
       toast.success('Stock adjusted')
     },
     onError: (err) => toast.error(err.message || 'Failed to adjust stock'),
@@ -83,6 +84,7 @@ export function useUpdatePurchaseOrderStatus() {
       api.inventory.purchaseOrders.updateStatus(id, { status, author }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.purchaseOrders.all })
       toast.success('Purchase order updated')
     },
