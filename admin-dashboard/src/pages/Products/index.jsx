@@ -83,7 +83,13 @@ export default function Products() {
         { onSuccess: () => setFormOpen(false) }
       )
     } else {
-      createProduct.mutate(values, { onSuccess: () => setFormOpen(false) })
+      createProduct.mutate(values, {
+        onSuccess: () => {
+          setFormOpen(false)
+          setSorting([{ id: 'createdAt', desc: true }])
+          setPagination((p) => ({ ...p, pageIndex: 0 }))
+        },
+      })
     }
   }
 

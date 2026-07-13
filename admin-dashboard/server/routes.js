@@ -51,9 +51,35 @@ function parseSorting(query) {
 function syncProductStockFromInventory(db, productId) {
   const product = db.products.find((p) => p.id === productId)
   if (!product) return
-  product.stock = db.inventory
+
+  const total = db.inventory
     .filter((item) => item.productId === productId)
     .reduce((sum, item) => sum + item.stockQuantity, 0)
+  product.stock = total
+
+  // Keep variant stocks aligned with inventory so Products UI stays in sync.
+  if (product.variants?.length) {
+    const variantTotal = product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
+    if (variantTotal === total) return
+
+    if (variantTotal <= 0) {
+      product.variants.forEach((variant, index) => {
+        variant.stock = index === 0 ? total : 0
+      })
+      return
+    }
+
+    let remaining = total
+    product.variants.forEach((variant, index) => {
+      if (index === product.variants.length - 1) {
+        variant.stock = remaining
+        return
+      }
+      const share = Math.floor((total * (variant.stock || 0)) / variantTotal)
+      variant.stock = share
+      remaining -= share
+    })
+  }
 }
 
 function recordStockMovement(db, item, { delta, reasonCode, reasonLabel, author, note }) {
@@ -137,7 +163,15 @@ function updateVariantStock(product, variantId, quantity) {
   }
 }
 
-function getProductAvailableStock(product) {
+function getProductAvailableStock(dbOrProduct, maybeProduct) {
+  const db = maybeProduct ? dbOrProduct : null
+  const product = maybeProduct || dbOrProduct
+  if (db) {
+    const inventoryTotal = db.inventory
+      .filter((item) => item.productId === product.id)
+      .reduce((sum, item) => sum + item.stockQuantity, 0)
+    if (db.inventory.some((item) => item.productId === product.id)) return inventoryTotal
+  }
   if (product.variants?.length) {
     return product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
   }
@@ -156,7 +190,7 @@ function deductOrderStock(db, order, author) {
   for (const item of order.items) {
     const product = db.products.find((p) => p.id === item.productId)
     if (!product) throw new Error(`Product not found for ${item.name}`)
-    if (getProductAvailableStock(product) < item.qty) {
+    if (getProductAvailableStock(db, product) < item.qty) {
       throw new Error(`Insufficient stock for ${product.name}`)
     }
     updateVariantStock(product, item.variantId, -item.qty)
@@ -423,7 +457,7 @@ router.get('/products/options', async (req, res) => {
       name: product.name,
       sku: product.sku,
       price: product.price,
-      stock: getProductAvailableStock(product),
+      stock: getProductAvailableStock(db, product),
       status: product.status,
       variants: product.variants || [],
       createdAt: product.createdAt,
@@ -547,9 +581,10 @@ router.get('/products/:id/analytics', async (req, res) => {
 })
 
 router.get('/products/:id', async (req, res) => {
-  const product = getDb().products.find((p) => p.id === req.params.id)
+  const db = getDb()
+  const product = db.products.find((p) => p.id === req.params.id)
   if (!product) return res.status(404).json({ message: 'Product not found' })
-  res.json(product)
+  res.json(enrichProductRow(db, product))
 })
 
 router.post('/products', async (req, res) => {
@@ -581,9 +616,16 @@ router.put('/products/:id', async (req, res) => {
   await updateDb((db) => {
     const idx = db.products.findIndex((p) => p.id === req.params.id)
     if (idx === -1) return
+    const {
+      soldQty: _soldQty,
+      refundedQty: _refundedQty,
+      complaintCount: _complaintCount,
+      pendingQty: _pendingQty,
+      ...safeBody
+    } = req.body || {}
     updated = {
       ...db.products[idx],
-      ...req.body,
+      ...safeBody,
       id: req.params.id,
       price: Number(req.body.price ?? db.products[idx].price),
       stock: Number(req.body.stock ?? db.products[idx].stock),
@@ -827,8 +869,7 @@ router.post('/inventory/adjust', async (req, res) => {
 
     const product = db.products.find((p) => p.id === item.productId)
     if (product) {
-      const totalStock = db.inventory.filter((i) => i.productId === product.id).reduce((s, i) => s + i.stockQuantity, 0)
-      product.stock = totalStock
+      syncProductStockFromInventory(db, product.id)
     }
 
     const movement = {
@@ -1054,6 +1095,7 @@ function syncInventoryFromProducts(db) {
           lowStock: stockQuantity <= threshold,
         })
       }
+      syncProductStockFromInventory(db, product.id)
       continue
     }
 
@@ -1075,7 +1117,7 @@ function syncInventoryFromProducts(db) {
       item.lowStock = item.stockQuantity <= threshold
     }
 
-    product.stock = items.reduce((sum, item) => sum + item.stockQuantity, 0)
+    syncProductStockFromInventory(db, product.id)
   }
 }
 

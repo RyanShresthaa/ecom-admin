@@ -61,10 +61,18 @@ export function ReorderSuggestionsTab({ onCreatePO }) {
         },
       }),
       columnHelper.accessor('currentStock', {
-        header: 'Current',
-        cell: (info) => (
-          <span className="font-mono text-sm font-medium tabular-nums text-destructive">{info.getValue()}</span>
-        ),
+        header: 'Current stock',
+        cell: (info) => {
+          const row = info.row.original
+          return (
+            <div className="flex flex-col">
+              <span className="font-mono text-sm font-medium tabular-nums text-destructive">{info.getValue()}</span>
+              {row.warehouse && (
+                <span className="text-[11px] text-muted-foreground">Focus: {row.warehouse}</span>
+              )}
+            </div>
+          )
+        },
       }),
       columnHelper.accessor('threshold', {
         header: 'Threshold',

@@ -211,6 +211,27 @@ export function getEffectiveStock(product) {
   return product.stock || 0
 }
 
+/** Inventory is the source of truth for on-hand quantity when rows exist. */
+export function getInventoryStockTotal(db, productId) {
+  const items = (db.inventory || []).filter((item) => item.productId === productId)
+  if (items.length === 0) return null
+  return items.reduce((sum, item) => sum + (item.stockQuantity || 0), 0)
+}
+
+export function enrichProductRow(db, product) {
+  const metrics = getProductMetrics(db, product.id)
+  const inventoryStock = getInventoryStockTotal(db, product.id)
+  return {
+    ...product,
+    createdAt: product.createdAt || new Date(0).toISOString(),
+    stock: inventoryStock == null ? getEffectiveStock(product) : inventoryStock,
+    soldQty: metrics.soldQty,
+    refundedQty: metrics.refundedQty,
+    complaintCount: metrics.complaintCount,
+    pendingQty: metrics.pendingQty,
+  }
+}
+
 function isSoldOrder(order) {
   return isRevenueOrder(order)
 }
@@ -385,19 +406,6 @@ export function getCustomerMetrics(db, customerId) {
   }
 }
 
-export function enrichProductRow(db, product) {
-  const metrics = getProductMetrics(db, product.id)
-  return {
-    ...product,
-    createdAt: product.createdAt || new Date(0).toISOString(),
-    stock: getEffectiveStock(product),
-    soldQty: metrics.soldQty,
-    refundedQty: metrics.refundedQty,
-    complaintCount: metrics.complaintCount,
-    pendingQty: metrics.pendingQty,
-  }
-}
-
 export function enrichCustomerRow(db, customer) {
   const metrics = getCustomerMetrics(db, customer.id)
   return {
@@ -410,27 +418,60 @@ export function enrichCustomerRow(db, customer) {
 }
 
 export function getReorderSuggestions(db, urgency) {
-  const rows = db.inventory
-    .filter((item) => item.lowStock)
-    .map((item) => {
-      const deficit = Math.max(0, item.threshold - item.stockQuantity)
+  const defaultThreshold = db.settings?.lowStockThreshold ?? 10
+  const byProduct = new Map()
+
+  for (const item of db.inventory || []) {
+    const threshold = item.threshold ?? defaultThreshold
+    const existing = byProduct.get(item.productId) || {
+      productId: item.productId,
+      productName: item.productName,
+      sku: item.sku,
+      currentStock: 0,
+      threshold,
+      inventoryId: item.id,
+      warehouse: item.warehouse,
+      lowWarehouses: [],
+    }
+    existing.currentStock += item.stockQuantity || 0
+    existing.threshold = Math.max(existing.threshold, threshold)
+    if (item.lowStock || item.stockQuantity <= threshold) {
+      existing.lowWarehouses.push({
+        warehouse: item.warehouse,
+        stock: item.stockQuantity,
+        inventoryId: item.id,
+      })
+      if (!existing.inventoryId || item.lowStock) {
+        existing.inventoryId = item.id
+        existing.warehouse = item.warehouse
+      }
+    }
+    byProduct.set(item.productId, existing)
+  }
+
+  const rows = [...byProduct.values()]
+    .filter((row) => row.currentStock <= row.threshold || row.lowWarehouses.length > 0)
+    .map((row) => {
+      const deficit = Math.max(0, row.threshold - row.currentStock)
       const suggestedQty = Math.max(deficit + 10, 25)
       let urg = 'medium'
-      if (item.stockQuantity <= Math.floor(item.threshold * 0.25)) urg = 'critical'
-      else if (item.stockQuantity <= Math.floor(item.threshold * 0.6)) urg = 'high'
+      if (row.currentStock <= Math.floor(row.threshold * 0.25)) urg = 'critical'
+      else if (row.currentStock <= Math.floor(row.threshold * 0.6)) urg = 'high'
       return {
-        inventoryId: item.id,
-        productId: item.productId,
-        productName: item.productName,
-        sku: item.sku,
-        currentStock: item.stockQuantity,
-        threshold: item.threshold,
+        inventoryId: row.inventoryId,
+        productId: row.productId,
+        productName: row.productName,
+        sku: row.sku,
+        currentStock: row.currentStock,
+        threshold: row.threshold,
         suggestedQty,
         urgency: urg,
-        warehouse: item.warehouse,
+        warehouse: row.warehouse,
+        lowWarehouses: row.lowWarehouses,
       }
     })
 
   const filtered = urgency && urgency !== 'all' ? rows.filter((r) => r.urgency === urgency) : rows
+  filtered.sort((a, b) => a.currentStock - b.currentStock || a.productName.localeCompare(b.productName))
   return { rows: filtered, rowCount: filtered.length }
 }

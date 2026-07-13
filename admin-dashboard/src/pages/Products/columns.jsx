@@ -54,10 +54,7 @@ export function getProductColumns({ onEdit, onDelete, canWrite = true }) {
       header: 'Stock',
       enableSorting: true,
       cell: (info) => {
-        const product = info.row.original
-        const stock = product.variants?.length
-          ? product.variants.reduce((s, v) => s + v.stock, 0)
-          : info.getValue()
+        const stock = info.getValue() ?? 0
         return (
           <span
             className={
