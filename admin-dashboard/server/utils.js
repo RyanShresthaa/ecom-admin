@@ -4,9 +4,14 @@ export function paginateList(rows, query = {}, options = {}) {
   let filtered = [...rows]
 
   if (search && searchFields.length > 0) {
-    const q = String(search).toLowerCase()
+    const q = String(search).toLowerCase().trim()
     filtered = filtered.filter((row) =>
-      searchFields.some((field) => String(row[field] ?? '').toLowerCase().includes(q))
+      searchFields.some((field) => {
+        if (field === 'tags' && Array.isArray(row.tags)) {
+          return row.tags.some((tag) => String(tag).toLowerCase().includes(q))
+        }
+        return String(row[field] ?? '').toLowerCase().includes(q)
+      })
     )
   }
 
@@ -22,9 +27,19 @@ export function paginateList(rows, query = {}, options = {}) {
       if (av == null && bv == null) return 0
       if (av == null) return 1
       if (bv == null) return -1
-      if (av < bv) return desc ? 1 : -1
-      if (av > bv) return desc ? -1 : 1
-      return 0
+
+      const aDate = Date.parse(av)
+      const bDate = Date.parse(bv)
+      if (!Number.isNaN(aDate) && !Number.isNaN(bDate)) {
+        return desc ? bDate - aDate : aDate - bDate
+      }
+
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return desc ? bv - av : av - bv
+      }
+
+      const cmp = String(av).localeCompare(String(bv), undefined, { sensitivity: 'base' })
+      return desc ? -cmp : cmp
     })
   }
 
@@ -156,7 +171,9 @@ function isSoldOrder(order) {
 }
 
 function getOrderLinesForProduct(order, productId) {
-  return (order.items || []).filter((line) => line.productId === productId)
+  const id = String(productId || '').trim()
+  if (!id) return []
+  return (order.items || []).filter((line) => String(line.productId || '').trim() === id)
 }
 
 function collectOrderComplaints(order, productId, complaints, complaintKeys) {
@@ -327,6 +344,7 @@ export function enrichProductRow(db, product) {
   const metrics = getProductMetrics(db, product.id)
   return {
     ...product,
+    createdAt: product.createdAt || new Date(0).toISOString(),
     stock: getEffectiveStock(product),
     soldQty: metrics.soldQty,
     refundedQty: metrics.refundedQty,

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 import { useCreateOrder } from '@/hooks/useOrders'
 import { useCustomersQuery } from '@/hooks/useCustomers'
-import { useProductsQuery } from '@/hooks/useProducts'
+import { useProductOptionsQuery } from '@/hooks/useProducts'
 import { useAuth } from '@/context/AuthContext'
 import { formatCurrency } from '@/lib/utils'
 
@@ -38,18 +38,24 @@ export function CreateOrderDialog({ open, onOpenChange }) {
   const createOrder = useCreateOrder()
   const { user } = useAuth()
 
-  const { data: customersData } = useCustomersQuery({ page: 0, pageSize: 100, sorting: [], search: '' })
-  const { data: productsData } = useProductsQuery({ page: 0, pageSize: 100, sorting: [], search: '', category: 'all', status: 'active' })
+  const { data: customersData } = useCustomersQuery({
+    page: 0,
+    pageSize: 200,
+    sorting: [{ id: 'createdAt', desc: true }],
+    search: '',
+  })
+  const { data: productsData, refetch: refetchProducts } = useProductOptionsQuery({ status: 'active' })
 
   useEffect(() => {
     if (open) {
+      refetchProducts()
       setCustomerId('')
       setItems([{ ...EMPTY_ITEM }])
       setPaymentStatus('Unpaid')
       setDeliveryStatus('Pending')
       setNote('')
     }
-  }, [open])
+  }, [open, refetchProducts])
 
   function updateItem(index, field, value) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)))

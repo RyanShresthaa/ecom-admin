@@ -114,6 +114,11 @@ function normalizeDb(db) {
   }
 
   for (const product of db.products || []) {
+    if (!product.createdAt) {
+      product.createdAt = new Date().toISOString()
+      changed = true
+    }
+
     const inventoryTotal = (db.inventory || [])
       .filter((item) => item.productId === product.id)
       .reduce((sum, item) => sum + item.stockQuantity, 0)

@@ -19,7 +19,7 @@ export default function Customers() {
   const [search, setSearch] = useState('')
   const [tag, setTag] = useState('all')
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
-  const [sorting, setSorting] = useState([{ id: 'lifetimeValue', desc: true }])
+  const [sorting, setSorting] = useState([{ id: 'createdAt', desc: true }])
 
   const debouncedSearch = useDebouncedValue(search)
 

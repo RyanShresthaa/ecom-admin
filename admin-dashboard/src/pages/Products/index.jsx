@@ -33,7 +33,7 @@ export default function Products() {
   const [category, setCategory] = useState('all')
   const [status, setStatus] = useState('all')
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
-  const [sorting, setSorting] = useState([])
+  const [sorting, setSorting] = useState([{ id: 'createdAt', desc: true }])
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)

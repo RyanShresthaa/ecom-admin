@@ -21,6 +21,7 @@ export const httpApi = {
   },
   products: {
     list: (params) => request('/products', { params }),
+    options: (params) => request('/products/options', { params }),
     getById: (id) => request(`/products/${id}`),
     analytics: (id) => request(`/products/${id}/analytics`),
     create: (payload) => request('/products', { method: 'POST', body: payload }),

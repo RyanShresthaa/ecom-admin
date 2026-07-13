@@ -12,6 +12,14 @@ export function useProductsQuery(params) {
   })
 }
 
+export function useProductOptionsQuery(params = { status: 'active' }) {
+  return useQuery({
+    queryKey: queryKeys.products.options(params),
+    queryFn: () => api.products.options(params),
+    staleTime: 30_000,
+  })
+}
+
 export function useProductQuery(id) {
   return useQuery({
     queryKey: queryKeys.products.detail(id),
@@ -34,6 +42,7 @@ export function useCreateProduct() {
     mutationFn: (payload) => api.products.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
+      queryClient.invalidateQueries({ queryKey: ['products', 'options'] })
       toast.success('Product created')
     },
     onError: (err) => toast.error(err.message || 'Failed to create product'),
@@ -101,6 +110,7 @@ export function useImportProductsCsv() {
     mutationFn: (csv) => api.products.importCsv({ csv }),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
+      queryClient.invalidateQueries({ queryKey: ['products', 'options'] })
       toast.success(`Imported ${result.imported} products`)
     },
     onError: (err) => toast.error(err.message || 'Failed to import products'),

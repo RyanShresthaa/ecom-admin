@@ -16,6 +16,7 @@ export const queryKeys = {
   products: {
     all: ['products'],
     list: (params) => ['products', 'list', params],
+    options: (params) => ['products', 'options', params],
     detail: (id) => ['products', 'detail', id],
     analytics: (id) => ['products', 'analytics', id],
   },

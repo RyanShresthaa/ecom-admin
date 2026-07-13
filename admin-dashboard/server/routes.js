@@ -111,12 +111,42 @@ function adjustProductInventory(db, productId, quantity, context) {
 }
 
 function updateVariantStock(product, variantId, quantity) {
-  if (!variantId || !product?.variants?.length) return
-  const variant = product.variants.find((v) => v.id === variantId)
-  if (!variant) return
-  const nextStock = variant.stock + quantity
-  if (nextStock < 0) throw new Error(`Insufficient variant stock for ${product.name}`)
-  variant.stock = nextStock
+  if (!product?.variants?.length) return
+  if (variantId) {
+    const variant = product.variants.find((v) => v.id === variantId)
+    if (!variant) throw new Error(`Variant not found for ${product.name}`)
+    const nextStock = (variant.stock || 0) + quantity
+    if (nextStock < 0) throw new Error(`Insufficient variant stock for ${product.name}`)
+    variant.stock = nextStock
+    return
+  }
+
+  let remaining = Math.abs(quantity)
+  const variants = [...product.variants].sort((a, b) => (b.stock || 0) - (a.stock || 0))
+  for (const variant of variants) {
+    if (remaining <= 0) break
+    const available = variant.stock || 0
+    if (available <= 0) continue
+    const amount = Math.min(available, remaining)
+    variant.stock = available - amount
+    remaining -= amount
+  }
+  if (remaining > 0) {
+    throw new Error(`Insufficient variant stock for ${product.name}`)
+  }
+}
+
+function getProductAvailableStock(product) {
+  if (product.variants?.length) {
+    return product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
+  }
+  return product.stock || 0
+}
+
+function syncProductStockField(product) {
+  if (product.variants?.length) {
+    product.stock = product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
+  }
 }
 
 function deductOrderStock(db, order, author) {
@@ -125,8 +155,11 @@ function deductOrderStock(db, order, author) {
   for (const item of order.items) {
     const product = db.products.find((p) => p.id === item.productId)
     if (!product) throw new Error(`Product not found for ${item.name}`)
-    if ((product.stock || 0) < item.qty) throw new Error(`Insufficient stock for ${product.name}`)
+    if (getProductAvailableStock(product) < item.qty) {
+      throw new Error(`Insufficient stock for ${product.name}`)
+    }
     updateVariantStock(product, item.variantId, -item.qty)
+    syncProductStockField(product)
   }
 
   for (const item of order.items) {
@@ -147,7 +180,13 @@ function returnOrderStock(db, order, author) {
 
   for (const item of order.items) {
     const product = db.products.find((p) => p.id === item.productId)
-    updateVariantStock(product, item.variantId, item.qty)
+    if (!product) continue
+    if (item.variantId) {
+      updateVariantStock(product, item.variantId, item.qty)
+    } else if (product.variants?.length) {
+      product.variants[0].stock = (product.variants[0].stock || 0) + item.qty
+    }
+    syncProductStockField(product)
     adjustProductInventory(db, item.productId, item.qty, {
       reasonCode: 'returned',
       reasonLabel: 'Order returned',
@@ -250,12 +289,18 @@ router.get('/dashboard/recent-orders', (req, res) => {
 // --- Customers ---
 router.get('/customers', (req, res) => {
   const db = getDb()
-  const query = parseSorting({ ...req.query })
+  const query = parseSorting({
+    ...req.query,
+    sorting: req.query.sorting || JSON.stringify([{ id: 'createdAt', desc: true }]),
+  })
   const rows = db.customers.map((customer) => enrichCustomerRow(db, customer))
   const list = paginateList(rows, query, {
-    searchFields: ['id', 'name', 'email', 'phone'],
+    searchFields: ['id', 'name', 'email', 'phone', 'tags'],
     filterFn: (row, q) => {
-      if (q.tag && q.tag !== 'all' && !(row.tags || []).includes(q.tag)) return false
+      if (q.tag && q.tag !== 'all') {
+        const tag = String(q.tag).toLowerCase()
+        if (!(row.tags || []).some((entry) => String(entry).toLowerCase() === tag)) return false
+      }
       return true
     },
   })
@@ -288,9 +333,31 @@ router.patch('/customers/:id', (req, res) => {
 })
 
 // --- Products ---
+router.get('/products/options', (req, res) => {
+  const db = getDb()
+  const status = req.query.status || 'active'
+  const rows = db.products
+    .filter((product) => status === 'all' || product.status === status)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .map((product) => ({
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      price: product.price,
+      stock: getProductAvailableStock(product),
+      status: product.status,
+      variants: product.variants || [],
+      createdAt: product.createdAt,
+    }))
+  res.json({ rows })
+})
+
 router.get('/products', (req, res) => {
   const db = getDb()
-  const query = parseSorting({ ...req.query })
+  const query = parseSorting({
+    ...req.query,
+    sorting: req.query.sorting || JSON.stringify([{ id: 'createdAt', desc: true }]),
+  })
   const rows = db.products.map((product) => enrichProductRow(db, product))
   res.json(
     paginateList(rows, query, {
@@ -323,31 +390,49 @@ router.post('/products/import/csv', (req, res) => {
   const { csv } = req.body || {}
   const lines = String(csv || '')
     .split(/\r?\n/)
+    .map((line) => line.trim())
     .filter(Boolean)
   let imported = 0
   updateDb((db) => {
-    for (const line of lines.slice(1)) {
-      const cols = line.match(/("([^"]|"")*"|[^,]+)/g)?.map((c) => c.replace(/^"|"$/g, '').replace(/""/g, '"')) || []
+    for (const line of lines) {
+      const cols = line.match(/("([^"]|"")*"|[^,]+)/g)?.map((c) => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) || []
       if (cols.length < 6) continue
-      const [id, name, category, price, stock, sku, status = 'active'] = cols
-      const existing = db.products.find((p) => p.id === id || p.sku === sku)
+
+      const [rawId, name, category, price, stock, sku, status = 'active'] = cols
+      if (rawId.toLowerCase() === 'id') continue
+
+      const existing = rawId ? db.products.find((p) => p.id === rawId) : null
       if (existing) {
-        Object.assign(existing, { name, category, price: Number(price), stock: Number(stock), sku, status })
-      } else {
-        db.products.push({
-          id: id || nextId(db, 'product', 'PRD'),
+        Object.assign(existing, {
           name,
           category,
           price: Number(price),
           stock: Number(stock),
-          sku,
+          sku: sku || existing.sku,
+          status,
+        })
+        syncProductStockField(existing)
+      } else {
+        const id = rawId && !db.products.some((p) => p.id === rawId) ? rawId : nextId(db, 'product', 'PRD')
+        let finalSku = sku || id
+        while (db.products.some((p) => p.sku === finalSku)) {
+          finalSku = `${finalSku}-${db.products.length + 1}`
+        }
+        const product = {
+          id,
+          name,
+          category,
+          price: Number(price),
+          stock: Number(stock),
+          sku: finalSku,
           status,
           description: '',
           image: null,
           variants: [],
           rating: 4.5,
           createdAt: new Date().toISOString(),
-        })
+        }
+        db.products.unshift(product)
       }
       imported++
     }
@@ -406,7 +491,7 @@ router.post('/products', (req, res) => {
       rating: 4.5,
       createdAt: new Date().toISOString(),
     }
-    db.products.push(product)
+    db.products.unshift(product)
     syncInventoryFromProducts(db)
   })
   res.status(201).json(product)
@@ -458,7 +543,10 @@ router.post('/products/:id/image', (req, res) => {
 // --- Orders ---
 router.get('/orders', (req, res) => {
   const db = getDb()
-  const query = parseSorting({ ...req.query })
+  const query = parseSorting({
+    ...req.query,
+    sorting: req.query.sorting || JSON.stringify([{ id: 'date', desc: true }]),
+  })
   res.json(
     paginateList(db.orders, query, {
       searchFields: ['id', 'customerName', 'customerEmail'],
