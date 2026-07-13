@@ -60,7 +60,10 @@ export function toPublicUser({ password: _password, ...user }) {
 export function computeDashboardStats(db) {
   const orders = db.orders
   const customers = db.customers
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.paymentStatus === 'Paid' ? o.totalAmount : 0), 0)
+  const totalRevenue = orders.reduce(
+    (sum, o) => sum + (isPaidRevenueOrder(o) ? o.totalAmount : 0),
+    0
+  )
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const sixtyDaysAgo = new Date()
@@ -72,8 +75,8 @@ export function computeDashboardStats(db) {
     return d >= sixtyDaysAgo && d < thirtyDaysAgo
   })
 
-  const recentRevenue = recentOrders.reduce((s, o) => s + (o.paymentStatus === 'Paid' ? o.totalAmount : 0), 0)
-  const priorRevenue = priorOrders.reduce((s, o) => s + (o.paymentStatus === 'Paid' ? o.totalAmount : 0), 0)
+  const recentRevenue = recentOrders.reduce((s, o) => s + (isPaidRevenueOrder(o) ? o.totalAmount : 0), 0)
+  const priorRevenue = priorOrders.reduce((s, o) => s + (isPaidRevenueOrder(o) ? o.totalAmount : 0), 0)
   const revenueChange = priorRevenue > 0 ? Math.round(((recentRevenue - priorRevenue) / priorRevenue) * 1000) / 10 : 0
   const ordersChange =
     priorOrders.length > 0
@@ -109,9 +112,10 @@ export function computeSalesSeries(db, days = 14) {
     d.setDate(d.getDate() - i)
     const key = d.toISOString().split('T')[0]
     const dayOrders = db.orders.filter((o) => o.date.startsWith(key))
-    const revenue = Math.round(dayOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100
+    const paidOrders = dayOrders.filter(isPaidRevenueOrder)
+    const revenue = Math.round(paidOrders.reduce((s, o) => s + o.totalAmount, 0) * 100) / 100
     const orders = dayOrders.length
-    const itemsSold = dayOrders.reduce(
+    const itemsSold = paidOrders.reduce(
       (sum, order) => sum + (order.items || []).reduce((qty, item) => qty + (item.qty || 0), 0),
       0
     )
@@ -138,6 +142,34 @@ export function syncCustomerStats(db, customerId) {
       : null
   customer.avgOrderValue =
     customer.orderCount > 0 ? Math.round((customer.lifetimeValue / customer.orderCount) * 100) / 100 : 0
+}
+
+function isPaidRevenueOrder(order) {
+  return order.paymentStatus === 'Paid' && order.deliveryStatus !== 'Returned'
+}
+
+export function removeProductFromOrders(db, productId) {
+  const affectedCustomers = new Set()
+
+  db.orders = db.orders.flatMap((order) => {
+    const items = (order.items || []).filter((item) => item.productId !== productId)
+    if (items.length === 0) {
+      affectedCustomers.add(order.customerId)
+      return []
+    }
+
+    if (items.length !== (order.items || []).length) {
+      order.items = items
+      order.totalAmount = Math.round(items.reduce((sum, item) => sum + item.price * item.qty, 0) * 100) / 100
+      affectedCustomers.add(order.customerId)
+    }
+
+    return [order]
+  })
+
+  for (const customerId of affectedCustomers) {
+    syncCustomerStats(db, customerId)
+  }
 }
 
 export function syncInventoryLowStock(db) {

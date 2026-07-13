@@ -4,6 +4,15 @@ import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 
+function invalidateProductRelatedQueries(queryClient) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
+  queryClient.invalidateQueries({ queryKey: ['products', 'options'] })
+  queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  queryClient.invalidateQueries({ queryKey: queryKeys.orders.all })
+  queryClient.invalidateQueries({ queryKey: queryKeys.customers.all })
+  queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
+}
+
 export function useProductsQuery(params) {
   return useQuery({
     queryKey: queryKeys.products.list(params),
@@ -41,8 +50,7 @@ export function useCreateProduct() {
   return useMutation({
     mutationFn: (payload) => api.products.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
-      queryClient.invalidateQueries({ queryKey: ['products', 'options'] })
+      invalidateProductRelatedQueries(queryClient)
       toast.success('Product created')
     },
     onError: (err) => toast.error(err.message || 'Failed to create product'),
@@ -54,7 +62,7 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: ({ id, payload }) => api.products.update(id, payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
+      invalidateProductRelatedQueries(queryClient)
       queryClient.invalidateQueries({ queryKey: queryKeys.products.detail(variables.id) })
       toast.success('Product updated')
     },
@@ -67,7 +75,7 @@ export function useDeleteProduct() {
   return useMutation({
     mutationFn: (id) => api.products.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
+      invalidateProductRelatedQueries(queryClient)
       toast.success('Product deleted')
     },
     onError: (err) => toast.error(err.message || 'Failed to delete product'),
@@ -109,8 +117,7 @@ export function useImportProductsCsv() {
   return useMutation({
     mutationFn: (csv) => api.products.importCsv({ csv }),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
-      queryClient.invalidateQueries({ queryKey: ['products', 'options'] })
+      invalidateProductRelatedQueries(queryClient)
       toast.success(`Imported ${result.imported} products`)
     },
     onError: (err) => toast.error(err.message || 'Failed to import products'),

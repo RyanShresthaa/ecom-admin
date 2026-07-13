@@ -11,6 +11,7 @@ import {
   getProductMetrics,
   getReorderSuggestions,
   paginateList,
+  removeProductFromOrders,
   syncCustomerStats,
   syncInventoryLowStock,
   toPublicUser,
@@ -523,6 +524,9 @@ router.delete('/products/:id', (req, res) => {
     db.products = db.products.filter((p) => p.id !== req.params.id)
     db.inventory = db.inventory.filter((i) => i.productId !== req.params.id)
     found = db.products.length < before
+    if (found) {
+      removeProductFromOrders(db, req.params.id)
+    }
   })
   if (!found) return res.status(404).json({ message: 'Product not found' })
   res.status(204).end()
