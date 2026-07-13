@@ -199,6 +199,84 @@ function returnOrderStock(db, order, author) {
   order.stockReturned = true
 }
 
+function reReserveOrderStock(db, order, author) {
+  if (!order.stockReturned) return
+  order.stockReturned = false
+  order.stockDeducted = false
+  deductOrderStock(db, order, author)
+}
+
+function pushOrderHistory(order, entry) {
+  order.statusHistory = order.statusHistory || []
+  order.statusHistory.push({
+    id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp: new Date().toISOString(),
+    ...entry,
+  })
+}
+
+/**
+ * Apply delivery/payment updates with Returned ↔ Refunded kept in sync,
+ * stock restored/re-reserved, and customer lifetime stats refreshed.
+ */
+function applyOrderStatusUpdates(db, order, { deliveryStatus, paymentStatus, author = 'System' } = {}) {
+  const prevDelivery = order.deliveryStatus
+  const prevPayment = order.paymentStatus
+
+  let nextDelivery = deliveryStatus ?? prevDelivery
+  let nextPayment = paymentStatus ?? prevPayment
+
+  // Returned implies refunded, and refunded implies returned.
+  if (deliveryStatus === 'Returned' && nextPayment !== 'Refunded') {
+    nextPayment = 'Refunded'
+  }
+  if (paymentStatus === 'Refunded' && nextDelivery !== 'Returned') {
+    nextDelivery = 'Returned'
+  }
+
+  // Leaving return/refund undoes the paired status when the other wasn't explicitly set.
+  if (deliveryStatus && deliveryStatus !== 'Returned' && prevDelivery === 'Returned' && paymentStatus == null) {
+    if (nextPayment === 'Refunded') nextPayment = 'Paid'
+  }
+  if (paymentStatus && paymentStatus !== 'Refunded' && prevPayment === 'Refunded' && deliveryStatus == null) {
+    if (nextDelivery === 'Returned') nextDelivery = 'Delivered'
+  }
+
+  if (nextDelivery !== prevDelivery) {
+    order.deliveryStatus = nextDelivery
+    pushOrderHistory(order, {
+      type: 'delivery',
+      message: `Delivery status changed to ${nextDelivery}`,
+      deliveryStatus: nextDelivery,
+      author,
+    })
+  }
+
+  if (nextPayment !== prevPayment) {
+    order.paymentStatus = nextPayment
+    pushOrderHistory(order, {
+      type: 'payment',
+      message: `Payment status changed to ${nextPayment}`,
+      paymentStatus: nextPayment,
+      author,
+    })
+  }
+
+  const isReturnState = nextDelivery === 'Returned' || nextPayment === 'Refunded'
+  const wasReturnState = prevDelivery === 'Returned' || prevPayment === 'Refunded'
+
+  if (isReturnState) {
+    returnOrderStock(db, order, author)
+  } else if (wasReturnState && order.stockReturned) {
+    reReserveOrderStock(db, order, author)
+  } else if (nextDelivery === 'Shipped' || nextDelivery === 'Delivered') {
+    deductOrderStock(db, order, author)
+  }
+
+  syncCustomerStats(db, order.customerId)
+  return order
+}
+
 // --- Auth ---
 router.post('/auth/login', async (req, res) => {
   const db = getDb()
@@ -581,35 +659,7 @@ router.patch('/orders/:id/status', async (req, res) => {
       const order = db.orders[idx]
       const { deliveryStatus, paymentStatus } = req.body || {}
       const author = req.body.author || 'System'
-      if (deliveryStatus) {
-        order.deliveryStatus = deliveryStatus
-        order.statusHistory.push({
-          id: `hist-${Date.now()}`,
-          type: 'delivery',
-          message: `Delivery status changed to ${deliveryStatus}`,
-          timestamp: new Date().toISOString(),
-          deliveryStatus,
-          author,
-        })
-        if (deliveryStatus === 'Shipped' || deliveryStatus === 'Delivered') {
-          deductOrderStock(db, order, author)
-        }
-        if (deliveryStatus === 'Returned') {
-          returnOrderStock(db, order, author)
-        }
-      }
-      if (paymentStatus) {
-        order.paymentStatus = paymentStatus
-        order.statusHistory.push({
-          id: `hist-${Date.now()}-p`,
-          type: 'payment',
-          message: `Payment status changed to ${paymentStatus}`,
-          timestamp: new Date().toISOString(),
-          paymentStatus,
-          author,
-        })
-      }
-      updated = order
+      updated = applyOrderStatusUpdates(db, order, { deliveryStatus, paymentStatus, author })
     })
   } catch (err) {
     return res.status(400).json({ message: err.message || 'Unable to update order status' })
@@ -627,24 +677,7 @@ router.post('/orders/bulk-status', async (req, res) => {
         const order = db.orders.find((o) => o.id === id)
         if (!order) continue
         const author = req.body.author || 'System'
-        if (deliveryStatus) {
-          order.deliveryStatus = deliveryStatus
-          order.statusHistory.push({
-            id: `hist-${Date.now()}-${id}`,
-            type: 'delivery',
-            message: `Delivery status changed to ${deliveryStatus}`,
-            timestamp: new Date().toISOString(),
-            deliveryStatus,
-            author,
-          })
-          if (deliveryStatus === 'Shipped' || deliveryStatus === 'Delivered') {
-            deductOrderStock(db, order, author)
-          }
-          if (deliveryStatus === 'Returned') {
-            returnOrderStock(db, order, author)
-          }
-        }
-        if (paymentStatus) order.paymentStatus = paymentStatus
+        applyOrderStatusUpdates(db, order, { deliveryStatus, paymentStatus, author })
         updated++
       }
     })
