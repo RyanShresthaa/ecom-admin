@@ -13,6 +13,7 @@
     "format:check": "prettier --check \"**/*.js\"",
     "email:worker": "node scripts/email-worker.mjs",
     "dev": "nodemon server.js",
+    "start": "node server.js",
     "db:migrate": "node scripts/migrate.mjs",
     "seed:staff": "node scripts/seed-verify-staff.mjs",
     "db:backup": "node scripts/backup-db.mjs",
