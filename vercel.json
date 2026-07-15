@@ -1,15 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
   "installCommand": "npm install --prefix admin",
-  "buildCommand": "npm run build --prefix admin",
-  "outputDirectory": "admin/dist",
-  "functions": {
-    "api/**/*.js": {
-      "includeFiles": "admin/server/**"
-    }
-  },
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "buildCommand": "npm run build --prefix admin"
 }

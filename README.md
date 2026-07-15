@@ -26,3 +26,10 @@ Staff login (after seed): `staff.verify@matinacrafts.com` / `StaffVerify123!`
 
 
 See `STRUCTURE.md` and `backend/docs/ROUTE_MAP.md`.
+
+## Deploy admin (Vercel)
+
+In the Vercel project settings set **Root Directory** to `admin` (Framework: Next.js).  
+Do **not** use `outputDirectory: dist` — that was for the old Vite build; Next.js uses `.next`.
+
+Point `BACKEND_URL` / `NEXT_PUBLIC_API_URL` at your hosted API (e.g. Railway), not `localhost`.
