@@ -1,0 +1,51 @@
+# Local production-like stack (item 5): API + Postgres + email worker
+# Usage: cp .env.example .env && docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - '5000:5000'
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: app
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      TRUST_PROXY_HOPS: 1
+      EMAIL_USE_QUEUE: 'true'
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "node scripts/migrate.mjs && node server.js"
+
+  email-worker:
+    build: .
+    env_file: .env
+    environment:
+      DB_HOST: db
+      EMAIL_USE_QUEUE: 'true'
+    depends_on:
+      - api
+    command: node scripts/email-worker.mjs
+
+volumes:
+  pgdata:

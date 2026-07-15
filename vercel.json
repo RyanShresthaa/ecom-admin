@@ -1,11 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install && npm install --prefix admin-dashboard",
-  "buildCommand": "npm run build --prefix admin-dashboard",
-  "outputDirectory": "admin-dashboard/dist",
+  "installCommand": "npm install --prefix admin",
+  "buildCommand": "npm run build --prefix admin",
+  "outputDirectory": "admin/dist",
   "functions": {
     "api/**/*.js": {
-      "includeFiles": "admin-dashboard/server/**"
+      "includeFiles": "admin/server/**"
     }
   },
   "rewrites": [

@@ -8,3 +8,6 @@ dist-ssr
 .env.*.local
 npm-debug.log*
 .vercel
+uploads
+coverage
+apps

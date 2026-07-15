@@ -1,9 +1,23 @@
 {
-  "name": "matina-admin-deploy",
+  "name": "matina-ecom",
   "private": true,
   "type": "module",
-  "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
-    "express": "^4.21.2"
+  "description": "admin + customer + shared backend",
+  "scripts": {
+    "dev": "npm run dev --prefix admin",
+    "dev:admin": "npm run dev --prefix admin",
+    "dev:api": "npm run dev --prefix backend",
+    "dev:customer": "npm run dev --prefix customer",
+    "build": "npm run build --prefix admin",
+    "build:admin": "npm run build --prefix admin",
+    "build:customer": "npm run build --prefix customer",
+    "db:migrate": "npm run db:migrate --prefix backend",
+    "seed:staff": "npm run seed:staff --prefix backend",
+    "start": "npm run start --prefix admin",
+    "start:api": "node backend/server.js",
+    "start:admin": "npm run start --prefix admin"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

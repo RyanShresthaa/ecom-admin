@@ -1,0 +1,16 @@
+/**
+ * /api/category — list + staff CRUD for product categories.
+ * @see controllers/category.controller.js · OpenAPI: docs/openapi/catalog.paths.js
+ */
+import { Router } from "express";
+import { AddCategoryController, deleteCategoryController, getCategoryController, updateCategoryController } from '../controllers/category.controller.js'
+import auth from '../../shared/middleware/auth.js'
+import { staff } from '../../shared/middleware/roles.js'
+
+const categoryRouter = Router()
+categoryRouter.post('/add-category', auth, staff, AddCategoryController)
+categoryRouter.get('/get-category', getCategoryController)
+categoryRouter.put('/update-category', auth, staff, updateCategoryController)
+categoryRouter.delete('/delete-category', auth, staff, deleteCategoryController)
+
+export default categoryRouter

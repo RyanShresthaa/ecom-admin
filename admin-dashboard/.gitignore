@@ -1,9 +1,0 @@
-node_modules
-dist
-dist-ssr
-server/data/store.json
-*.local
-.DS_Store
-.env
-.env.local
-npm-debug.log*

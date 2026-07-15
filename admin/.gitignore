@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+dist
+dist-ssr
+server/data/store.json
+*.local
+.DS_Store
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+next-env.d.ts
