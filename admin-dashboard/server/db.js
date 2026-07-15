@@ -27,6 +27,11 @@ const sql = usePostgres ? neon(databaseUrl) : null
 let state = null
 let loadPromise = null
 let schemaReady = false
+let stateLoadedAt = 0
+let normalizedOnce = false
+
+/** Local/dev: keep memory cache. Vercel: short TTL so warm isolates stay fast but stay mostly fresh. */
+const CACHE_TTL_MS = process.env.VERCEL ? 2_500 : Number.POSITIVE_INFINITY
 
 function ensureDataDir() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
@@ -89,30 +94,34 @@ async function loadFromStore() {
   if (!data) {
     data = createSeedData()
     normalizeDb(data)
+    normalizedOnce = true
     state = data
+    stateLoadedAt = Date.now()
     await persist()
     return state
   }
 
   state = data
-  if (normalizeDb(state)) {
-    await persist()
+  // Only run normalize + rewrite once per process (it was rewriting Neon on many loads).
+  if (!normalizedOnce) {
+    normalizedOnce = true
+    if (normalizeDb(state)) {
+      await persist()
+    }
   }
+  stateLoadedAt = Date.now()
   return state
 }
 
 /**
  * Ensure the in-memory store is loaded.
- * With Postgres (Vercel), reload each call so serverless instances stay consistent.
- * With local file storage, keep the process-local cache.
+ * Postgres used to reload on every request (very slow from Nepal → US East Neon).
+ * Now we cache in-process; Vercel uses a short TTL for multi-instance freshness.
  */
-export async function ensureDb() {
-  if (usePostgres) {
-    state = await loadFromStore()
-    return state
-  }
+export async function ensureDb({ force = false } = {}) {
+  const cacheFresh = state && Date.now() - stateLoadedAt < CACHE_TTL_MS
+  if (!force && cacheFresh) return state
 
-  if (state) return state
   if (!loadPromise) {
     loadPromise = loadFromStore().finally(() => {
       loadPromise = null
@@ -129,6 +138,7 @@ export function loadDb() {
 export async function saveDb() {
   if (!state) await ensureDb()
   await persist()
+  stateLoadedAt = Date.now()
 }
 
 export function getDb() {
@@ -139,10 +149,11 @@ export function getDb() {
 }
 
 export async function updateDb(mutator) {
-  // Reload first when using Postgres so we don't overwrite another instance's writes blindly.
-  await ensureDb()
+  // On Vercel, refresh before write to reduce lost updates across isolates.
+  await ensureDb({ force: Boolean(process.env.VERCEL) })
   mutator(state)
   await persist()
+  stateLoadedAt = Date.now()
   return state
 }
 
@@ -198,6 +209,75 @@ function backfillOrderComplaints(db) {
   return changed
 }
 
+function consolidateInventoryToOneRowPerProduct(db) {
+  const byProduct = new Map()
+  for (const item of db.inventory || []) {
+    const list = byProduct.get(item.productId) || []
+    list.push(item)
+    byProduct.set(item.productId, list)
+  }
+
+  let changed = false
+  const idRemap = new Map()
+  const nextInventory = []
+  const thresholdDefault = db.settings?.lowStockThreshold ?? 10
+
+  for (const [, items] of byProduct) {
+    if (items.length === 1) {
+      const [only] = items
+      if (only.warehouse !== 'Main Warehouse') {
+        only.warehouse = 'Main Warehouse'
+        changed = true
+      }
+      nextInventory.push(only)
+      continue
+    }
+
+    changed = true
+    const primary = items.find((item) => item.warehouse === 'Main Warehouse') || items[0]
+    const total = items.reduce((sum, item) => sum + (item.stockQuantity || 0), 0)
+    const threshold = primary.threshold ?? thresholdDefault
+    primary.stockQuantity = total
+    primary.warehouse = 'Main Warehouse'
+    primary.threshold = threshold
+    primary.lowStock = total <= threshold
+
+    for (const item of items) {
+      idRemap.set(item.id, primary.id)
+    }
+    nextInventory.push(primary)
+  }
+
+  if (!changed && idRemap.size === 0) return false
+
+  db.inventory = nextInventory
+
+  for (const movement of db.stockMovements || []) {
+    if (idRemap.has(movement.inventoryId)) {
+      movement.inventoryId = idRemap.get(movement.inventoryId)
+      movement.warehouse = 'Main Warehouse'
+    }
+  }
+
+  for (const po of db.purchaseOrders || []) {
+    for (const item of po.items || []) {
+      if (idRemap.has(item.inventoryId)) {
+        item.inventoryId = idRemap.get(item.inventoryId)
+        item.warehouse = 'Main Warehouse'
+      }
+    }
+  }
+
+  for (const product of db.products || []) {
+    const inv = db.inventory.find((item) => item.productId === product.id)
+    if (inv && product.stock !== inv.stockQuantity) {
+      product.stock = inv.stockQuantity
+    }
+  }
+
+  return true
+}
+
 function normalizeDb(db) {
   let changed = false
   const emailMap = {
@@ -217,6 +297,8 @@ function normalizeDb(db) {
     db.settings.storeName = 'Matina Crafts'
     changed = true
   }
+
+  if (consolidateInventoryToOneRowPerProduct(db)) changed = true
 
   for (const product of db.products || []) {
     if (!product.createdAt) {

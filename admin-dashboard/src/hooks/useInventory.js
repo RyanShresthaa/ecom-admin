@@ -70,7 +70,7 @@ export function useCreatePurchaseOrder() {
   return useMutation({
     mutationFn: (payload) => api.inventory.purchaseOrders.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.purchaseOrders.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
       toast.success('Purchase order created')
     },
     onError: (err) => toast.error(err.message || 'Failed to create purchase order'),
@@ -85,7 +85,7 @@ export function useUpdatePurchaseOrderStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.purchaseOrders.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
       toast.success('Purchase order updated')
     },
     onError: (err) => toast.error(err.message || 'Failed to update purchase order'),

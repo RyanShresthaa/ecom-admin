@@ -55,16 +55,22 @@ const columns = [
     cell: (info) => {
       const row = info.row.original
       return (
-        <span className="font-mono text-xs tabular-nums text-muted-foreground">
-          {row.previousQty} → {row.newQty}
-        </span>
+        <div className="flex flex-col">
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            {row.previousQty} → {row.newQty}
+          </span>
+          {row.currentStock != null && (
+            <span className="font-mono text-[11px] text-muted-foreground">Now: {row.currentStock}</span>
+          )}
+        </div>
       )
     },
   }),
-  columnHelper.accessor('warehouse', {
-    header: 'Warehouse',
-    cell: (info) => <span className="text-sm text-muted-foreground">{info.getValue()}</span>,
-  }),
+  // When need to add different store
+  // columnHelper.accessor('warehouse', {
+  //   header: 'Warehouse',
+  //   cell: (info) => <span className="text-sm text-muted-foreground">{info.getValue()}</span>,
+  // }),
   columnHelper.accessor('author', {
     header: 'By',
     cell: (info) => <span className="text-sm text-muted-foreground">{info.getValue()}</span>,

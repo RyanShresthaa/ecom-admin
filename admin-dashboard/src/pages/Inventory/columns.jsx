@@ -1,5 +1,5 @@
 import { createColumnHelper } from '@tanstack/react-table'
-import { Warning, MapPin, Stack, ArrowsDownUp } from '@phosphor-icons/react'
+import { Warning, /* MapPin, */ Stack, ArrowsDownUp } from '@phosphor-icons/react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -49,15 +49,16 @@ export function getInventoryColumns({ onAdjust, canWrite = false }) {
       header: 'Threshold',
       cell: (info) => <span className="font-mono text-sm tabular-nums text-muted-foreground">{info.getValue()}</span>,
     }),
-    columnHelper.accessor('warehouse', {
-      header: 'Warehouse',
-      cell: (info) => (
-        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin size={13} />
-          {info.getValue()}
-        </span>
-      ),
-    }),
+    // When need to add different store
+    // columnHelper.accessor('warehouse', {
+    //   header: 'Warehouse',
+    //   cell: (info) => (
+    //     <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+    //       <MapPin size={13} />
+    //       {info.getValue()}
+    //     </span>
+    //   ),
+    // }),
     columnHelper.display({
       id: 'lowStock',
       header: 'Status',

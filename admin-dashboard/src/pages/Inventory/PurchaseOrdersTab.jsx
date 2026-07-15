@@ -113,8 +113,28 @@ export function PurchaseOrdersTab({ onCreatePO }) {
         cell: (info) => <span className="text-sm">{info.getValue()}</span>,
       }),
       columnHelper.accessor('items', {
-        header: 'Items',
-        cell: (info) => <span className="text-sm">{info.getValue().length}</span>,
+        header: 'Ordered qty',
+        cell: (info) => {
+          const items = info.getValue() || []
+          const totalOrdered = items.reduce((sum, item) => sum + (Number(item.qtyOrdered) || 0), 0)
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="font-mono text-sm font-medium tabular-nums">{totalOrdered}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {items.length} product{items.length === 1 ? '' : 's'}
+              </span>
+              {items.slice(0, 2).map((item) => (
+                <span key={`${item.inventoryId}-${item.sku}`} className="text-[11px] text-muted-foreground">
+                  {item.productName}: {Number(item.qtyOrdered) || 0}
+                  {item.currentStock != null ? ` (stock ${item.currentStock})` : ''}
+                </span>
+              ))}
+              {items.length > 2 && (
+                <span className="text-[11px] text-muted-foreground">+{items.length - 2} more</span>
+              )}
+            </div>
+          )
+        },
       }),
       columnHelper.accessor('totalCost', {
         header: 'Total',

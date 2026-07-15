@@ -13,11 +13,12 @@ function invalidateProductRelatedQueries(queryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
 }
 
-export function useProductsQuery(params) {
+export function useProductsQuery(params, options = {}) {
   return useQuery({
     queryKey: queryKeys.products.list(params),
     queryFn: () => api.products.list(params),
     placeholderData: keepPreviousData,
+    ...options,
   })
 }
 

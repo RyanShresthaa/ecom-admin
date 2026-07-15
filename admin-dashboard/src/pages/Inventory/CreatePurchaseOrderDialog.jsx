@@ -79,7 +79,16 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, prefillItems = [
     if (!supplier || items.length === 0) return
 
     createPO.mutate(
-      { supplier, expectedDate: expectedDate || null, notes, items },
+      {
+        supplier,
+        expectedDate: expectedDate || null,
+        notes,
+        items: items.map((item) => ({
+          ...item,
+          qtyOrdered: Number(item.qtyOrdered) || 0,
+          unitCost: Number(item.unitCost) || 0,
+        })),
+      },
       { onSuccess: () => onOpenChange(false) }
     )
   }

@@ -17,6 +17,8 @@ export function useSaveSettings() {
     mutationFn: (payload) => api.settings.save(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.detail })
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
       toast.success('Settings saved')
     },
     onError: (err) => toast.error(err.message || 'Failed to save settings'),

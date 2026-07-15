@@ -266,22 +266,20 @@ export function createSeedData() {
   const inventory = []
   let invCounter = 0
   for (const product of products) {
-    for (const warehouse of WAREHOUSES) {
-      invCounter++
-      const stockQuantity = Math.max(0, Math.floor(product.stock / WAREHOUSES.length) + randInt(-5, 15))
-      const threshold = DEFAULT_SETTINGS.lowStockThreshold
-      inventory.push({
-        id: `INV-${String(invCounter).padStart(5, '0')}`,
-        productId: product.id,
-        productName: product.name,
-        category: product.category,
-        sku: product.sku,
-        stockQuantity,
-        threshold,
-        warehouse,
-        lowStock: stockQuantity <= threshold,
-      })
-    }
+    invCounter++
+    const stockQuantity = Math.max(0, product.stock)
+    const threshold = DEFAULT_SETTINGS.lowStockThreshold
+    inventory.push({
+      id: `INV-${String(invCounter).padStart(5, '0')}`,
+      productId: product.id,
+      productName: product.name,
+      category: product.category,
+      sku: product.sku,
+      stockQuantity,
+      threshold,
+      warehouse: 'Main Warehouse',
+      lowStock: stockQuantity <= threshold,
+    })
   }
 
   const stockMovements = []

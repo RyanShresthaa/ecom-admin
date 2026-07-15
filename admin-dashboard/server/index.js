@@ -14,7 +14,6 @@ const PORT = Number(process.env.PORT) || 3000
 const DIST_DIR = join(__dirname, '..', 'dist')
 const serveFrontend = existsSync(join(DIST_DIR, 'index.html'))
 
-await ensureDb()
 const app = createApp()
 
 if (serveFrontend) {
@@ -25,12 +24,22 @@ if (serveFrontend) {
   })
 }
 
+// Listen immediately so Vite's proxy does not get ECONNREFUSED while Postgres warms up.
 app.listen(PORT, () => {
   console.log(`API running at http://localhost:${PORT}/api`)
-  console.log(`Storage: ${isUsingPostgres() ? 'Postgres (Neon)' : `file (${join(__dirname, 'data', 'store.json')})`}`)
   if (serveFrontend) {
     console.log(`App serving at http://localhost:${PORT}`)
   } else {
     console.log('Run "npm run build" then "npm start" to serve the production app.')
   }
+
+  ensureDb()
+    .then(() => {
+      console.log(
+        `Storage: ${isUsingPostgres() ? 'Postgres (Neon)' : `file (${join(__dirname, 'data', 'store.json')})`}`
+      )
+    })
+    .catch((error) => {
+      console.error('Database warm-up failed:', error)
+    })
 })

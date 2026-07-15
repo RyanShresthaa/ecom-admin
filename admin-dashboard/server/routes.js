@@ -83,14 +83,17 @@ function syncProductStockFromInventory(db, productId) {
 }
 
 function recordStockMovement(db, item, { delta, reasonCode, reasonLabel, author, note }) {
+  const threshold = item.threshold ?? db.settings.lowStockThreshold
   const previousQty = item.stockQuantity
   const newQty = Math.max(0, previousQty + delta)
   item.stockQuantity = newQty
-  item.lowStock = newQty <= db.settings.lowStockThreshold
+  item.threshold = threshold
+  item.lowStock = newQty <= threshold
 
-  db.stockMovements.unshift({
+  const movement = {
     id: nextId(db, 'movement', 'MOV'),
     inventoryId: item.id,
+    productId: item.productId,
     productName: item.productName,
     sku: item.sku,
     reasonCode,
@@ -102,7 +105,53 @@ function recordStockMovement(db, item, { delta, reasonCode, reasonLabel, author,
     author: author || 'System',
     note: note || '',
     createdAt: new Date().toISOString(),
-  })
+  }
+  db.stockMovements.unshift(movement)
+  return movement
+}
+
+function enrichMovementRow(db, movement) {
+  const inv = db.inventory.find((item) => item.id === movement.inventoryId)
+  const product = db.products.find((p) => p.id === (movement.productId || inv?.productId))
+  return {
+    ...movement,
+    productId: product?.id || movement.productId || inv?.productId || null,
+    productName: product?.name || inv?.productName || movement.productName,
+    sku: product?.sku || inv?.sku || movement.sku,
+    warehouse: inv?.warehouse || movement.warehouse,
+    currentStock: inv?.stockQuantity ?? null,
+  }
+}
+
+function enrichInventoryRow(db, item) {
+  const product = db.products.find((p) => p.id === item.productId)
+  const threshold = item.threshold ?? db.settings.lowStockThreshold
+  return {
+    ...item,
+    productName: product?.name || item.productName,
+    sku: product?.sku || item.sku,
+    category: product?.category || item.category,
+    threshold,
+    lowStock: item.stockQuantity <= threshold,
+  }
+}
+
+function enrichPurchaseOrder(db, po) {
+  return {
+    ...po,
+    items: (po.items || []).map((item) => {
+      const inv = db.inventory.find((row) => row.id === item.inventoryId)
+      const product = db.products.find((p) => p.id === (item.productId || inv?.productId))
+      return {
+        ...item,
+        productId: product?.id || item.productId || inv?.productId || null,
+        productName: product?.name || inv?.productName || item.productName,
+        sku: product?.sku || inv?.sku || item.sku,
+        warehouse: inv?.warehouse || item.warehouse || null,
+        currentStock: inv?.stockQuantity ?? null,
+      }
+    }),
+  }
 }
 
 function adjustProductInventory(db, productId, quantity, context) {
@@ -587,13 +636,41 @@ router.get('/products/:id', async (req, res) => {
   res.json(enrichProductRow(db, product))
 })
 
+function normalizeProductName(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+function findProductByName(db, name, excludeId = null) {
+  const normalized = normalizeProductName(name)
+  if (!normalized) return null
+  return (
+    db.products.find(
+      (product) =>
+        product.id !== excludeId && normalizeProductName(product.name) === normalized
+    ) || null
+  )
+}
+
 router.post('/products', async (req, res) => {
+  const db = getDb()
+  const duplicate = findProductByName(db, req.body?.name)
+  if (duplicate) {
+    return res.status(409).json({
+      message: `A product named "${duplicate.name}" already exists. Change the name, or open the existing product if it's the same one.`,
+      code: 'DUPLICATE_PRODUCT_NAME',
+      existingProduct: { id: duplicate.id, name: duplicate.name, sku: duplicate.sku },
+    })
+  }
+
   let product = null
   await updateDb((db) => {
     const id = nextId(db, 'product', 'PRD')
     product = {
       id,
-      name: req.body.name,
+      name: String(req.body.name || '').trim(),
       category: req.body.category,
       price: Number(req.body.price) || 0,
       stock: Number(req.body.stock) || 0,
@@ -612,6 +689,20 @@ router.post('/products', async (req, res) => {
 })
 
 router.put('/products/:id', async (req, res) => {
+  const db = getDb()
+  const existing = db.products.find((p) => p.id === req.params.id)
+  if (!existing) return res.status(404).json({ message: 'Product not found' })
+
+  const nextName = req.body?.name != null ? String(req.body.name).trim() : existing.name
+  const duplicate = findProductByName(db, nextName, req.params.id)
+  if (duplicate) {
+    return res.status(409).json({
+      message: `A product named "${duplicate.name}" already exists. Change the name, or open the existing product if it's the same one.`,
+      code: 'DUPLICATE_PRODUCT_NAME',
+      existingProduct: { id: duplicate.id, name: duplicate.name, sku: duplicate.sku },
+    })
+  }
+
   let updated = null
   await updateDb((db) => {
     const idx = db.products.findIndex((p) => p.id === req.params.id)
@@ -627,6 +718,7 @@ router.put('/products/:id', async (req, res) => {
       ...db.products[idx],
       ...safeBody,
       id: req.params.id,
+      name: nextName,
       price: Number(req.body.price ?? db.products[idx].price),
       stock: Number(req.body.stock ?? db.products[idx].stock),
     }
@@ -819,8 +911,9 @@ router.post('/orders', async (req, res) => {
 router.get('/inventory', async (req, res) => {
   const db = getDb()
   const query = parseSorting({ ...req.query })
+  const rows = db.inventory.map((item) => enrichInventoryRow(db, item))
   res.json(
-    paginateList(db.inventory, query, {
+    paginateList(rows, query, {
       searchFields: ['productName', 'sku', 'id', 'warehouse'],
       filterFn: (row, q) => {
         if (q.warehouse && q.warehouse !== 'all' && row.warehouse !== q.warehouse) return false
@@ -843,8 +936,9 @@ router.get('/inventory/adjustment-reasons', async (_req, res) => {
 router.get('/inventory/movements', async (req, res) => {
   const db = getDb()
   const query = parseSorting({ ...req.query })
+  const rows = db.stockMovements.map((movement) => enrichMovementRow(db, movement))
   res.json(
-    paginateList(db.stockMovements, query, {
+    paginateList(rows, query, {
       searchFields: ['productName', 'sku', 'reasonLabel', 'warehouse'],
       filterFn: (row, q) => {
         if (q.reasonCode && q.reasonCode !== 'all' && row.reasonCode !== q.reasonCode) return false
@@ -862,32 +956,14 @@ router.post('/inventory/adjust', async (req, res) => {
     const item = db.inventory.find((i) => i.id === inventoryId)
     if (!item) return
     const reason = db.adjustmentReasons.find((r) => r.code === reasonCode)
-    const previousQty = item.stockQuantity
-    const newQty = Math.max(0, previousQty + delta)
-    item.stockQuantity = newQty
-    item.lowStock = newQty <= db.settings.lowStockThreshold
-
-    const product = db.products.find((p) => p.id === item.productId)
-    if (product) {
-      syncProductStockFromInventory(db, product.id)
-    }
-
-    const movement = {
-      id: nextId(db, 'movement', 'MOV'),
-      inventoryId,
-      productName: item.productName,
-      sku: item.sku,
+    const movement = recordStockMovement(db, item, {
+      delta: Number(delta) || 0,
       reasonCode,
       reasonLabel: reason?.label || reasonCode,
-      delta,
-      previousQty,
-      newQty,
-      warehouse: item.warehouse,
       author: author || 'Staff',
       note: note || '',
-      createdAt: new Date().toISOString(),
-    }
-    db.stockMovements.unshift(movement)
+    })
+    syncProductStockFromInventory(db, item.productId)
 
     if (item.lowStock) {
       db.notifications.unshift({
@@ -900,7 +976,7 @@ router.post('/inventory/adjust', async (req, res) => {
         createdAt: new Date().toISOString(),
       })
     }
-    result = { success: true, inventory: item, movement }
+    result = { success: true, inventory: enrichInventoryRow(db, item), movement: enrichMovementRow(db, movement) }
   })
   if (!result) return res.status(404).json({ message: 'Inventory item not found' })
   res.json(result)
@@ -913,8 +989,9 @@ router.get('/inventory/reorder-suggestions', async (req, res) => {
 router.get('/inventory/purchase-orders', async (req, res) => {
   const db = getDb()
   const query = parseSorting({ ...req.query })
+  const rows = db.purchaseOrders.map((po) => enrichPurchaseOrder(db, po))
   res.json(
-    paginateList(db.purchaseOrders, query, {
+    paginateList(rows, query, {
       searchFields: ['id', 'supplier'],
       filterFn: (row, q) => {
         if (q.status && q.status !== 'all' && row.status !== q.status) return false
@@ -925,15 +1002,28 @@ router.get('/inventory/purchase-orders', async (req, res) => {
 })
 
 router.get('/inventory/purchase-orders/:id', async (req, res) => {
-  const po = getDb().purchaseOrders.find((p) => p.id === req.params.id)
+  const db = getDb()
+  const po = db.purchaseOrders.find((p) => p.id === req.params.id)
   if (!po) return res.status(404).json({ message: 'Purchase order not found' })
-  res.json(po)
+  res.json(enrichPurchaseOrder(db, po))
 })
 
 router.post('/inventory/purchase-orders', async (req, res) => {
   let po = null
   await updateDb((db) => {
-    const items = req.body.items || []
+    const items = (req.body.items || []).map((item) => {
+      const inv = db.inventory.find((row) => row.id === item.inventoryId)
+      const product = db.products.find((p) => p.id === (item.productId || inv?.productId))
+      return {
+        inventoryId: item.inventoryId,
+        productId: product?.id || item.productId || inv?.productId || null,
+        productName: product?.name || inv?.productName || item.productName,
+        sku: product?.sku || inv?.sku || item.sku,
+        warehouse: inv?.warehouse || item.warehouse || null,
+        qtyOrdered: Number(item.qtyOrdered) || 0,
+        unitCost: Number(item.unitCost) || 0,
+      }
+    })
     const totalCost = Math.round(items.reduce((s, i) => s + i.qtyOrdered * i.unitCost, 0) * 100) / 100
     po = {
       id: nextId(db, 'po', 'PO'),
@@ -955,18 +1045,27 @@ router.patch('/inventory/purchase-orders/:id/status', async (req, res) => {
   await updateDb((db) => {
     const po = db.purchaseOrders.find((p) => p.id === req.params.id)
     if (!po) return
+    const previousStatus = po.status
     po.status = req.body.status
-    if (req.body.status === 'received') {
+    if (req.body.status === 'received' && previousStatus !== 'received') {
+      const touchedProducts = new Set()
       for (const item of po.items) {
         const inv = db.inventory.find((i) => i.id === item.inventoryId)
-        if (inv) {
-          inv.stockQuantity += item.qtyOrdered
-          inv.lowStock = inv.stockQuantity <= db.settings.lowStockThreshold
-        }
+        if (!inv) continue
+        recordStockMovement(db, inv, {
+          delta: Number(item.qtyOrdered) || 0,
+          reasonCode: 'po_received',
+          reasonLabel: 'Purchase order received',
+          author: req.body.author || 'Staff',
+          note: `PO ${po.id}`,
+        })
+        touchedProducts.add(inv.productId)
       }
-      syncInventoryFromProducts(db)
+      for (const productId of touchedProducts) {
+        syncProductStockFromInventory(db, productId)
+      }
     }
-    updated = po
+    updated = enrichPurchaseOrder(db, po)
   })
   if (!updated) return res.status(404).json({ message: 'Purchase order not found' })
   res.json(updated)
@@ -1066,55 +1165,61 @@ router.post('/account/password', requireAuth, async (req, res) => {
 
 function syncInventoryFromProducts(db) {
   const threshold = db.settings.lowStockThreshold
-  const warehouses = db.warehouses?.length ? db.warehouses : ['Main Warehouse']
+  const primaryWarehouse = 'Main Warehouse'
 
   for (const product of db.products) {
     const targetStock = product.variants?.length
       ? product.variants.reduce((sum, variant) => sum + (Number(variant.stock) || 0), 0)
       : Number(product.stock) || 0
-    product.stock = targetStock
 
     let items = db.inventory.filter((i) => i.productId === product.id)
 
+    // One inventory row per product (no multi-warehouse duplicates).
     if (items.length === 0) {
-      const warehouseCount = warehouses.length
-      const baseQty = Math.floor(targetStock / warehouseCount)
-      let remainder = targetStock % warehouseCount
-      for (const warehouse of warehouses) {
-        const stockQuantity = baseQty + (remainder > 0 ? 1 : 0)
-        remainder = Math.max(0, remainder - 1)
-        db.inventory.push({
-          id: nextId(db, 'inventory', 'INV'),
-          productId: product.id,
-          productName: product.name,
-          category: product.category,
-          sku: product.sku,
-          stockQuantity,
-          threshold,
-          warehouse,
-          lowStock: stockQuantity <= threshold,
-        })
-      }
+      db.inventory.push({
+        id: nextId(db, 'inventory', 'INV'),
+        productId: product.id,
+        productName: product.name,
+        category: product.category,
+        sku: product.sku,
+        stockQuantity: targetStock,
+        threshold,
+        warehouse: primaryWarehouse,
+        lowStock: targetStock <= threshold,
+      })
       syncProductStockFromInventory(db, product.id)
       continue
     }
 
-    const currentTotal = items.reduce((sum, item) => sum + item.stockQuantity, 0)
-    if (currentTotal !== targetStock) {
-      const baseQty = Math.floor(targetStock / items.length)
-      let remainder = targetStock % items.length
-      for (const item of items) {
-        item.stockQuantity = baseQty + (remainder > 0 ? 1 : 0)
-        remainder = Math.max(0, remainder - 1)
-      }
+    if (items.length > 1) {
+      const primary = items.find((item) => item.warehouse === primaryWarehouse) || items[0]
+      const total = items.reduce((sum, item) => sum + (item.stockQuantity || 0), 0)
+      primary.stockQuantity = total
+      primary.warehouse = primaryWarehouse
+      const keepId = primary.id
+      db.inventory = db.inventory.filter((item) => item.productId !== product.id || item.id === keepId)
+      items = [primary]
     }
 
-    for (const item of items) {
-      item.productName = product.name
-      item.category = product.category
-      item.sku = product.sku
-      item.threshold = threshold
-      item.lowStock = item.stockQuantity <= threshold
+    const [item] = items
+    item.productName = product.name
+    item.category = product.category
+    item.sku = product.sku
+    item.warehouse = primaryWarehouse
+    item.threshold = threshold
+
+    const currentTotal = item.stockQuantity || 0
+    const delta = targetStock - currentTotal
+    if (delta !== 0) {
+      recordStockMovement(db, item, {
+        delta,
+        reasonCode: 'product_sync',
+        reasonLabel: 'Product stock update',
+        author: 'System',
+        note: `Synced from product ${product.id}`,
+      })
+    } else {
+      item.lowStock = currentTotal <= threshold
     }
 
     syncProductStockFromInventory(db, product.id)

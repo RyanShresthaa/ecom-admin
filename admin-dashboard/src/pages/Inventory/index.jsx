@@ -19,14 +19,15 @@ import { MovementHistoryTab } from '@/pages/Inventory/MovementHistoryTab'
 import { ReorderSuggestionsTab } from '@/pages/Inventory/ReorderSuggestionsTab'
 import { PurchaseOrdersTab } from '@/pages/Inventory/PurchaseOrdersTab'
 import { CreatePurchaseOrderDialog } from '@/pages/Inventory/CreatePurchaseOrderDialog'
-import { useInventoryQuery, useWarehousesQuery } from '@/hooks/useInventory'
+import { useInventoryQuery /*, useWarehousesQuery */ } from '@/hooks/useInventory'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export default function Inventory() {
   const [search, setSearch] = useState('')
-  const [warehouse, setWarehouse] = useState('all')
+  // When need to add different store
+  // const [warehouse, setWarehouse] = useState('all')
   const [stockLevel, setStockLevel] = useState('all')
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
   const [sorting, setSorting] = useState([])
@@ -44,14 +45,16 @@ export default function Inventory() {
       pageSize: pagination.pageSize,
       sorting,
       search: debouncedSearch,
-      warehouse,
+      // When need to add different store
+      // warehouse,
       stockLevel,
     }),
-    [pagination, sorting, debouncedSearch, warehouse, stockLevel]
+    [pagination, sorting, debouncedSearch, stockLevel]
   )
 
   const { data, isLoading, isFetching, refetch } = useInventoryQuery(params)
-  const { data: warehouses = [] } = useWarehousesQuery()
+  // When need to add different store
+  // const { data: warehouses = [] } = useWarehousesQuery()
 
   function resetPage(setter) {
     return (value) => {
@@ -98,6 +101,7 @@ export default function Inventory() {
                 isFetching={isFetching}
                 filters={
                   <>
+                    {/* When need to add different store
                     <Select value={warehouse} onValueChange={resetPage(setWarehouse)}>
                       <SelectTrigger className="h-9 w-[200px]">
                         <SelectValue placeholder="Warehouse" />
@@ -111,6 +115,7 @@ export default function Inventory() {
                         ))}
                       </SelectContent>
                     </Select>
+                    */}
 
                     <Select value={stockLevel} onValueChange={resetPage(setStockLevel)}>
                       <SelectTrigger className="h-9 w-[150px]">
