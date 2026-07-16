@@ -5,11 +5,19 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "functions": {
-    "api/**/*.js": {
+    "api/proxy.js": {
+      "maxDuration": 30
+    },
+    "api/index.js": {
+      "maxDuration": 30
+    },
+    "api/[...path].js": {
       "maxDuration": 30
     }
   },
   "rewrites": [
+    { "source": "/api", "destination": "/api/proxy?path=" },
+    { "source": "/api/(.*)", "destination": "/api/proxy?path=$1" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

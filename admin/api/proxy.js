@@ -1,10 +1,7 @@
 /**
- * Vercel serverless proxy → shared ecom backend.
- * Requires BACKEND_URL (or API_PROXY_TARGET) in Vercel env, e.g.
- *   BACKEND_URL=https://your-api.example.com
- * Never use localhost.
+ * Single Vercel function that proxies ALL /api/* traffic to BACKEND_URL.
+ * vercel.json rewrites /api/:path* → /api/proxy so nested paths always hit this file.
  */
-
 function backendOrigin() {
   const raw = String(process.env.BACKEND_URL || process.env.API_PROXY_TARGET || '').replace(/\/$/, '')
   if (!raw) return ''
@@ -20,18 +17,29 @@ function isLoopback(url) {
   }
 }
 
-function apiPathFromReq(req) {
+function resolveApiPath(req) {
+  // Prefer rewrite query: /api/proxy?path=user/login
+  const q = req.query?.path
+  if (q != null && String(q).length) {
+    const joined = Array.isArray(q) ? q.join('/') : String(q)
+    return `/api/${joined.replace(/^\/+/, '')}`
+  }
+
+  // x-forwarded-uri / original url fallbacks
+  const forwarded = req.headers['x-forwarded-uri'] || req.headers['x-invoke-path'] || ''
+  if (typeof forwarded === 'string' && forwarded.includes('/api')) {
+    return forwarded.split('?')[0]
+  }
+
   const incoming = new URL(req.url || '/', 'http://localhost')
   let path = incoming.pathname
-  // Catch-all sometimes receives /user/login without /api prefix
-  if (!path.startsWith('/api')) {
-    path = `/api${path.startsWith('/') ? path : `/${path}`}`
-  }
-  return { path, search: incoming.search }
+  if (path.startsWith('/api/proxy')) path = '/api'
+  if (!path.startsWith('/api')) path = `/api${path.startsWith('/') ? path : `/${path}`}`
+  return path
 }
 
 async function readBody(req) {
-  if (req.body != null) {
+  if (req.body != null && req.body !== '') {
     return typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
   }
   if (req.method === 'GET' || req.method === 'HEAD') return undefined
@@ -50,7 +58,7 @@ module.exports = async function handler(req, res) {
     res.end(
       JSON.stringify({
         message:
-          'API proxy not configured. In Vercel → Settings → Environment Variables, set BACKEND_URL to your deployed shared API origin (e.g. https://your-api.example.com), then redeploy.',
+          'Set BACKEND_URL in Vercel env to your Render URL (e.g. https://your-api.onrender.com), then redeploy.',
         error: true,
         success: false,
       })
@@ -63,8 +71,7 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json')
     res.end(
       JSON.stringify({
-        message:
-          'BACKEND_URL must not be localhost — a public Vercel site cannot reach your machine. Use your deployed API URL.',
+        message: 'BACKEND_URL cannot be localhost on Vercel.',
         error: true,
         success: false,
       })
@@ -73,8 +80,10 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { path, search } = apiPathFromReq(req)
-    const target = `${origin}${path}${search}`
+    const path = resolveApiPath(req)
+    const incoming = new URL(req.url || '/', 'http://localhost')
+    const target = `${origin}${path}${incoming.search}`
+
     const headers = { Accept: 'application/json' }
     if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type']
     if (req.headers.authorization) headers.Authorization = req.headers.authorization
@@ -82,9 +91,7 @@ module.exports = async function handler(req, res) {
     const method = req.method || 'GET'
     const init = { method, headers }
     const body = await readBody(req)
-    if (body != null && method !== 'GET' && method !== 'HEAD') {
-      init.body = body
-    }
+    if (body != null && method !== 'GET' && method !== 'HEAD') init.body = body
 
     const upstream = await fetch(target, init)
     const text = await upstream.text()
