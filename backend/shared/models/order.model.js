@@ -411,3 +411,43 @@ export async function sumRevenue() {
     return r.rows[0].total;
 }
 
+/**
+ * Per-product sold / refunded qty for admin products table.
+ * Sold = units on non-returned/cancelled/refunded lines; refunded = the rest.
+ */
+// order model: findProductSalesMetricsByIds aggregates sold/refunded quantities.
+export async function findProductSalesMetricsByIds(productIds = []) {
+    const ids = [...new Set(productIds.map(pickId).filter(Boolean))];
+    if (!ids.length) return new Map();
+
+    const r = await pool.query(
+        `SELECT
+           product_id,
+           COALESCE(SUM(
+             CASE WHEN NOT ${REVENUE_EXCLUDE_SQL}
+               THEN COALESCE(quantity, 1)
+               ELSE 0
+             END
+           ), 0)::int AS sold_qty,
+           COALESCE(SUM(
+             CASE WHEN ${REVENUE_EXCLUDE_SQL}
+               THEN COALESCE(quantity, 1)
+               ELSE 0
+             END
+           ), 0)::int AS refunded_qty
+         FROM orders
+         WHERE product_id = ANY($1::int[])
+         GROUP BY product_id`,
+        [ids],
+    );
+
+    const map = new Map();
+    for (const row of r.rows) {
+        map.set(String(row.product_id), {
+            soldQty: Number(row.sold_qty || 0),
+            refundedQty: Number(row.refunded_qty || 0),
+        });
+    }
+    return map;
+}
+

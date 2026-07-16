@@ -360,12 +360,14 @@ export const backendApi = {
         const status = String(line.delivery_status || '')
         const isRefund =
           /refund|return|cancel/i.test(status) || /refund/i.test(String(line.payment_status || ''))
+        const uid = line.userId || line.user_id
+        const user = users[uid] || {}
         if (isRefund) {
           refunded += qty
           refunds.push({
             id: String(line.id),
             orderId: line.orderId || line.order_id,
-            customerId: String(uid),
+            customerId: String(uid ?? ''),
             customerName: user.name || user.email || `User ${uid}`,
             customerEmail: user.email || '',
             qty,
@@ -377,8 +379,6 @@ export const backendApi = {
           sold += qty
           revenue += lineRev
         }
-        const uid = line.userId || line.user_id
-        const user = users[uid] || {}
         const buyer = buyersMap.get(uid) || {
           customerId: String(uid),
           customerName: user.name || user.email || `User ${uid}`,

@@ -55,3 +55,25 @@ export async function listFeedback({ limit = 50, skip = 0, targetType } = {}) {
     return mapRows(r.rows);
 }
 
+/** Count feedback rows per product (admin products table complaints column). */
+// feedback model: countFeedbackByProductIds aggregates complaint counts.
+export async function countFeedbackByProductIds(productIds = []) {
+    const ids = [...new Set(productIds.map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0))];
+    if (!ids.length) return new Map();
+
+    const r = await pool.query(
+        `SELECT product_id, COUNT(*)::int AS c
+         FROM feedback
+         WHERE product_id = ANY($1::int[])
+           AND (target_type = 'product' OR target_type IS NULL OR target_type = '')
+         GROUP BY product_id`,
+        [ids],
+    );
+
+    const map = new Map();
+    for (const row of r.rows) {
+        map.set(String(row.product_id), Number(row.c || 0));
+    }
+    return map;
+}
+

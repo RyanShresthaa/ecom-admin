@@ -13,7 +13,40 @@ import {
 } from '../../shared/models/product.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 import { withCache, bustCache } from '../../shared/utils/responseCache.js';
+import { findProductSalesMetricsByIds } from '../../shared/models/order.model.js';
+import { countFeedbackByProductIds } from '../../shared/models/feedback.model.js';
 
+// Attach sold / refunded / complaint stats for staff product list & detail.
+async function attachProductMetrics(products) {
+    const list = Array.isArray(products) ? products : products ? [products] : [];
+    if (!list.length) return products;
+
+    const ids = list.map((p) => pickId(p.id ?? p._id)).filter(Boolean);
+    const [salesMap, complaintMap] = await Promise.all([
+        findProductSalesMetricsByIds(ids),
+        countFeedbackByProductIds(ids),
+    ]);
+
+    const enrich = (p) => {
+        const id = String(pickId(p.id ?? p._id) || '');
+        const sales = salesMap.get(id) || { soldQty: 0, refundedQty: 0 };
+        return {
+            ...p,
+            soldQty: sales.soldQty,
+            sold_qty: sales.soldQty,
+            refundedQty: sales.refundedQty,
+            refunded_qty: sales.refundedQty,
+            complaintCount: complaintMap.get(id) || 0,
+            complaint_count: complaintMap.get(id) || 0,
+        };
+    };
+
+    return Array.isArray(products) ? list.map(enrich) : enrich(products);
+}
+
+function isStaff(user) {
+    return user?.role === 'Admin' || user?.role === 'Seller';
+}
 // POST /api/product/create — creates a new product listing.
 export const createProductController = async (request, response) => {
     try {
@@ -49,9 +82,9 @@ export const getProductController = async (request, response) => {
         if (request.user?.role === 'Seller' && src.mine === 'true') {
             sellerId = request.userId;
         }
-        const cacheKey = `products:${page}:${limit}:${search}:${published}:${sellerId}:${src.categoryId}:${src.sort}:${Boolean(request.userId)}`;
-        const { data, totalCount } = await withCache(cacheKey, 2500, () =>
-            findProducts({
+        const cacheKey = `products:${page}:${limit}:${search}:${published}:${sellerId}:${src.categoryId}:${src.sort}:${Boolean(request.userId)}:${isStaff(request.user)}`;
+        const { data, totalCount } = await withCache(cacheKey, 2500, async () => {
+            const result = await findProducts({
                 search,
                 published,
                 skip,
@@ -61,8 +94,12 @@ export const getProductController = async (request, response) => {
                 sellerId,
                 categoryId: src.categoryId,
                 sort: src.sort,
-            }),
-        );
+            });
+            if (isStaff(request.user)) {
+                result.data = await attachProductMetrics(result.data);
+            }
+            return result;
+        });
         return response.json({
             message: 'Product data',
             error: false,
@@ -79,9 +116,12 @@ export const getProductController = async (request, response) => {
 // GET /api/product/get-product/:id — fetches single product by id.
 export const getProductByIdController = async (request, response) => {
     try {
-        const product = await findProductById(request.params.id);
+        let product = await findProductById(request.params.id);
         if (!product) {
             return response.status(404).json({ message: 'Product not found', error: true, success: false });
+        }
+        if (isStaff(request.user)) {
+            product = await attachProductMetrics(product);
         }
         return response.json({ message: 'product details', data: product, error: false, success: true });
     } catch (error) {
