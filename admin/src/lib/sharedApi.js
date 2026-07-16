@@ -1,17 +1,30 @@
 /**
  * Calls the shared ecom backend (same DB as customer).
- * Uses the same base URL as the rest of the admin app — never hardcode localhost
- * (browsers block public sites from reaching loopback / Private Network Access).
+ * Uses the same base URL as the rest of the admin app — never call localhost
+ * from a public HTTPS origin (browsers block Private Network Access).
  */
 import { getApiBaseUrl } from '@/lib/http'
 
 /** Same session as the rest of the admin app */
 export const SHARED_TOKEN_KEY = 'orbit_admin_token'
 
+function isLoopbackApiUrl(url) {
+  return /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(String(url || ''))
+}
+
+function isBrowserOnPublicHost() {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return Boolean(host) && host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]'
+}
+
 export function getSharedApiBase() {
   const explicit = import.meta.env.VITE_SHARED_API_URL
-  if (explicit) return String(explicit).replace(/\/$/, '')
-  return getApiBaseUrl()
+  const candidate = explicit ? String(explicit).replace(/\/$/, '') : getApiBaseUrl()
+  if (isBrowserOnPublicHost() && isLoopbackApiUrl(candidate)) {
+    return '/api'
+  }
+  return candidate || '/api'
 }
 
 export async function sharedRequest(path, { method = 'GET', body, token } = {}) {

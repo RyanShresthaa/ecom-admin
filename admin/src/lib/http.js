@@ -12,15 +12,32 @@ export class ApiError extends Error {
 export class ApiNotConfiguredError extends Error {
   constructor() {
     super(
-      'No API configured. Set VITE_API_URL in a .env file (e.g. VITE_API_URL=http://localhost:5000/api) and restart the dev server.'
+      'No API configured. Set VITE_API_URL in a .env file (e.g. VITE_API_URL=/api) and restart the dev server.'
     )
     this.name = 'ApiNotConfiguredError'
   }
 }
 
+function isLoopbackApiUrl(url) {
+  return /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(String(url || ''))
+}
+
+function isBrowserOnPublicHost() {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return Boolean(host) && host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]'
+}
+
+/**
+ * Resolve API base. On a public host (e.g. Vercel), never call localhost —
+ * browsers block Private Network Access from HTTPS → loopback.
+ */
 export function getApiBaseUrl() {
-  const url = import.meta.env.VITE_API_URL || '/api'
-  return String(url).replace(/\/$/, '')
+  const configured = String(import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+  if (isBrowserOnPublicHost() && isLoopbackApiUrl(configured)) {
+    return '/api'
+  }
+  return configured || '/api'
 }
 
 export function isApiConfigured() {
