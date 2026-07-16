@@ -13,6 +13,7 @@ const KEY_MAX = 128;
  * Wrap checkout so duplicate Idempotency-Key returns the same response (24h).
  * Header: Idempotency-Key (UUID recommended). Optional — checkout works without it.
  */
+// Guard checkout execution with idempotency token and replay-safe response handling.
 export async function withCheckoutIdempotency(req, runCheckout) {
     const key = String(req.headers['idempotency-key'] || '').trim();
     if (!key) {

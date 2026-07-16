@@ -13,6 +13,7 @@ import { useUpdateOrderStatus } from '@/hooks/useOrders'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
+// Delivery status options shown in the dropdown menu.
 const OPTIONS = [
   { value: 'Pending', icon: Clock },
   { value: 'Shipped', icon: Truck },
@@ -20,6 +21,7 @@ const OPTIONS = [
   { value: 'Returned', icon: ArrowUUpLeft },
 ]
 
+// Orders list/detail — inline dropdown to update delivery status (read-only badge without write access).
 export function OrderStatusDropdown({ order }) {
   const updateStatus = useUpdateOrderStatus()
   const { can } = usePermissions()

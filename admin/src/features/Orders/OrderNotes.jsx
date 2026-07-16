@@ -7,11 +7,13 @@ import { useAddOrderNote } from '@/hooks/useOrders'
 import { useAuth } from '@/context/AuthContext'
 import { formatDateTime } from '@/lib/utils'
 
+// Order detail page — internal notes tab with list view and add-note form.
 export function OrderNotes({ order, canWrite }) {
   const [text, setText] = useState('')
   const addNote = useAddOrderNote()
   const { user } = useAuth()
 
+  // Post a new internal note and clear the textarea on success.
   function handleSubmit(e) {
     e.preventDefault()
     if (!text.trim()) return

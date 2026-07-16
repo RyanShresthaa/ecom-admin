@@ -23,6 +23,7 @@ import {
 import { useAdjustStock, useAdjustmentReasonsQuery } from '@/hooks/useInventory'
 import { useAuth } from '@/context/AuthContext'
 
+// Inventory stock tab — dialog to increase or decrease stock with a reason code.
 export function StockAdjustmentDialog({ open, onOpenChange, item }) {
   const [reasonCode, setReasonCode] = useState('')
   const [quantity, setQuantity] = useState('')
@@ -35,6 +36,7 @@ export function StockAdjustmentDialog({ open, onOpenChange, item }) {
 
   const selectedReason = reasons?.find((r) => r.code === reasonCode)
 
+  // Reset form fields each time the dialog opens for a new item.
   useEffect(() => {
     if (open && item) {
       setReasonCode('')
@@ -44,11 +46,13 @@ export function StockAdjustmentDialog({ open, onOpenChange, item }) {
     }
   }, [open, item])
 
+  // Lock direction to match the selected reason code type (in/out).
   useEffect(() => {
     if (selectedReason?.type === 'in') setDirection('in')
     else if (selectedReason?.type === 'out') setDirection('out')
   }, [selectedReason])
 
+  // Validate inputs and submit the stock delta to the API.
   function handleSubmit(e) {
     e.preventDefault()
     if (!item) return
@@ -68,6 +72,7 @@ export function StockAdjustmentDialog({ open, onOpenChange, item }) {
     )
   }
 
+  // Preview resulting quantity after the proposed adjustment.
   const previewQty = item
     ? Math.max(0, item.stockQuantity + (direction === 'out' ? -Number(quantity || 0) : Number(quantity || 0)))
     : 0

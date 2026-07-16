@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '@/lib/api'
 
+// Product detail page — fetches and displays a single catalog item by id.
 export default function ProductDetail() {
   const { id } = useParams()
   const [product, setProduct] = useState(null)
   const [error, setError] = useState('')
 
+  // Fetch product when route id changes; ignore stale responses after unmount.
   useEffect(() => {
     let alive = true
     ;(async () => {

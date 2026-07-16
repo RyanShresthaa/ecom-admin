@@ -1,17 +1,25 @@
 /**
- * Return requests + admin status; approved returns may restore stock via `orderStock.js`.
+ * Return requests + admin status.
+ * Approved returns delegate stock + payment_status + credit note to payments/refundService.
  */
-import { createReturnRequest, findReturnsByUser, findAllReturns, updateReturnStatus } from '../../shared/models/return.model.js';
-import { findOrderById, updateOrder } from '../../shared/models/order.model.js';
-import { restoreStock } from '../../shared/utils/orderStock.js';
-import { ensureCreditNoteForApprovedReturn } from '../../shared/utils/salesCreditFromReturn.js';
-import pool from '../../shared/config/connectDB.js';
+import {
+    createReturnRequest,
+    findReturnsByUser,
+    findAllReturns,
+    updateReturnStatus,
+} from '../../shared/models/return.model.js';
+import { findOrderById } from '../../shared/models/order.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 import { logAudit } from '../../shared/models/audit.model.js';
 import { getClientIp, getUserAgent } from '../../shared/utils/requestMeta.js';
 import { logger } from '../../shared/utils/logger.js';
-import { bustCache } from '../../shared/utils/responseCache.js';
+import {
+    refundApprovedReturn,
+    ensureCreditNoteForApprovedReturn,
+    isRefundedStatus,
+} from '../../shared/services/payments/index.js';
 
+// POST /api/return/request — submits a return request for delivered items.
 export async function requestReturnController(req, res) {
     try {
         const orderRowId = pickId(req.body.orderRowId || req.body._id);
@@ -27,6 +35,7 @@ export async function requestReturnController(req, res) {
     }
 }
 
+// GET /api/return/mine — lists return requests created by current user.
 export async function myReturnsController(req, res) {
     try {
         const data = await findReturnsByUser(req.userId);
@@ -36,6 +45,7 @@ export async function myReturnsController(req, res) {
     }
 }
 
+// GET /api/return/all — lists all return requests for staff/admin.
 export async function allReturnsController(req, res) {
     try {
         const data = await findAllReturns();
@@ -45,42 +55,39 @@ export async function allReturnsController(req, res) {
     }
 }
 
+// PUT /api/return/update — updates return request status and resolution.
 export async function updateReturnController(req, res) {
     try {
         const id = pickId(req.body._id);
         const { status, admin_note } = req.body;
         const updated = await updateReturnStatus(id, status, admin_note);
-        if (status === 'approved' && updated) {
-            if (updated.order_row_id) {
-                const order = await findOrderById(updated.order_row_id);
-                if (order) {
-                    if (!order.stockRestored) {
-                        const qty = Math.max(1, Number(order.quantity || order.product_details?.quantity || 1));
-                        const client = await pool.connect();
-                        try {
-                            await client.query('BEGIN');
-                            await restoreStock(client, new Map([[pickId(order.productId), qty]]));
-                            await client.query('COMMIT');
-                        } catch (err) {
-                            await client.query('ROLLBACK');
-                            throw err;
-                        } finally {
-                            client.release();
-                        }
+
+        if (status === 'approved' && updated?.order_row_id) {
+            const order = await findOrderById(updated.order_row_id);
+            if (order) {
+                try {
+                    if (!isRefundedStatus(order.payment_status || order.paymentStatus)) {
+                        // Full offline refund: stock + payment_status Refunded + credit note
+                        await refundApprovedReturn({
+                            orderRowId: updated.order_row_id,
+                            returnId: pickId(updated.id),
+                            createdByUserId: req.userId,
+                            reason: updated.reason || admin_note || 'Return approved',
+                        });
+                    } else {
+                        // Already refunded — still ensure credit note exists for the return
+                        await ensureCreditNoteForApprovedReturn(pickId(updated.id), req.userId);
                     }
-                    await updateOrder(pickId(order.id), {
-                        delivery_status: 'Returned',
-                        payment_status: 'Refunded',
-                        stock_restored: true,
+                } catch (err) {
+                    logger.warn('Return approval refund failed', {
+                        message: err.message,
+                        returnId: updated.id,
                     });
-                    bustCache('admin:stats');
-                    bustCache('products:');
+                    throw err;
                 }
             }
-            ensureCreditNoteForApprovedReturn(pickId(updated.id), req.userId).catch((err) =>
-                logger.warn('Credit note generation failed', { message: err.message, returnId: updated.id }),
-            );
         }
+
         await logAudit({
             adminId: req.userId,
             action: 'return.update',
@@ -92,6 +99,8 @@ export async function updateReturnController(req, res) {
         });
         return res.json({ message: 'Updated', data: updated, error: false, success: true });
     } catch (e) {
-        return res.status(500).json({ message: e.message, error: true, success: false });
+        const status = e.status || 500;
+        return res.status(status).json({ message: e.message, error: true, success: false });
     }
 }
+

@@ -1,3 +1,4 @@
+// Centralized React Query keys to keep cache invalidation consistent.
 export const queryKeys = {
   auth: {
     session: ['auth', 'session'],

@@ -12,9 +12,13 @@ import {
 } from "../controllers/address.controller.js";
 
 const addressRouter = Router();
+// POST /add - create an address (requires auth).
 addressRouter.post("/add", auth, addAddressController);
+// GET /get - fetch current user's addresses (requires auth).
 addressRouter.get("/get", auth, getAddressController);
+// PUT /update - update an address (requires auth).
 addressRouter.put("/update", auth, updateAddressController);
+// DELETE /delete - remove an address (requires auth).
 addressRouter.delete("/delete", auth, deleteAddressController);
 
 export default addressRouter;

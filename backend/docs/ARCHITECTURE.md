@@ -28,7 +28,6 @@ When you add a route:
 | `deploy/nginx.conf.example` | TLS reverse proxy |
 | `.env.production.example` | Production env template |
 | `config/production.js` | Startup warnings |
-| `scripts/backup-db.mjs` | Manual backup |
 
 ## Layer diagram
 

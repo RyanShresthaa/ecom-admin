@@ -1,3 +1,4 @@
+// settings model: handles settings table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `shop_settings` key/value store (tax, shipping, currency).
  */
@@ -15,6 +16,7 @@ const DEFAULTS = {
     company_legal_name: '',
 };
 
+// settings model: parseValue reads and returns records.
 function parseValue(val) {
     if (val === null || val === undefined) return null;
     if (typeof val === 'object') return val;
@@ -25,6 +27,7 @@ function parseValue(val) {
     }
 }
 
+// settings model: getShopSettingsMap reads and returns records.
 export async function getShopSettingsMap() {
     const r = await pool.query(`SELECT key, value FROM shop_settings`);
     const map = { ...DEFAULTS };
@@ -35,6 +38,7 @@ export async function getShopSettingsMap() {
     return map;
 }
 
+// settings model: getAllSettings reads and returns records.
 export async function getAllSettings() {
     const r = await pool.query(`SELECT key, value, updated_at FROM shop_settings ORDER BY key`);
     return r.rows.map((row) => ({
@@ -44,6 +48,7 @@ export async function getAllSettings() {
     }));
 }
 
+// settings model: upsertSetting runs model logic/query operations.
 export async function upsertSetting(key, value) {
     await pool.query(
         `INSERT INTO shop_settings (key, value, updated_at) VALUES ($1, $2::jsonb, NOW())
@@ -51,3 +56,4 @@ export async function upsertSetting(key, value) {
         [key, JSON.stringify(value)],
     );
 }
+

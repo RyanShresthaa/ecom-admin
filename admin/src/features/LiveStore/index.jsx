@@ -9,10 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SHARED_TOKEN_KEY, getSharedApiBase, sharedApi } from '@/lib/sharedApi'
 
-/**
- * Staff controls for the LIVE customer catalog (shared Postgres via backend/).
- * Demo Products page still uses admin/server — this page is what customers see.
- */
+// Live store page — connect to the shared customer catalog API and toggle product visibility.
 export default function LiveStorePage() {
   const [staff, setStaff] = useState(null)
   const [email, setEmail] = useState('')
@@ -22,6 +19,7 @@ export default function LiveStorePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  // Live store page — check API health and restore staff session from local storage.
   const load = useCallback(async () => {
     setError('')
     try {
@@ -41,6 +39,7 @@ export default function LiveStorePage() {
     try {
       const me = await sharedApi.me()
       const user = me.data || me
+      // Live store page — only Admin and Seller roles may manage the customer catalog.
       if (user.role !== 'Admin' && user.role !== 'Seller') {
         localStorage.removeItem(SHARED_TOKEN_KEY)
         setStaff(null)
@@ -57,10 +56,12 @@ export default function LiveStorePage() {
     }
   }, [])
 
+  // Live store page — fetch health and catalog on mount and after auth changes.
   useEffect(() => {
     load()
   }, [load])
 
+  // Live store page — sign in as Admin/Seller and store the shared API token.
   async function connect(e) {
     e.preventDefault()
     setBusy(true)
@@ -80,12 +81,14 @@ export default function LiveStorePage() {
     }
   }
 
+  // Live store page — clear the stored token and reset connected staff state.
   function disconnect() {
     localStorage.removeItem(SHARED_TOKEN_KEY)
     setStaff(null)
     setProducts([])
   }
 
+  // Live store page — flip a product's publish flag on the shared customer catalog.
   async function togglePublished(product) {
     const isLive = product.publish !== false
     try {

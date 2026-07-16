@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+// Toolbar above list-page DataTables — search input, optional filters, refresh, and action buttons.
 export function DataTableToolbar({
   searchValue,
   onSearchChange,

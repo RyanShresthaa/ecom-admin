@@ -4,11 +4,16 @@ import { X } from '@phosphor-icons/react'
 
 import { cn } from '@/lib/utils'
 
+// Dialog root that controls open state.
 const Dialog = DialogPrimitive.Root
+// Element that opens the dialog when interacted with.
 const DialogTrigger = DialogPrimitive.Trigger
+// Portal target for rendering dialog layers outside DOM flow.
 const DialogPortal = DialogPrimitive.Portal
+// Close control for dismissing the dialog.
 const DialogClose = DialogPrimitive.Close
 
+// Backdrop overlay rendered behind dialog content.
 const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
@@ -21,6 +26,7 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+// Main dialog panel with built-in close button and scroll handling.
 const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
@@ -42,11 +48,13 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
+// Header wrapper for dialog titles and descriptions.
 const DialogHeader = ({ className, ...props }) => (
   <div className={cn('flex flex-col gap-1.5 text-left', className)} {...props} />
 )
 DialogHeader.displayName = 'DialogHeader'
 
+// Footer wrapper for dialog action buttons.
 const DialogFooter = ({ className, ...props }) => (
   <div
     className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
@@ -55,6 +63,7 @@ const DialogFooter = ({ className, ...props }) => (
 )
 DialogFooter.displayName = 'DialogFooter'
 
+// Dialog title text element.
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
@@ -64,6 +73,7 @@ const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
+// Dialog description text element.
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}

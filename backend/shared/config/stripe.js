@@ -2,6 +2,7 @@
  * Lazy Stripe SDK instance from STRIPE_SECRET_KEY; null if unset or package missing (mock pay path).
  */
 let Stripe = null;
+// Lazily initialize Stripe SDK only when secret key is configured.
 if (process.env.STRIPE_SECRET_KEY) {
     try {
         const { default: StripeSdk } = await import('stripe');
@@ -10,4 +11,5 @@ if (process.env.STRIPE_SECRET_KEY) {
         console.warn('Stripe package not installed; online pay uses mock mode.');
     }
 }
+// Export Stripe instance (or null) for payment and refund services.
 export default Stripe;

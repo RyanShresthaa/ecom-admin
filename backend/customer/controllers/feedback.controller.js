@@ -8,6 +8,7 @@ import { pickId } from '../../shared/utils/sql.js';
 
 const TARGETS = new Set(['product', 'seller', 'business']);
 
+// POST /api/feedback/submit — stores customer feedback for review.
 export async function submitFeedbackController(req, res) {
     try {
         const { targetType, productId, sellerId, rating, title, comment } = req.body || {};
@@ -71,3 +72,4 @@ export async function submitFeedbackController(req, res) {
         return res.status(500).json({ message: e.message || e, error: true, success: false });
     }
 }
+

@@ -16,10 +16,12 @@ import { ROLE_LABELS } from '@/lib/permissions'
 import { GlobalSearch } from '@/components/layout/GlobalSearch'
 import { NotificationsPanel } from '@/components/layout/NotificationsPanel'
 
+// Sticky header on every dashboard page — page title, search, notifications, and account menu.
 export function Topbar({ onMenuClick, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  // Clear the session and return the user to the login screen.
   function handleLogout() {
     logout()
     navigate('/login', { replace: true })

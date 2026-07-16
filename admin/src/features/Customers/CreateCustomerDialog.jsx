@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useCreateCustomer } from '@/hooks/useCustomers'
 
+// Generate a random password that meets minimum complexity requirements.
 function randomPassword() {
   const base = `Cust${Math.random().toString(36).slice(2, 8)}`
   return `${base}A1!`
@@ -28,6 +29,7 @@ const EMPTY_ADDRESS = {
   country: 'Nepal',
 }
 
+// Customers list page — modal form to create a new buyer account with optional address.
 export function CreateCustomerDialog({ open, onOpenChange }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -36,6 +38,7 @@ export function CreateCustomerDialog({ open, onOpenChange }) {
   const [address, setAddress] = useState(EMPTY_ADDRESS)
   const createCustomer = useCreateCustomer()
 
+  // Reset form fields and generate a fresh password each time the dialog opens.
   useEffect(() => {
     if (open) {
       setName('')
@@ -46,10 +49,12 @@ export function CreateCustomerDialog({ open, onOpenChange }) {
     }
   }, [open])
 
+  // Update a single shipping-address field without replacing the whole object.
   function patchAddress(key, value) {
     setAddress((prev) => ({ ...prev, [key]: value }))
   }
 
+  // Validate required fields and submit the new customer to the API.
   function handleSubmit(e) {
     e.preventDefault()
     if (!name.trim() || !email.trim() || !password) return

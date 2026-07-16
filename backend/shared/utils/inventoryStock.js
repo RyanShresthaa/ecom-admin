@@ -29,6 +29,7 @@ async function lockProduct(client, productId) {
 }
 
 /** Decrement sellable stock for checkout/cancel flows — FIFO: default warehouse first, then others by id. */
+// Deduct inventory quantities for ordered products within a database transaction.
 export async function decrementStock(client, qtyByProduct) {
     for (const [productId, qty] of qtyByProduct) {
         const q = assertQty('quantity', qty);
@@ -76,6 +77,7 @@ export async function decrementStock(client, qtyByProduct) {
 }
 
 /** Returns restored goods to the default warehouse (typical DC receiving). */
+// Restore inventory quantities when orders are cancelled or rolled back.
 export async function restoreStock(client, qtyByProduct) {
     const defaultWh = await getDefaultWarehouseId(client);
     if (!defaultWh) throw new Error('Default warehouse is not configured');
@@ -98,6 +100,7 @@ export async function restoreStock(client, qtyByProduct) {
     }
 }
 
+// Increase product stock and record inbound inventory movement.
 export async function addStockInTransaction(client, { productId, warehouseId, quantity, userId, note, reason }) {
     const wid = warehouseId ?? (await getDefaultWarehouseId(client));
     if (!wid) throw new Error('No warehouse specified and default warehouse missing');
@@ -118,6 +121,7 @@ export async function addStockInTransaction(client, { productId, warehouseId, qu
     return { warehouseId: wid, quantity: balance };
 }
 
+// Decrease product stock and record outbound inventory movement.
 export async function removeStockInTransaction(client, { productId, warehouseId, quantity, userId, note, reason }) {
     const wid = warehouseId ?? (await getDefaultWarehouseId(client));
     if (!wid) throw new Error('No warehouse specified and default warehouse missing');
@@ -155,6 +159,7 @@ export async function removeStockInTransaction(client, { productId, warehouseId,
     return { warehouseId: wid, quantity: balance };
 }
 
+// Move stock between warehouses while preserving balanced inventory trails.
 export async function transferStockInTransaction(
     client,
     { productId, fromWarehouseId, toWarehouseId, quantity, userId, note },
@@ -219,6 +224,7 @@ export async function transferStockInTransaction(
  * Apply catalog "total stock" update: adjusts default warehouse so aggregate matches `newTotal`,
  * without touching non-default warehouses (fails if newTotal < stock held elsewhere).
  */
+// Reconcile warehouse stock rows to a catalog-level absolute stock target.
 export async function applyAbsoluteProductStockFromCatalog(client, productId, newTotal) {
     const n = Math.max(0, Math.floor(Number(newTotal)));
     if (!Number.isFinite(n)) throw new Error('Invalid stock value');
@@ -238,6 +244,7 @@ export async function applyAbsoluteProductStockFromCatalog(client, productId, ne
 }
 
 /** After creating a product row, seed default warehouse stock (initial catalog quantity). */
+// Seed default warehouse stock row for newly created products.
 export async function seedWarehouseRowForNewProduct(productId, initialStock, client = null) {
     const qty = Math.max(0, Math.floor(Number(initialStock) || 0));
     if (client) {

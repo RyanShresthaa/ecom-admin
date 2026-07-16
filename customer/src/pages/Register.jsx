@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
+// Customer registration page — creates account then auto-logs in.
 export default function Register() {
   const { user, register } = useAuth()
   const navigate = useNavigate()
@@ -11,8 +12,10 @@ export default function Register() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // Already signed in — skip registration form.
   if (user) return <Navigate to="/account" replace />
 
+  // Submit handler — register via API then redirect to account.
   async function onSubmit(e) {
     e.preventDefault()
     setBusy(true)

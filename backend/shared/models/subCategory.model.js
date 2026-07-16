@@ -1,9 +1,11 @@
+// subCategory model: handles subCategory table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `subcategories` — tied to `category_id`.
  */
 import pool from '../config/connectDB.js';
 import { mapRow, firstId } from '../utils/sql.js';
 
+// subCategory model: createSubCategory creates a new record.
 export async function createSubCategory({ name, image, category }) {
     const categoryId = firstId(category);
     const r = await pool.query(
@@ -13,12 +15,14 @@ export async function createSubCategory({ name, image, category }) {
     return mapSub(r.rows[0]);
 }
 
+// subCategory model: mapSub reads and returns records.
 function mapSub(row) {
     const base = mapRow(row);
     if (!base) return null;
     return { ...base, category: base.category_id ? [base.category_id] : [] };
 }
 
+// subCategory model: findSubCategories reads and returns records.
 export async function findSubCategories() {
     const r = await pool.query(
         `SELECT s.*, c.id AS cat_id, c.name AS cat_name, c.image AS cat_image
@@ -34,11 +38,13 @@ export async function findSubCategories() {
     }));
 }
 
+// subCategory model: findSubCategoryById reads and returns records.
 export async function findSubCategoryById(id) {
     const r = await pool.query(`SELECT * FROM subcategories WHERE id = $1`, [id]);
     return mapSub(r.rows[0]);
 }
 
+// subCategory model: updateSubCategory updates existing records.
 export async function updateSubCategory(id, { name, image, category }) {
     const categoryId = category ? firstId(category) : null;
     const r = await pool.query(
@@ -53,7 +59,9 @@ export async function updateSubCategory(id, { name, image, category }) {
     return mapSub(r.rows[0]);
 }
 
+// subCategory model: deleteSubCategory deletes matching records.
 export async function deleteSubCategory(id) {
     const r = await pool.query(`DELETE FROM subcategories WHERE id = $1 RETURNING *`, [id]);
     return mapSub(r.rows[0]);
 }
+

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
+// Metric summary card on the Dashboard — label, value, optional period-over-period change, and icon.
 export function KpiCard({ label, value, change, icon: Icon, isLoading, accent = 'primary' }) {
   const isPositive = change >= 0
 
@@ -14,6 +15,7 @@ export function KpiCard({ label, value, change, icon: Icon, isLoading, accent = 
     destructive: 'bg-destructive/10 text-destructive',
   }
 
+  // Placeholder skeleton while dashboard KPI queries are in flight.
   if (isLoading) {
     return (
       <Card>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
+// Customer login page — email/password form, redirects to account on success.
 export default function Login() {
   const { user, login } = useAuth()
   const navigate = useNavigate()
@@ -10,8 +11,10 @@ export default function Login() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // Already signed in — skip login form.
   if (user) return <Navigate to="/account" replace />
 
+  // Submit handler — calls auth context login then navigates to account.
   async function onSubmit(e) {
     e.preventDefault()
     setBusy(true)

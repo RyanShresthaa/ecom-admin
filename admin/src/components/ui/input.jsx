@@ -2,6 +2,7 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
+// Reusable text input with consistent form styles and focus states.
 const Input = React.forwardRef((props, ref) => {
   const { className, type, value, ...rest } = props
   // Keep controlled inputs stable: value={undefined} → "" so React doesn't

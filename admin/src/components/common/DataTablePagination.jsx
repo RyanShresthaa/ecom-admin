@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+// Footer controls beneath DataTable — row range label, page size picker, and page navigation.
 export function DataTablePagination({ table, rowCount, isLoading }) {
   const pageIndex = table.getState().pagination.pageIndex
   const pageSize = table.getState().pagination.pageSize

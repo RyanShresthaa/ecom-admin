@@ -1,6 +1,7 @@
 /**
  * Build invoice JSON + simple HTML for order confirmation / downloads.
  */
+// Build normalized invoice payload from order, user, and payment context.
 export function buildInvoicePayload({ orderId, user, address, summary, paymentStatus, createdAt }) {
     return {
         orderId,
@@ -24,6 +25,7 @@ export function buildInvoicePayload({ orderId, user, address, summary, paymentSt
     };
 }
 
+// Render invoice payload into customer-facing invoice HTML.
 export function invoiceToHtml(invoice) {
     const lines = invoice.lines
         .map(

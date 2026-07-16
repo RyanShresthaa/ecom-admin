@@ -84,6 +84,7 @@ async function assertQuotationView(req, q) {
 
 /* ---- Quotations ---- */
 
+// POST /api/sales/quotations - creates a draft quotation with priced line items.
 export async function createQuotationController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -92,6 +93,7 @@ export async function createQuotationController(req, res) {
             return res.status(400).json({ message: 'lines[] required', error: true, success: false });
         }
         const built = [];
+        // Normalize and validate each quotation line before persistence.
         for (const ln of lines) {
             const pid = pickId(ln.productId);
             const qty = Math.max(1, Math.floor(Number(ln.quantity || 1)));
@@ -156,6 +158,7 @@ export async function createQuotationController(req, res) {
     }
 }
 
+// GET /api/sales/quotations - lists quotations visible to the requesting user role.
 export async function listQuotationsController(req, res) {
     try {
         const data = await listQuotations({
@@ -170,6 +173,7 @@ export async function listQuotationsController(req, res) {
     }
 }
 
+// GET /api/sales/quotations/:id - returns one quotation and its line items.
 export async function getQuotationDetailController(req, res) {
     try {
         const q = await findQuotationById(req.params.id);
@@ -182,6 +186,7 @@ export async function getQuotationDetailController(req, res) {
     }
 }
 
+// PATCH /api/sales/quotations/:id - updates a draft quotation and regenerates totals/HTML.
 export async function updateQuotationDraftController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -310,6 +315,7 @@ export async function updateQuotationDraftController(req, res) {
     }
 }
 
+// PATCH /api/sales/quotations/:id/status - transitions quotation status for staff workflows.
 export async function updateQuotationStatusController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -341,6 +347,7 @@ export async function updateQuotationStatusController(req, res) {
     }
 }
 
+// POST /api/sales/quotations/:id/accept - allows quoted customer to accept a sent quotation.
 export async function acceptQuotationAsCustomerController(req, res) {
     try {
         const q = await findQuotationById(req.params.id);
@@ -367,6 +374,7 @@ export async function acceptQuotationAsCustomerController(req, res) {
 
 /* ---- Sales invoices ---- */
 
+// POST /api/sales/invoices/from-order/:orderId - creates invoice draft from grouped order data.
 export async function createInvoiceFromOrderController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -429,6 +437,7 @@ export async function createInvoiceFromOrderController(req, res) {
     }
 }
 
+// GET /api/sales/invoices - lists invoices available to the requester.
 export async function listSalesInvoicesController(req, res) {
     try {
         const data = await listSalesInvoices({
@@ -443,6 +452,7 @@ export async function listSalesInvoicesController(req, res) {
     }
 }
 
+// GET /api/sales/invoices/:id - returns one invoice after access checks.
 export async function getSalesInvoiceController(req, res) {
     try {
         const inv = await findSalesInvoiceById(req.params.id);
@@ -454,6 +464,7 @@ export async function getSalesInvoiceController(req, res) {
     }
 }
 
+// PATCH /api/sales/invoices/:id - updates draft invoice HTML or regenerates from order state.
 export async function updateSalesInvoiceDraftController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -504,6 +515,7 @@ export async function updateSalesInvoiceDraftController(req, res) {
     }
 }
 
+// POST /api/sales/invoices/:id/issue - issues draft invoice and voids sibling drafts for order.
 export async function issueSalesInvoiceController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -548,6 +560,7 @@ export async function issueSalesInvoiceController(req, res) {
     }
 }
 
+// POST /api/sales/invoices/:id/void - voids a selected sales invoice.
 export async function voidSalesInvoiceController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -569,6 +582,7 @@ export async function voidSalesInvoiceController(req, res) {
     }
 }
 
+// POST /api/sales/invoices/by-order/:orderId/revise - creates next revision draft from latest issued invoice.
 export async function reviseSalesInvoiceController(req, res) {
     try {
         assertStaffOrAdmin(req.user.role);
@@ -628,6 +642,7 @@ export async function reviseSalesInvoiceController(req, res) {
 
 /* ---- Credit notes ---- */
 
+// GET /api/sales/credit-notes - lists credit notes visible to requester.
 export async function listCreditNotesController(req, res) {
     try {
         const data = await listCreditNotes({
@@ -642,6 +657,7 @@ export async function listCreditNotesController(req, res) {
     }
 }
 
+// GET /api/sales/credit-notes/:id - returns credit note details with related invoice context.
 export async function getCreditNoteController(req, res) {
     try {
         const cn = await findCreditNoteById(req.params.id);

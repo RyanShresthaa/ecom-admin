@@ -4,6 +4,7 @@ import { cva } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
 
+// Shared button style variants for reusable visual states and sizes.
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
@@ -32,6 +33,7 @@ const buttonVariants = cva(
   }
 )
 
+// Reusable button primitive with variant, size, and asChild support.
 const Button = React.forwardRef(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button'

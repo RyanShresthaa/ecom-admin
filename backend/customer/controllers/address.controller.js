@@ -9,6 +9,7 @@ import {
 } from '../../shared/models/address.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 
+// POST /api/address/add — adds a saved address for the authenticated user.
 export const addAddressController = async (req, res) => {
     try {
         const created = await createAddress({ ...req.body, userId: req.userId });
@@ -18,6 +19,7 @@ export const addAddressController = async (req, res) => {
     }
 };
 
+// GET /api/address/get — returns saved addresses for the authenticated user.
 export const getAddressController = async (req, res) => {
     try {
         const data = await findAddressesByUser(req.userId);
@@ -27,6 +29,7 @@ export const getAddressController = async (req, res) => {
     }
 };
 
+// PUT /api/address/update — updates one of the user's saved addresses.
 export const updateAddressController = async (req, res) => {
     try {
         const { _id, ...rest } = req.body;
@@ -40,6 +43,7 @@ export const updateAddressController = async (req, res) => {
     }
 };
 
+// DELETE /api/address/delete — removes one of the user's saved addresses.
 export const deleteAddressController = async (req, res) => {
     try {
         await deleteAddress(pickId(req.body._id), req.userId);
@@ -48,3 +52,4 @@ export const deleteAddressController = async (req, res) => {
         return res.status(500).json({ message: error.message || error, error: true, success: false });
     }
 };
+

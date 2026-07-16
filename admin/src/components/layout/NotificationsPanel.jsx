@@ -21,12 +21,14 @@ import {
   useMarkAllNotificationsRead,
 } from '@/hooks/useNotifications'
 
+// Icon shown beside each notification row, keyed by backend notification type.
 const TYPE_ICONS = {
   order: ShoppingCartSimple,
   inventory: Package,
   payment: CreditCard,
 }
 
+// Bell dropdown in the topbar — lists recent alerts and links to the related page.
 export function NotificationsPanel() {
   const navigate = useNavigate()
   const { data: notifications = [], isLoading } = useNotificationsQuery()
@@ -34,6 +36,7 @@ export function NotificationsPanel() {
   const markAllRead = useMarkAllNotificationsRead()
   const unreadCount = notifications.filter((n) => !n.read).length
 
+  // Mark unread items as read, then navigate to the notification's target route.
   function handleNotificationClick(notification) {
     if (!notification.read) {
       markRead.mutate(notification.id)

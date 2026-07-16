@@ -4,10 +4,14 @@ import { Check, CaretDown, CaretUp } from '@phosphor-icons/react'
 
 import { cn } from '@/lib/utils'
 
+// Select root that controls value and open state.
 const Select = SelectPrimitive.Root
+// Group wrapper for organizing select items.
 const SelectGroup = SelectPrimitive.Group
+// Value placeholder/display for the current selected option.
 const SelectValue = SelectPrimitive.Value
 
+// Trigger button that opens the select dropdown.
 const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
@@ -25,6 +29,7 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
 ))
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
+// Scroll-up control for long option lists.
 const SelectScrollUpButton = React.forwardRef(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollUpButton
     ref={ref}
@@ -36,6 +41,7 @@ const SelectScrollUpButton = React.forwardRef(({ className, ...props }, ref) => 
 ))
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
 
+// Scroll-down control for long option lists.
 const SelectScrollDownButton = React.forwardRef(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollDownButton
     ref={ref}
@@ -47,6 +53,7 @@ const SelectScrollDownButton = React.forwardRef(({ className, ...props }, ref) =
 ))
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName
 
+// Dropdown content portal that renders selectable options.
 const SelectContent = React.forwardRef(
   ({ className, children, position = 'popper', ...props }, ref) => (
     <SelectPrimitive.Portal>
@@ -78,6 +85,7 @@ const SelectContent = React.forwardRef(
 )
 SelectContent.displayName = SelectPrimitive.Content.displayName
 
+// Section label for grouped select options.
 const SelectLabel = React.forwardRef(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
@@ -87,6 +95,7 @@ const SelectLabel = React.forwardRef(({ className, ...props }, ref) => (
 ))
 SelectLabel.displayName = SelectPrimitive.Label.displayName
 
+// Individual selectable item with checked indicator.
 const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
@@ -106,6 +115,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
+// Visual separator between select option groups.
 const SelectSeparator = React.forwardRef(({ className, ...props }, ref) => (
   <SelectPrimitive.Separator
     ref={ref}

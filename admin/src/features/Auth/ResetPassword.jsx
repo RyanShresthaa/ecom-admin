@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useResetPasswordMutation } from '@/hooks/useAuthApi'
 
+// Reset password page — set a new password using the token from the email link.
 export default function ResetPassword() {
   const [searchParams] = useSearchParams()
+  // Reset password page — read the one-time token from the email link query string.
   const token = searchParams.get('token')
 
   const [password, setPassword] = useState('')
@@ -20,6 +22,7 @@ export default function ResetPassword() {
   const resetPassword = useResetPasswordMutation()
   const navigate = useNavigate()
 
+  // Reset password page — block the flow when the URL is missing a valid token.
   if (!token) {
     return (
       <AuthLayout title="Invalid reset link">
@@ -38,6 +41,7 @@ export default function ResetPassword() {
     )
   }
 
+  // Reset password page — success view shown after the password is updated.
   if (success) {
     return (
       <AuthLayout title="Password updated">
@@ -56,6 +60,7 @@ export default function ResetPassword() {
     )
   }
 
+  // Reset password page — enforce minimum length and matching confirmation.
   function validate() {
     const next = {}
     if (password.length < 6) next.password = 'Password must be at least 6 characters'
@@ -64,6 +69,7 @@ export default function ResetPassword() {
     return Object.keys(next).length === 0
   }
 
+  // Reset password page — submit the new password with the reset token.
   function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return

@@ -1,5 +1,6 @@
 import { Lightning } from '@phosphor-icons/react'
 
+// Centered card shell for unauthenticated pages (login, password reset, etc.).
 export function AuthLayout({ title, description, children, footer }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary/40 px-4 py-10">

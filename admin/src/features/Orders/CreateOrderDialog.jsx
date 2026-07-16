@@ -25,10 +25,13 @@ import { useCustomersQuery } from '@/hooks/useCustomers'
 import { useProductOptionsQuery } from '@/hooks/useProducts'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useAuth } from '@/context/AuthContext'
+import { PAYMENT_METHODS } from '@/lib/paymentMethod'
 import { cn, formatCurrency } from '@/lib/utils'
 
+// Default blank line item for the manual order form.
 const EMPTY_ITEM = { productId: '', variantId: '', qty: 1 }
 
+// Orders list page — dialog to create a manual order with customer search and line items.
 export function CreateOrderDialog({ open, onOpenChange }) {
   const [customerId, setCustomerId] = useState('')
   const [customerLabel, setCustomerLabel] = useState('')
@@ -36,6 +39,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
   const [customerMenuOpen, setCustomerMenuOpen] = useState(false)
   const [items, setItems] = useState([{ ...EMPTY_ITEM }])
   const [paymentStatus, setPaymentStatus] = useState('Paid')
+  const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [deliveryStatus, setDeliveryStatus] = useState('Pending')
   const [note, setNote] = useState('')
   const customerBoxRef = useRef(null)
@@ -52,6 +56,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
   })
   const { data: productsData, refetch: refetchProducts } = useProductOptionsQuery({ status: 'active' })
 
+  // Reset form fields and refresh product list each time the dialog opens.
   useEffect(() => {
     if (open) {
       refetchProducts()
@@ -61,11 +66,13 @@ export function CreateOrderDialog({ open, onOpenChange }) {
       setCustomerMenuOpen(false)
       setItems([{ ...EMPTY_ITEM }])
       setPaymentStatus('Paid')
+      setPaymentMethod('CASH')
       setDeliveryStatus('Pending')
       setNote('')
     }
   }, [open, refetchProducts])
 
+  // Close customer search dropdown when clicking outside the combobox.
   useEffect(() => {
     function handlePointerDown(event) {
       if (!customerBoxRef.current?.contains(event.target)) {
@@ -76,6 +83,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [])
 
+  // Pick a customer from search results and lock the selection.
   function selectCustomer(customer) {
     setCustomerId(customer.id)
     setCustomerLabel(`${customer.name} (${customer.email})`)
@@ -83,6 +91,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
     setCustomerMenuOpen(false)
   }
 
+  // Clear the selected customer and reopen the search dropdown.
   function clearCustomer() {
     setCustomerId('')
     setCustomerLabel('')
@@ -90,22 +99,27 @@ export function CreateOrderDialog({ open, onOpenChange }) {
     setCustomerMenuOpen(true)
   }
 
+  // Update a single field on a line item row.
   function updateItem(index, field, value) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)))
   }
 
+  // Append another blank line item row.
   function addItem() {
     setItems((prev) => [...prev, { ...EMPTY_ITEM }])
   }
 
+  // Remove a line item row by index.
   function removeItem(index) {
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
+  // Look up a product option by ID for pricing and variants.
   function getProduct(productId) {
     return productsData?.rows?.find((p) => p.id === productId)
   }
 
+  // Calculate price × quantity for one line item.
   function getLineTotal(item) {
     const product = getProduct(item.productId)
     return (product?.price || 0) * item.qty
@@ -114,6 +128,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
   const total = items.reduce((sum, item) => sum + getLineTotal(item), 0)
   const customerMatches = customersData?.rows || []
 
+  // Validate and submit the manual order to the API.
   function handleSubmit(e) {
     e.preventDefault()
     if (!customerId || items.some((i) => !i.productId)) return
@@ -127,6 +142,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
           qty: Number(i.qty),
         })),
         paymentStatus,
+        paymentMethod,
         deliveryStatus,
         note: note.trim() || undefined,
         author: user?.name,
@@ -268,7 +284,20 @@ export function CreateOrderDialog({ open, onOpenChange }) {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <Label>Payment method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-col gap-1.5">
               <Label>Payment status</Label>
               <Select value={paymentStatus} onValueChange={setPaymentStatus}>

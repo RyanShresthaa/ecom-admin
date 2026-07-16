@@ -6,6 +6,7 @@ import { AppProviders } from '@/providers/AppProviders'
 import App from '@/App'
 import '@/index.css'
 
+// App entrypoint: mounts router + global providers into the root node.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

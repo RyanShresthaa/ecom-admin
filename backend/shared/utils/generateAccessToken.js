@@ -4,6 +4,7 @@
 import jwt from 'jsonwebtoken';
 import { getAccessSecret, getAccessTokenExpiresIn } from '../config/security.js';
 
+// Auth: issue short-lived access JWT (HS256) for session cookie.
 const generateAccessToken = async (userId) => {
     return jwt.sign({ id: userId }, getAccessSecret(), {
         expiresIn: getAccessTokenExpiresIn(),

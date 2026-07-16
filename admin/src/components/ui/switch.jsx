@@ -3,6 +3,7 @@ import * as SwitchPrimitives from '@radix-ui/react-switch'
 
 import { cn } from '@/lib/utils'
 
+// Toggle switch control wrapping Radix root and thumb primitives.
 const Switch = React.forwardRef(({ className, ...props }, ref) => (
   <SwitchPrimitives.Root
     className={cn(

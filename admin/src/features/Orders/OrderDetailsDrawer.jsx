@@ -11,7 +11,9 @@ import { Separator } from '@/components/ui/separator'
 import { PaymentStatusDropdown } from '@/features/Orders/PaymentStatusDropdown'
 import { OrderStatusDropdown } from '@/features/Orders/OrderStatusDropdown'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
+import { paymentMethodLabel } from '@/lib/paymentMethod'
 
+// Orders list/detail — slide-over panel showing order summary and inline status controls.
 export function OrderDetailsDrawer({ order, open, onOpenChange }) {
   if (!order) return null
 
@@ -40,10 +42,14 @@ export function OrderDetailsDrawer({ order, open, onOpenChange }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-border p-3">
+              <p className="mb-1.5 text-xs text-muted-foreground">Payment method</p>
+              <p className="text-sm font-medium">{paymentMethodLabel(order.paymentMethod)}</p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
               <p className="mb-1.5 text-xs text-muted-foreground">Payment status</p>
               <PaymentStatusDropdown order={order} />
             </div>
-            <div className="rounded-lg border border-border p-3">
+            <div className="col-span-2 rounded-lg border border-border p-3">
               <p className="mb-1.5 text-xs text-muted-foreground">Delivery status</p>
               <OrderStatusDropdown order={order} />
             </div>

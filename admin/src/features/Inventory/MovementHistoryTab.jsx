@@ -17,6 +17,7 @@ import { ADJUSTMENT_REASONS } from '@/lib/constants'
 
 const columnHelper = createColumnHelper()
 
+// Column definitions for the movement history DataTable.
 const columns = [
   columnHelper.accessor('createdAt', {
     header: 'Date',
@@ -77,6 +78,7 @@ const columns = [
   }),
 ]
 
+// Inventory movements tab — searchable, filterable log of stock adjustments.
 export function MovementHistoryTab() {
   const [search, setSearch] = useState('')
   const [reasonCode, setReasonCode] = useState('all')
@@ -85,6 +87,7 @@ export function MovementHistoryTab() {
 
   const debouncedSearch = useDebouncedValue(search)
 
+  // Build API query params from pagination, sorting, search, and reason filter.
   const params = useMemo(
     () => ({
       page: pagination.pageIndex,
@@ -98,6 +101,7 @@ export function MovementHistoryTab() {
 
   const { data, isLoading, isFetching, refetch } = useStockMovementsQuery(params)
 
+  // Reset to page 0 whenever a filter or search value changes.
   function resetPage(setter) {
     return (value) => {
       setter(value)

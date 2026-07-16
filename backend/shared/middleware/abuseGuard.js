@@ -11,6 +11,7 @@ const MAX_FAILURES = Number(process.env.MAX_LOGIN_FAILURES || 5);
 const LOCKOUT_MINUTES = Number(process.env.LOCKOUT_MINUTES || 15);
 
 export async function checkAccountLockout(user) {
+    // Block login when lockout window is still active.
     if (!user?.locked_until) return null;
     if (new Date(user.locked_until) > new Date()) {
         return `Account temporarily locked. Try again after ${new Date(user.locked_until).toISOString()}`;
@@ -19,6 +20,7 @@ export async function checkAccountLockout(user) {
 }
 
 export async function recordLoginFailure(userId, req) {
+    // Capture failed login attempts and trigger lockout threshold.
     const ip = getClientIp(req);
     const ua = getUserAgent(req);
     await logSecurityEvent({
@@ -30,6 +32,7 @@ export async function recordLoginFailure(userId, req) {
         details: {},
     });
 
+    // Unknown user attempts are logged but cannot update account counters.
     if (!userId) return;
 
     const r = await pool.query(
@@ -46,6 +49,7 @@ export async function recordLoginFailure(userId, req) {
         [userId, MAX_FAILURES, LOCKOUT_MINUTES],
     );
     const row = r.rows[0];
+    // Emit a dedicated security event once account lockout becomes active.
     if (row?.locked_until && new Date(row.locked_until) > new Date()) {
         await logSecurityEvent({
             userId,
@@ -59,6 +63,7 @@ export async function recordLoginFailure(userId, req) {
 }
 
 export async function recordLoginSuccess(userId, req) {
+    // Reset lockout counters and persist client metadata on successful auth.
     const ip = getClientIp(req);
     const ua = getUserAgent(req);
     await pool.query(
@@ -82,6 +87,7 @@ export async function recordLoginSuccess(userId, req) {
 }
 
 export async function requireUnlockedAccount(req, res, next) {
+    // Protect authenticated routes from locked accounts.
     if (!req.userId) return next();
     try {
         const user = await findUserById(req.userId);

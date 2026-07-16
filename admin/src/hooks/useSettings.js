@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 
+// Settings page query: fetch current settings document.
 export function useSettingsQuery() {
   return useQuery({
     queryKey: queryKeys.settings.detail,
@@ -11,6 +12,7 @@ export function useSettingsQuery() {
   })
 }
 
+// Settings page mutation: persist settings changes.
 export function useSaveSettings() {
   const queryClient = useQueryClient()
   return useMutation({

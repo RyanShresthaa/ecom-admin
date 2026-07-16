@@ -1,3 +1,4 @@
+// Table helper: search/filter/sort/paginate list responses for data grids.
 export function paginateList(rows, query = {}, options = {}) {
   const { page = 0, pageSize = 10, search = '', sorting = [] } = query
   const { searchFields = [], filterFn } = options
@@ -53,10 +54,12 @@ export function paginateList(rows, query = {}, options = {}) {
   }
 }
 
+// Auth helper: strips sensitive password from user payloads.
 export function toPublicUser({ password: _password, ...user }) {
   return user
 }
 
+// Dashboard metrics: computes KPI totals and period-over-period changes.
 export function computeDashboardStats(db) {
   const orders = db.orders
   const customers = db.customers
@@ -116,6 +119,7 @@ export function computeDashboardStats(db) {
   }
 }
 
+// Dashboard chart: builds daily revenue/orders/itemsSold series.
 export function computeSalesSeries(db, days = 14) {
   const series = []
   for (let i = days - 1; i >= 0; i--) {
@@ -141,6 +145,7 @@ export function computeSalesSeries(db, days = 14) {
   return series
 }
 
+// Customer stats sync: refreshes order count, LTV, AOV, and last order date.
 export function syncCustomerStats(db, customerId) {
   const customer = db.customers.find((c) => c.id === customerId)
   if (!customer) return
@@ -156,15 +161,18 @@ export function syncCustomerStats(db, customerId) {
     activeOrders.length > 0 ? Math.round((customer.lifetimeValue / activeOrders.length) * 100) / 100 : 0
 }
 
+// Order classifier: true when order is refunded or returned.
 function isRefundedOrder(order) {
   return order.paymentStatus === 'Refunded' || order.deliveryStatus === 'Returned'
 }
 
 /** Active orders count toward revenue/sold; refunds and returns are excluded. */
+// Revenue classifier: true when order contributes to revenue.
 function isRevenueOrder(order) {
   return !isRefundedOrder(order)
 }
 
+// Catalog cleanup: removes product lines from orders and recalculates totals/stats.
 export function removeProductFromOrders(db, productId) {
   const affectedCustomers = new Set()
 
@@ -189,6 +197,7 @@ export function removeProductFromOrders(db, productId) {
   }
 }
 
+// Inventory helper: reapplies global low-stock threshold across all rows.
 export function syncInventoryLowStock(db) {
   const threshold = db.settings.lowStockThreshold
   for (const item of db.inventory) {
@@ -200,10 +209,12 @@ export function syncInventoryLowStock(db) {
 const COMPLAINT_PATTERN =
   /complaint|complained|damaged|defective|wrong item|missing item|poor quality|not as described|broken|issue with/i
 
+// NLP-lite helper: detects complaint-like text phrases.
 export function isComplaintText(text) {
   return COMPLAINT_PATTERN.test(String(text || ''))
 }
 
+// Stock helper: reads stock from variants when available, else product.stock.
 export function getEffectiveStock(product) {
   if (product.variants?.length) {
     return product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
@@ -212,12 +223,14 @@ export function getEffectiveStock(product) {
 }
 
 /** Inventory is the source of truth for on-hand quantity when rows exist. */
+// Stock helper: sums inventory quantities for one product.
 export function getInventoryStockTotal(db, productId) {
   const items = (db.inventory || []).filter((item) => item.productId === productId)
   if (items.length === 0) return null
   return items.reduce((sum, item) => sum + (item.stockQuantity || 0), 0)
 }
 
+// Product row enricher: adds derived stock and product analytics fields.
 export function enrichProductRow(db, product) {
   const metrics = getProductMetrics(db, product.id)
   const inventoryStock = getInventoryStockTotal(db, product.id)
@@ -232,16 +245,19 @@ export function enrichProductRow(db, product) {
   }
 }
 
+// Sales classifier: true when order counts as sold quantity.
 function isSoldOrder(order) {
   return isRevenueOrder(order)
 }
 
+// Line helper: returns order lines belonging to a product id.
 function getOrderLinesForProduct(order, productId) {
   const id = String(productId || '').trim()
   if (!id) return []
   return (order.items || []).filter((line) => String(line.productId || '').trim() === id)
 }
 
+// Complaint collector: adds unique complaint notes/events for product analytics.
 function collectOrderComplaints(order, productId, complaints, complaintKeys) {
   const sources = [
     ...(order.internalNotes || []).map((note) => ({
@@ -279,6 +295,7 @@ function collectOrderComplaints(order, productId, complaints, complaintKeys) {
   }
 }
 
+// Product analytics: computes sold/refunded/pending qty, buyers, complaints, history.
 export function getProductMetrics(db, productId) {
   let soldQty = 0
   let refundedQty = 0
@@ -361,6 +378,7 @@ export function getProductMetrics(db, productId) {
   }
 }
 
+// Customer analytics helper: counts unique complaint entries in one order.
 function countOrderComplaints(order) {
   const keys = new Set()
   const sources = [
@@ -377,6 +395,7 @@ function countOrderComplaints(order) {
   return keys.size
 }
 
+// Customer analytics: computes sold/refunded quantities and complaint counts.
 export function getCustomerMetrics(db, customerId) {
   let soldQty = 0
   let refundedQty = 0
@@ -406,6 +425,7 @@ export function getCustomerMetrics(db, customerId) {
   }
 }
 
+// Customer row enricher: appends computed customer metrics for UI tables.
 export function enrichCustomerRow(db, customer) {
   const metrics = getCustomerMetrics(db, customer.id)
   return {
@@ -417,6 +437,7 @@ export function enrichCustomerRow(db, customer) {
   }
 }
 
+// Inventory planning: generates reorder suggestions with urgency classification.
 export function getReorderSuggestions(db, urgency) {
   const defaultThreshold = db.settings?.lowStockThreshold ?? 10
 

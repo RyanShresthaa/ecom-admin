@@ -24,6 +24,7 @@ import { useCreatePurchaseOrder, useReorderSuggestionsQuery } from '@/hooks/useI
 
 import { PO_SUPPLIERS } from '@/lib/constants'
 
+// Inventory page — dialog to create a purchase order with optional pre-filled line items.
 export function CreatePurchaseOrderDialog({ open, onOpenChange, prefillItems = [] }) {
   const [supplier, setSupplier] = useState(PO_SUPPLIERS[0])
   const [expectedDate, setExpectedDate] = useState('')
@@ -33,6 +34,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, prefillItems = [
   const createPO = useCreatePurchaseOrder()
   const { data: suggestions } = useReorderSuggestionsQuery({ urgency: 'all' })
 
+  // Reset form and map pre-filled reorder suggestions into line items on open.
   useEffect(() => {
     if (open) {
       setSupplier(PO_SUPPLIERS[0])
@@ -51,6 +53,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, prefillItems = [
     }
   }, [open, prefillItems])
 
+  // Add a low-stock suggestion as a new PO line item if not already included.
   function addSuggestion(suggestion) {
     if (items.some((it) => it.inventoryId === suggestion.inventoryId)) return
     setItems((prev) => [
@@ -66,14 +69,17 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, prefillItems = [
     ])
   }
 
+  // Update qty or unit cost on a single PO line item.
   function updateItem(index, field, value) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, [field]: value } : it)))
   }
 
+  // Suggestions not yet added to the current PO line items.
   const availableSuggestions = suggestions?.rows?.filter(
     (s) => !items.some((it) => it.inventoryId === s.inventoryId)
   )
 
+  // Validate and submit the purchase order to the API.
   function handleSubmit(e) {
     e.preventDefault()
     if (!supplier || items.length === 0) return
@@ -93,6 +99,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, prefillItems = [
     )
   }
 
+  // Sum of qty × unit cost across all line items.
   const total = items.reduce((s, it) => s + Number(it.qtyOrdered) * Number(it.unitCost), 0)
 
   return (

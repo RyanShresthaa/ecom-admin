@@ -4,6 +4,7 @@ import { ensureDb, isUsingPostgres } from './db.js'
 let app
 let ready
 
+// Lazy bootstrap: initialize DB + app once per serverless instance.
 async function getApp() {
   if (!ready) {
     ready = (async () => {
@@ -18,6 +19,7 @@ async function getApp() {
   return ready
 }
 
+// Vercel entrypoint: dispatch requests through the initialized Express app.
 export default async function handler(req, res) {
   try {
     const application = await getApp()

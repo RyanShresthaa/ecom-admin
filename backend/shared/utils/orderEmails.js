@@ -4,6 +4,7 @@
 import sendEmail from '../config/sendEmail.js';
 import { logger } from './logger.js';
 
+// Build order confirmation email template with summarized totals.
 export function orderConfirmationHtml({ name, orderId, summary, currency = 'INR' }) {
     const rows = summary.lines
         .map(
@@ -27,15 +28,18 @@ export function orderConfirmationHtml({ name, orderId, summary, currency = 'INR'
   `;
 }
 
+// Build order status update email template for customers.
 export function orderStatusHtml({ name, orderId, status }) {
     return `<h2>Order update</h2><p>Hi ${name},</p><p>Order <strong>${orderId}</strong> status: <strong>${status}</strong></p>`;
 }
 
+// Build low-stock alert email template for sellers.
 export function lowStockHtml({ name, products }) {
     const list = products.map((p) => `<li>${p.name} — ${p.stock} left</li>`).join('');
     return `<h2>Low stock alert</h2><p>Hi ${name},</p><ul>${list}</ul>`;
 }
 
+// Send order confirmation email through the shared mail queue.
 export async function sendOrderConfirmation({ user, orderId, summary }) {
     try {
         await sendEmail({
@@ -48,6 +52,7 @@ export async function sendOrderConfirmation({ user, orderId, summary }) {
     }
 }
 
+// Send order status change notification email to the customer.
 export async function sendOrderStatusEmail({ user, orderId, status }) {
     try {
         await sendEmail({
@@ -60,6 +65,7 @@ export async function sendOrderStatusEmail({ user, orderId, status }) {
     }
 }
 
+// Send low-stock alert email to the store owner.
 export async function sendLowStockAlert({ seller, products }) {
     try {
         await sendEmail({

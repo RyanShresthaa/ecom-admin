@@ -28,6 +28,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 import { CATEGORIES } from '@/lib/constants'
 
+// Products list page — searchable catalog table with create, edit, delete, and CSV tools.
 export default function Products() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
@@ -41,6 +42,7 @@ export default function Products() {
 
   const debouncedSearch = useDebouncedValue(search)
 
+  // Build API query params from pagination, sorting, search, category, and status filters.
   const params = useMemo(
     () => ({
       page: pagination.pageIndex,
@@ -59,6 +61,7 @@ export default function Products() {
   const updateProduct = useUpdateProduct()
   const deleteProduct = useDeleteProduct()
 
+  // Reset to page 0 when category or status filter changes.
   function handleFilterChange(setter) {
     return (value) => {
       setter(value)
@@ -66,16 +69,19 @@ export default function Products() {
     }
   }
 
+  // Open the product form dialog in create mode (no existing product).
   function openAddDialog() {
     setEditingProduct(null)
     setFormOpen(true)
   }
 
+  // Open the product form dialog pre-filled with the selected row's data.
   function openEditDialog(product) {
     setEditingProduct(product)
     setFormOpen(true)
   }
 
+  // Route form submission to create or update mutation based on edit mode.
   function handleFormSubmit(values) {
     if (editingProduct) {
       updateProduct.mutate(
@@ -93,6 +99,7 @@ export default function Products() {
     }
   }
 
+  // Permanently delete the product pending in the confirm dialog.
   function handleDeleteConfirm() {
     deleteProduct.mutate(deletingProduct.id, {
       onSuccess: () => setDeletingProduct(null),

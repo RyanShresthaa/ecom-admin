@@ -6,6 +6,7 @@ import Login from '@/pages/Login'
 import Register from '@/pages/Register'
 import Account from '@/pages/Account'
 
+// Root router — shop, product detail, auth, and account pages inside shared layout.
 export default function App() {
   return (
     <Routes>

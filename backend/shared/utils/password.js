@@ -3,6 +3,7 @@
  */
 const MIN_LENGTH = Number(process.env.PASSWORD_MIN_LENGTH || 8);
 
+// Validate password strength rules for authentication security.
 export function validatePasswordStrength(password) {
     if (!password || typeof password !== 'string') {
         return 'Password is required';

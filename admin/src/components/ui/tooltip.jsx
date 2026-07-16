@@ -3,10 +3,14 @@ import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 import { cn } from '@/lib/utils'
 
+// Tooltip provider for shared hover/focus delay configuration.
 const TooltipProvider = TooltipPrimitive.Provider
+// Tooltip root that controls open state and positioning.
 const Tooltip = TooltipPrimitive.Root
+// Tooltip trigger that anchors tooltip interactions.
 const TooltipTrigger = TooltipPrimitive.Trigger
 
+// Tooltip content bubble with offset and animation styling.
 const TooltipContent = React.forwardRef(({ className, sideOffset = 6, ...props }, ref) => (
   <TooltipPrimitive.Content
     ref={ref}

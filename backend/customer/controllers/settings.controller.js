@@ -5,6 +5,7 @@ import { getAllSettings, getShopSettingsMap, upsertSetting } from '../../shared/
 import { logAudit } from '../../shared/models/audit.model.js';
 import { getClientIp, getUserAgent } from '../../shared/utils/requestMeta.js';
 
+// GET /api/shop/settings — returns public store settings for checkout.
 export async function getPublicSettingsController(_req, res) {
     try {
         const data = await getShopSettingsMap();
@@ -14,6 +15,7 @@ export async function getPublicSettingsController(_req, res) {
     }
 }
 
+// GET /api/shop/settings/admin — returns full settings for admin/staff.
 export async function getAdminSettingsController(_req, res) {
     try {
         const data = await getAllSettings();
@@ -23,6 +25,7 @@ export async function getAdminSettingsController(_req, res) {
     }
 }
 
+// PUT /api/shop/settings — updates tax, shipping, and store settings.
 export async function updateSettingsController(req, res) {
     try {
         const { settings } = req.body;
@@ -45,3 +48,4 @@ export async function updateSettingsController(req, res) {
         return res.status(500).json({ message: e.message, error: true, success: false });
     }
 }
+

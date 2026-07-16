@@ -4,6 +4,7 @@
 import { addWishlist, removeWishlist, findWishlistByUser } from '../../shared/models/wishlist.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 
+// GET /api/wishlist/get — returns current user's wishlist items.
 export async function getWishlistController(req, res) {
     try {
         const data = await findWishlistByUser(req.userId);
@@ -13,6 +14,7 @@ export async function getWishlistController(req, res) {
     }
 }
 
+// POST /api/wishlist/add — adds a product to user's wishlist.
 export async function addWishlistController(req, res) {
     try {
         const productId = pickId(req.body.productId);
@@ -26,6 +28,7 @@ export async function addWishlistController(req, res) {
     }
 }
 
+// DELETE /api/wishlist/remove — removes a product from wishlist.
 export async function removeWishlistController(req, res) {
     try {
         await removeWishlist(req.userId, pickId(req.body.productId));
@@ -34,3 +37,4 @@ export async function removeWishlistController(req, res) {
         return res.status(500).json({ message: e.message, error: true, success: false });
     }
 }
+

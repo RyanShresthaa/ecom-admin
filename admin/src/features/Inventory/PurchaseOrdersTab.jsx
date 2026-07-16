@@ -27,6 +27,7 @@ import { createColumnHelper } from '@tanstack/react-table'
 
 const columnHelper = createColumnHelper()
 
+// Badge color variants keyed by purchase order status.
 const STATUS_VARIANTS = {
   draft: 'muted',
   sent: 'default',
@@ -35,6 +36,7 @@ const STATUS_VARIANTS = {
   cancelled: 'destructive',
 }
 
+// Allowed status transitions for each purchase order state.
 const STATUS_TRANSITIONS = {
   draft: ['sent', 'cancelled'],
   sent: ['partial', 'received', 'cancelled'],
@@ -43,6 +45,7 @@ const STATUS_TRANSITIONS = {
   cancelled: [],
 }
 
+// Purchase orders tab — inline dropdown to advance PO status through allowed transitions.
 function POStatusDropdown({ po }) {
   const updateStatus = useUpdatePurchaseOrderStatus()
   const options = STATUS_TRANSITIONS[po.status] || []
@@ -72,6 +75,7 @@ function POStatusDropdown({ po }) {
   )
 }
 
+// Inventory purchase orders tab — searchable list with status filter and create-PO action.
 export function PurchaseOrdersTab({ onCreatePO }) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
@@ -82,6 +86,7 @@ export function PurchaseOrdersTab({ onCreatePO }) {
   const { can } = usePermissions()
   const canWrite = can(PERMISSIONS.INVENTORY_WRITE)
 
+  // Build API query params from pagination, sorting, search, and status filter.
   const params = useMemo(
     () => ({
       page: pagination.pageIndex,
@@ -95,6 +100,7 @@ export function PurchaseOrdersTab({ onCreatePO }) {
 
   const { data, isLoading, isFetching, refetch } = usePurchaseOrdersQuery(params)
 
+  // Reset to page 0 whenever a filter or search value changes.
   function resetPage(setter) {
     return (value) => {
       setter(value)
@@ -102,6 +108,7 @@ export function PurchaseOrdersTab({ onCreatePO }) {
     }
   }
 
+  // Column definitions for the purchase orders DataTable.
   const columns = useMemo(
     () => [
       columnHelper.accessor('id', {

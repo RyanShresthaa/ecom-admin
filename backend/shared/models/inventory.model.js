@@ -1,3 +1,4 @@
+// inventory model: handles inventory table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `warehouses`, `warehouse_stock`, `stock_movements` — multi-location inventory + audit trail.
  */
@@ -6,6 +7,7 @@ import { mapRow, mapRows } from '../utils/sql.js';
 
 let defaultWarehouseIdCache = null;
 
+// inventory model: getDefaultWarehouseId reads and returns records.
 export async function getDefaultWarehouseId(client = null) {
     if (defaultWarehouseIdCache && !client) return defaultWarehouseIdCache;
     const q = client || pool;
@@ -15,16 +17,19 @@ export async function getDefaultWarehouseId(client = null) {
     return id;
 }
 
+// inventory model: invalidateDefaultWarehouseCache runs model logic/query operations.
 export function invalidateDefaultWarehouseCache() {
     defaultWarehouseIdCache = null;
 }
 
+// inventory model: listWarehouses reads and returns records.
 export async function listWarehouses(client = null) {
     const q = client || pool;
     const r = await q.query(`SELECT * FROM warehouses ORDER BY is_default DESC, id`);
     return mapRows(r.rows);
 }
 
+// inventory model: createWarehouseRecord creates a new record.
 export async function createWarehouseRecord({ code, name, is_default = false }, client = null) {
     const q = client || pool;
     const r = await q.query(
@@ -35,6 +40,7 @@ export async function createWarehouseRecord({ code, name, is_default = false }, 
     return mapRow(r.rows[0]);
 }
 
+// inventory model: getWarehouseStockForProduct reads and returns records.
 export async function getWarehouseStockForProduct(productId, { forUpdate = false, client = null } = {}) {
     const q = client || pool;
     const lock = forUpdate ? 'FOR UPDATE OF ws' : '';
@@ -50,6 +56,7 @@ export async function getWarehouseStockForProduct(productId, { forUpdate = false
     return r.rows;
 }
 
+// inventory model: sumNonDefaultWarehouseQty reads and returns records.
 export async function sumNonDefaultWarehouseQty(productId, client) {
     const r = await client.query(
         `SELECT COALESCE(SUM(ws.quantity), 0)::bigint AS s
@@ -61,6 +68,7 @@ export async function sumNonDefaultWarehouseQty(productId, client) {
     return Number(r.rows[0]?.s || 0);
 }
 
+// inventory model: insertStockMovement creates a new record.
 export async function insertStockMovement(
     client,
     {
@@ -96,6 +104,7 @@ export async function insertStockMovement(
     );
 }
 
+// inventory model: listStockMovements reads and returns records.
 export async function listStockMovements({ productId, limit = 100, skip = 0 } = {}) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -119,6 +128,7 @@ export async function listStockMovements({ productId, limit = 100, skip = 0 } = 
     return mapRows(r.rows);
 }
 
+// inventory model: upsertWarehouseQuantity runs model logic/query operations.
 export async function upsertWarehouseQuantity(client, warehouseId, productId, deltaQty) {
     await client.query(
         `INSERT INTO warehouse_stock (warehouse_id, product_id, quantity)
@@ -135,6 +145,7 @@ export async function upsertWarehouseQuantity(client, warehouseId, productId, de
     return Number(r.rows[0]?.quantity ?? 0);
 }
 
+// inventory model: setWarehouseQuantityAbsolute runs model logic/query operations.
 export async function setWarehouseQuantityAbsolute(client, warehouseId, productId, qty) {
     const q = Math.max(0, Math.floor(Number(qty)));
     await client.query(
@@ -151,6 +162,7 @@ export async function setWarehouseQuantityAbsolute(client, warehouseId, productI
     return Number(r.rows[0]?.quantity ?? 0);
 }
 
+// inventory model: syncProductAggregatedStock runs model logic/query operations.
 export async function syncProductAggregatedStock(client, productId) {
     await client.query(
         `UPDATE products SET stock = (
@@ -159,3 +171,4 @@ export async function syncProductAggregatedStock(client, productId) {
         [productId],
     );
 }
+

@@ -1,8 +1,10 @@
+// emailQueue model: handles emailQueue table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `email_queue` — outbound mail when `EMAIL_USE_QUEUE=true`.
  */
 import pool from '../config/connectDB.js';
 
+// emailQueue model: enqueueEmail creates a new record.
 export async function enqueueEmail({ sendTo, subject, html, text }) {
     const r = await pool.query(
         `INSERT INTO email_queue (send_to, subject, html, text, status)
@@ -12,6 +14,7 @@ export async function enqueueEmail({ sendTo, subject, html, text }) {
     return r.rows[0].id;
 }
 
+// emailQueue model: fetchPendingEmails reads and returns records.
 export async function fetchPendingEmails(limit = 20) {
     const r = await pool.query(
         `SELECT id, send_to, subject, html, text, attempts
@@ -24,6 +27,7 @@ export async function fetchPendingEmails(limit = 20) {
     return r.rows;
 }
 
+// emailQueue model: markEmailSent updates existing records.
 export async function markEmailSent(id) {
     await pool.query(
         `UPDATE email_queue SET status = 'sent', sent_at = NOW() WHERE id = $1`,
@@ -31,6 +35,7 @@ export async function markEmailSent(id) {
     );
 }
 
+// emailQueue model: markEmailFailed updates existing records.
 export async function markEmailFailed(id, errorMessage) {
     await pool.query(
         `UPDATE email_queue
@@ -40,3 +45,4 @@ export async function markEmailFailed(id, errorMessage) {
         [id, errorMessage?.slice(0, 500) || 'unknown'],
     );
 }
+

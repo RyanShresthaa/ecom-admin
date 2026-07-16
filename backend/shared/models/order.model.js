@@ -1,3 +1,4 @@
+// order model: handles order table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `orders` — insert/list/update, revenue helpers, `mapOrder`.
  */
@@ -5,12 +6,14 @@ import pool from '../config/connectDB.js';
 import { mapRow, pickId } from '../utils/sql.js';
 import { findAddressById } from './address.model.js';
 
+// order model: mapOrder reads and returns records.
 export function mapOrder(row) {
     if (!row) return null;
     const o = mapRow(row);
     o.userId = o.user_id;
     o.orderId = o.order_id;
     o.productId = o.product_id;
+    o.variantId = o.variant_id || row.variant_id || null;
     o.product_details = row.product_details || {};
     o.paymentId = o.payment_id;
     o.subTotalAmt = Number(o.sub_total_amt);
@@ -24,6 +27,10 @@ export function mapOrder(row) {
     o.couponDiscount = Number(row.coupon_discount ?? 0);
     o.invoiceReceipt = row.invoice_receipt;
     o.stockRestored = Boolean(row.stock_restored);
+    o.trackingNumber = row.tracking_number || null;
+    o.carrier = row.carrier || null;
+    o.shippedAt = row.shipped_at || null;
+    o.deliveredAt = row.delivered_at || null;
     return o;
 }
 
@@ -34,6 +41,7 @@ export const REVENUE_EXCLUDE_SQL = `(
   OR payment_status ILIKE 'refunded'
 )`;
 
+// order model: attachAddress builds enriched response data.
 async function attachAddress(order) {
     if (!order?.delivery_address) return order;
     const addr = await findAddressById(pickId(order.delivery_address));
@@ -41,6 +49,7 @@ async function attachAddress(order) {
 }
 
 /** Batch-load addresses (2 queries max) instead of 1 per order line. */
+// order model: attachAddressesMany builds enriched response data.
 async function attachAddressesMany(orders) {
     if (!orders?.length) return [];
     const ids = [
@@ -62,6 +71,7 @@ async function attachAddressesMany(orders) {
 
 const ORDER_GROUP_KEY = `COALESCE(NULLIF(TRIM(order_id), ''), 'row-' || id::text)`;
 
+// order model: insertOrders creates a new record.
 export async function insertOrders(rows) {
     const created = [];
     for (const row of rows) {
@@ -86,6 +96,7 @@ export async function insertOrders(rows) {
     return created;
 }
 
+// order model: findOrdersByUser reads and returns records.
 export async function findOrdersByUser(userId) {
     const r = await pool.query(
         `SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
@@ -94,6 +105,7 @@ export async function findOrdersByUser(userId) {
     return attachAddressesMany(r.rows.map(mapOrder));
 }
 
+// order model: findAllOrders reads and returns records.
 export async function findAllOrders({ includeAddress = true } = {}) {
     const r = await pool.query(`SELECT * FROM orders ORDER BY created_at DESC`);
     const mapped = r.rows.map(mapOrder);
@@ -105,6 +117,7 @@ export async function findAllOrders({ includeAddress = true } = {}) {
  * Paginated admin order groups (one row per checkout / order_id).
  * Avoids downloading every line + N+1 addresses for the Orders table.
  */
+// order model: findAdminOrderGroups reads and returns records.
 export async function findAdminOrderGroups({
     page = 1,
     limit = 10,
@@ -162,6 +175,7 @@ export async function findAdminOrderGroups({
           MAX(user_id) AS user_id,
           (ARRAY_AGG(delivery_status ORDER BY id DESC))[1] AS delivery_status,
           (ARRAY_AGG(payment_status ORDER BY id DESC))[1] AS payment_status,
+          (ARRAY_AGG(payment_id ORDER BY id DESC))[1] AS payment_id,
           MAX(total_amt)::float AS total_amt,
           MAX(created_at) AS created_at,
           ARRAY_AGG(id ORDER BY id) AS line_ids,
@@ -193,6 +207,7 @@ export async function findAdminOrderGroups({
         g.user_id,
         g.delivery_status,
         g.payment_status,
+        g.payment_id,
         g.total_amt,
         g.created_at,
         g.line_ids,
@@ -219,6 +234,7 @@ export async function findAdminOrderGroups({
         customerEmail: row.customer_email || '',
         deliveryStatus: row.delivery_status || 'Pending',
         paymentStatus: row.payment_status || '',
+        paymentId: row.payment_id || '',
         totalAmount: Number(row.total_amt || 0),
         date: row.created_at,
         items: Array.isArray(row.items) ? row.items.map((it) => ({
@@ -240,6 +256,7 @@ export async function findAdminOrderGroups({
 }
 
 /** Order lines for one product (analytics) — avoids /order/all. */
+// order model: findOrderLinesByProductId reads and returns records.
 export async function findOrderLinesByProductId(productId, { limit = 500 } = {}) {
     const pid = pickId(productId);
     if (!pid) return [];
@@ -251,6 +268,7 @@ export async function findOrderLinesByProductId(productId, { limit = 500 } = {})
 }
 
 /** Per-user order counts + spend for customers table. */
+// order model: findUserOrderStats reads and returns records.
 export async function findUserOrderStats() {
     const r = await pool.query(
         `SELECT
@@ -269,6 +287,7 @@ export async function findUserOrderStats() {
 }
 
 /** Last N days of revenue (by line_total) for dashboard chart. */
+// order model: findSalesSeries reads and returns records.
 export async function findSalesSeries(days = 14) {
     const safeDays = Math.min(90, Math.max(1, Number(days) || 14));
     const r = await pool.query(
@@ -289,12 +308,14 @@ export async function findSalesSeries(days = 14) {
     }));
 }
 
+// order model: findOrderById reads and returns records.
 export async function findOrderById(id) {
     const r = await pool.query(`SELECT * FROM orders WHERE id = $1`, [id]);
     return mapOrder(r.rows[0]);
 }
 
 /** All order line rows sharing the same logical `order_id` (one checkout). */
+// order model: findOrdersByOrderGroupId reads and returns records.
 export async function findOrdersByOrderGroupId(orderIdStr) {
     const key = String(orderIdStr || '');
     let r;
@@ -307,6 +328,7 @@ export async function findOrdersByOrderGroupId(orderIdStr) {
     return attachAddressesMany(r.rows.map(mapOrder));
 }
 
+// order model: updateOrder updates existing records.
 export async function updateOrder(id, data) {
     const r = await pool.query(
         `UPDATE orders SET
@@ -316,18 +338,43 @@ export async function updateOrder(id, data) {
               WHEN $3::boolean IS NULL THEN stock_restored
               ELSE $3::boolean
             END,
+            tracking_number = CASE WHEN $4::boolean THEN $5 ELSE tracking_number END,
+            carrier = CASE WHEN $6::boolean THEN $7 ELSE carrier END,
+            shipped_at = COALESCE($8::timestamptz, shipped_at),
+            delivered_at = COALESCE($9::timestamptz, delivered_at),
             updated_at = NOW()
-         WHERE id = $4 RETURNING *`,
+         WHERE id = $10 RETURNING *`,
         [
             data.delivery_status ?? null,
             data.payment_status ?? null,
             data.stock_restored === undefined ? null : Boolean(data.stock_restored),
+            data.tracking_number !== undefined,
+            data.tracking_number !== undefined ? data.tracking_number : null,
+            data.carrier !== undefined,
+            data.carrier !== undefined ? data.carrier : null,
+            data.shipped_at ?? null,
+            data.delivered_at ?? null,
             id,
         ],
     );
     return mapOrder(r.rows[0]);
 }
 
+/** Patch fulfillment fields only (tracking / timestamps). */
+// order model: updateOrderFulfillment updates existing records.
+export async function updateOrderFulfillment(id, data) {
+    return updateOrder(id, {
+        tracking_number: data.tracking_number,
+        carrier: data.carrier,
+        shipped_at: data.shipped_at,
+        delivered_at: data.delivered_at,
+        delivery_status: data.delivery_status,
+        payment_status: data.payment_status,
+        stock_restored: data.stock_restored,
+    });
+}
+
+// order model: updateOrdersPayment updates existing records.
 export async function updateOrdersPayment(orderIds, paymentId, userId) {
     await pool.query(
         `UPDATE orders SET payment_id = $1, payment_status = 'paid', updated_at = NOW()
@@ -336,6 +383,16 @@ export async function updateOrdersPayment(orderIds, paymentId, userId) {
     );
 }
 
+/** First order line with this payment_id (used to prevent double Stripe fulfillment). */
+// order model: findOrdersByPaymentId reads and returns records.
+export async function findOrdersByPaymentId(paymentId) {
+    const key = String(paymentId || '').trim();
+    if (!key) return [];
+    const r = await pool.query(`SELECT * FROM orders WHERE payment_id = $1 ORDER BY id LIMIT 50`, [key]);
+    return attachAddressesMany(r.rows.map(mapOrder));
+}
+
+// order model: countOrders reads and returns records.
 export async function countOrders() {
     const r = await pool.query(
         `SELECT COUNT(DISTINCT COALESCE(NULLIF(order_id, ''), 'row-' || id::text))::int AS c FROM orders`,
@@ -344,6 +401,7 @@ export async function countOrders() {
 }
 
 /** Sum line totals (avoids double-counting repeated order-level total_amt on multi-item orders). */
+// order model: sumRevenue reads and returns records.
 export async function sumRevenue() {
     const r = await pool.query(
         `SELECT COALESCE(SUM(line_total), 0)::float AS total
@@ -352,3 +410,4 @@ export async function sumRevenue() {
     );
     return r.rows[0].total;
 }
+

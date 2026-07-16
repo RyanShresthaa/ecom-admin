@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
-import { CalendarBlank, Plus } from '@phosphor-icons/react'
+import { CalendarBlank, DownloadSimple, Plus, SpinnerGap } from '@phosphor-icons/react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,11 +18,12 @@ import { DataTableToolbar } from '@/components/common/DataTableToolbar'
 import { getOrderColumns } from '@/features/Orders/columns'
 import { BulkStatusBar } from '@/features/Orders/BulkStatusBar'
 import { CreateOrderDialog } from '@/features/Orders/CreateOrderDialog'
-import { useOrdersQuery } from '@/hooks/useOrders'
+import { useExportOrdersMonthCsv, useOrdersQuery } from '@/hooks/useOrders'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
+// Orders list page — searchable, filterable table with bulk actions and CSV export.
 export default function Orders() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
@@ -34,11 +35,17 @@ export default function Orders() {
   const [sorting, setSorting] = useState([{ id: 'date', desc: true }])
   const [rowSelection, setRowSelection] = useState({})
   const [createOpen, setCreateOpen] = useState(false)
+  const now = new Date()
+  const [exportMonth, setExportMonth] = useState(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  )
 
   const debouncedSearch = useDebouncedValue(search)
   const { can } = usePermissions()
   const canWrite = can(PERMISSIONS.ORDERS_WRITE)
+  const exportMonthCsv = useExportOrdersMonthCsv()
 
+  // Build API query params from pagination, sorting, filters, and debounced search.
   const params = useMemo(
     () => ({
       page: pagination.pageIndex,
@@ -55,6 +62,7 @@ export default function Orders() {
 
   const { data, isLoading, isFetching, refetch } = useOrdersQuery(params)
 
+  // Reset to page 0 whenever a filter or search value changes.
   function resetPage(setter) {
     return (value) => {
       setter(value)
@@ -62,8 +70,16 @@ export default function Orders() {
     }
   }
 
+  // Download orders for the selected month as a CSV file.
+  function handleExportMonth() {
+    const [y, m] = exportMonth.split('-').map(Number)
+    exportMonthCsv.mutate({ year: y, month: m })
+  }
+
+  // Collect IDs of rows checked for bulk status updates.
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id])
 
+  // Configure table columns with row selection and navigation to order detail.
   const columns = useMemo(
     () =>
       getOrderColumns({
@@ -81,12 +97,37 @@ export default function Orders() {
         title="Orders"
         description="Track, update, and review every order placed in your store."
         actions={
-          canWrite && (
-            <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
-              <Plus size={15} weight="bold" />
-              Create order
-            </Button>
-          )
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-md border border-input bg-card px-2 shadow-soft">
+              <Input
+                type="month"
+                value={exportMonth}
+                onChange={(e) => setExportMonth(e.target.value)}
+                className="h-9 w-[150px] border-0 px-1 shadow-none focus-visible:ring-0"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={handleExportMonth}
+                disabled={exportMonthCsv.isPending || !exportMonth}
+              >
+                {exportMonthCsv.isPending ? (
+                  <SpinnerGap size={14} className="animate-spin" />
+                ) : (
+                  <DownloadSimple size={14} />
+                )}
+                Export month CSV
+              </Button>
+            </div>
+            {canWrite && (
+              <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
+                <Plus size={15} weight="bold" />
+                Create order
+              </Button>
+            )}
+          </div>
         }
       />
 

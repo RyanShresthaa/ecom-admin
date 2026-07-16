@@ -3,6 +3,7 @@ import * as SeparatorPrimitive from '@radix-ui/react-separator'
 
 import { cn } from '@/lib/utils'
 
+// Visual divider that supports horizontal and vertical orientation.
 const Separator = React.forwardRef(
   ({ className, orientation = 'horizontal', decorative = true, ...props }, ref) => (
     <SeparatorPrimitive.Root

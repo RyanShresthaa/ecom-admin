@@ -1,3 +1,4 @@
+// Page heading row with optional subtitle and right-aligned action buttons (used on every feature page).
 export function PageHeader({ title, description, actions }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

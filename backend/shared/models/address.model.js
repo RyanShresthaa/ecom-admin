@@ -1,9 +1,11 @@
+// address model: handles address table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `addresses` — user delivery addresses.
  */
 import pool from '../config/connectDB.js';
 import { mapRow, mapRows } from '../utils/sql.js';
 
+// address model: createAddress creates a new record.
 export async function createAddress(data) {
     const r = await pool.query(
         `INSERT INTO addresses (user_id, address_line, city, state, pincode, country, mobile)
@@ -21,6 +23,7 @@ export async function createAddress(data) {
     return mapRow(r.rows[0]);
 }
 
+// address model: findAddressesByUser reads and returns records.
 export async function findAddressesByUser(userId) {
     const r = await pool.query(
         `SELECT * FROM addresses WHERE user_id = $1 ORDER BY created_at DESC`,
@@ -29,6 +32,7 @@ export async function findAddressesByUser(userId) {
     return mapRows(r.rows);
 }
 
+// address model: updateAddress updates existing records.
 export async function updateAddress(id, userId, data) {
     const r = await pool.query(
         `UPDATE addresses SET
@@ -55,16 +59,20 @@ export async function updateAddress(id, userId, data) {
     return mapRow(r.rows[0]);
 }
 
+// address model: deleteAddress deletes matching records.
 export async function deleteAddress(id, userId) {
     await pool.query(`DELETE FROM addresses WHERE id = $1 AND user_id = $2`, [id, userId]);
 }
 
+// address model: findAddressById reads and returns records.
 export async function findAddressById(id) {
     const r = await pool.query(`SELECT * FROM addresses WHERE id = $1`, [id]);
     return mapRow(r.rows[0]);
 }
 
+// address model: findAddressByIdAndUser reads and returns records.
 export async function findAddressByIdAndUser(id, userId) {
     const r = await pool.query(`SELECT * FROM addresses WHERE id = $1 AND user_id = $2`, [id, userId]);
     return mapRow(r.rows[0]);
 }
+

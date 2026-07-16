@@ -3,6 +3,7 @@
  */
 import { logger } from '../utils/logger.js';
 
+// Run production-only configuration checks before API startup.
 export function runProductionChecks() {
     if (process.env.NODE_ENV !== 'production') return;
 
@@ -27,10 +28,12 @@ export function runProductionChecks() {
         warnings.push('Set TRUST_PROXY_HOPS=1 when behind nginx/Cloudflare');
     }
 
+    // Emit deployment warnings without blocking startup by default.
     for (const w of warnings) {
         logger.warn(`[production] ${w}`);
     }
 
+    // Optionally fail fast in strict environments when warnings exist.
     if (warnings.length && process.env.STRICT_PRODUCTION === 'true') {
         throw new Error(`Production config incomplete: ${warnings.join('; ')}`);
     }

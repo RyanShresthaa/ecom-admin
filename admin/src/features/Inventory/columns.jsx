@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 
 const columnHelper = createColumnHelper()
 
+// Inventory stock tab — column definitions for the inventory DataTable.
 export function getInventoryColumns({ onAdjust, canWrite = false }) {
   const columns = [
     columnHelper.accessor('productName', {
@@ -76,6 +77,7 @@ export function getInventoryColumns({ onAdjust, canWrite = false }) {
     }),
   ]
 
+  // Append adjust-stock action column when user has inventory write access.
   if (canWrite) {
     columns.push(
       columnHelper.display({

@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/common/PageHeader'
 import { useSettingsQuery, useSaveSettings } from '@/hooks/useSettings'
 
+// Settings page — supported default currencies for store pricing and reporting.
 const CURRENCIES = [
   { code: 'USD', label: 'US Dollar (USD)' },
   { code: 'EUR', label: 'Euro (EUR)' },
@@ -26,6 +27,7 @@ const CURRENCIES = [
   { code: 'JPY', label: 'Japanese Yen (JPY)' },
 ]
 
+// Settings page — regions available for tax rules and regional preferences.
 const REGIONS = [
   'United States',
   'United Kingdom',
@@ -36,6 +38,7 @@ const REGIONS = [
   'Singapore',
 ]
 
+// Settings page — timezone options for store-wide date and time display.
 const TIMEZONES = [
   'America/New_York',
   'America/Los_Angeles',
@@ -49,16 +52,19 @@ const TIMEZONES = [
 
 let nextTaxId = 1000
 
+// Settings page — manage store name, currency, region, timezone, and tax rules.
 export default function Settings() {
   const { data, isLoading } = useSettingsQuery()
   const saveSettings = useSaveSettings()
 
   const [form, setForm] = useState(null)
 
+  // Settings page — copy fetched settings into local form state once on load.
   useEffect(() => {
     if (data && !form) setForm(data)
   }, [data, form])
 
+  // Settings page — skeleton layout while settings are loading from the API.
   if (isLoading || !form) {
     return (
       <div className="flex flex-col gap-5">
@@ -69,10 +75,12 @@ export default function Settings() {
     )
   }
 
+  // Settings page — update a top-level store preference field in local form state.
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  // Settings page — update one field on an existing tax rule by id.
   function updateTaxRule(id, field, value) {
     setForm((prev) => ({
       ...prev,
@@ -80,6 +88,7 @@ export default function Settings() {
     }))
   }
 
+  // Settings page — append a blank tax rule row to the form.
   function addTaxRule() {
     setForm((prev) => ({
       ...prev,
@@ -90,10 +99,12 @@ export default function Settings() {
     }))
   }
 
+  // Settings page — remove a tax rule from the form by id.
   function removeTaxRule(id) {
     setForm((prev) => ({ ...prev, taxRules: prev.taxRules.filter((r) => r.id !== id) }))
   }
 
+  // Settings page — persist the current form values to the backend.
   function handleSave() {
     saveSettings.mutate(form)
   }

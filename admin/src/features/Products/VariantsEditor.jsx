@@ -21,12 +21,15 @@ import {
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 const COLORS = ['Black', 'White', 'Navy', 'Gray', 'Red', 'Blue', 'Green', 'Brown']
 
+// Product detail page — editable table for size/color/SKU/stock variant rows.
 export function VariantsEditor({ variants = [], onChange, readOnly = false }) {
+  // Update one field on a variant row by index.
   function updateVariant(index, field, value) {
     const next = variants.map((v, i) => (i === index ? { ...v, [field]: value } : v))
     onChange(next)
   }
 
+  // Append a new variant with default size, color, and zero stock.
   function addVariant() {
     const id = `VAR-NEW-${Date.now()}`
     onChange([
@@ -35,6 +38,7 @@ export function VariantsEditor({ variants = [], onChange, readOnly = false }) {
     ])
   }
 
+  // Remove a variant row by index.
   function removeVariant(index) {
     onChange(variants.filter((_, i) => i !== index))
   }

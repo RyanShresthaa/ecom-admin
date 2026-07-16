@@ -1,0 +1,41 @@
+// BullMQ queue names — one queue per background job domain.
+export const QUEUE_NAMES = {
+    EMAIL: 'email',
+    PAYMENT_WEBHOOK: 'payment-webhook',
+    INVENTORY: 'inventory',
+    IMAGE_PROCESSING: 'image-processing',
+    NOTIFICATION: 'notification',
+    INVOICE: 'invoice',
+    RETRY: 'retry',
+    ANALYTICS: 'analytics',
+    CACHE_INVALIDATION: 'cache-invalidation',
+    SCHEDULED: 'scheduled',
+    RECOMMENDATION: 'recommendation',
+    FRAUD_DETECTION: 'fraud-detection',
+    MACHINE_LEARNING: 'machine-learning',
+    WAREHOUSE_SYNC: 'warehouse-sync',
+    SEARCH_INDEX: 'search-index',
+}
+
+// Job names used within queues (BullMQ job.name).
+export const JOB_NAMES = {
+    EMAIL_SEND: 'send',
+    PAYMENT_WEBHOOK_EVENT: 'webhook-event',
+    INVENTORY_LOW_STOCK: 'low-stock-check',
+    INVENTORY_SYNC_NOTIFICATIONS: 'sync-low-stock-notifications',
+    INVENTORY_WAREHOUSE_SYNC: 'warehouse-sync',
+    IMAGE_PROCESS: 'process',
+    IMAGE_OPTIMIZE: 'optimize',
+    NOTIFICATION_CREATE: 'create',
+    INVOICE_GENERATE: 'generate',
+    RETRY_FAILED: 'retry-failed',
+    ANALYTICS_TRACK: 'track',
+    CACHE_BUST: 'bust',
+    SCHEDULED_CART_REMINDERS: 'cart-reminders',
+    SCHEDULED_COUPON_EXPIRY: 'coupon-expiry',
+    SCHEDULED_LOW_STOCK: 'low-stock-scan',
+    RECOMMENDATION_REBUILD: 'rebuild',
+    FRAUD_SCORE: 'score',
+    ML_TRAIN: 'train',
+    SEARCH_REINDEX: 'reindex',
+}

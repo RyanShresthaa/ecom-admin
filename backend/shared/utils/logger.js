@@ -24,6 +24,7 @@ function write(level, message, meta = {}) {
     else console.log(line);
 }
 
+// Handle logger utility logic for logger.
 export const logger = {
     error: (message, meta) => write('error', message, meta),
     warn: (message, meta) => write('warn', message, meta),

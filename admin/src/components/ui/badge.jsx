@@ -3,6 +3,7 @@ import { cva } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
 
+// Shared badge style variants for semantic status and tone options.
 const badgeVariants = cva(
   'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none',
   {
@@ -23,6 +24,7 @@ const badgeVariants = cva(
   }
 )
 
+// Compact badge wrapper for labels, counts, and status chips.
 function Badge({ className, variant, ...props }) {
   return <div className={cn(badgeVariants({ variant }), className)} {...props} />
 }

@@ -12,12 +12,15 @@ import { useDashboardStats, useSalesSeries } from '@/hooks/useDashboard'
 import { queryKeys } from '@/lib/queryKeys'
 import { formatCurrency, formatNumber, formatDate, cn } from '@/lib/utils'
 
+// Dashboard page — home overview with KPIs, sales chart, and recent orders.
 export default function Dashboard() {
+  // Dashboard page — chart day selection drives the orders table filter below.
   const [selectedDate, setSelectedDate] = useState(null)
   const queryClient = useQueryClient()
   const stats = useDashboardStats()
   const sales = useSalesSeries()
 
+  // Dashboard page — invalidate cached stats and sales data on manual refresh.
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all })
   }

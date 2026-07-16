@@ -1,6 +1,8 @@
 import pool from '../config/connectDB.js'
 import { mapRow, mapRows, pickId } from '../utils/sql.js'
 
+// notification model: handles notification table/entity CRUD and query helpers.
+// notification model: listNotifications reads and returns records.
 export async function listNotifications({ limit = 50 } = {}) {
   const r = await pool.query(
     `SELECT * FROM admin_notifications ORDER BY created_at DESC LIMIT $1`,
@@ -9,6 +11,7 @@ export async function listNotifications({ limit = 50 } = {}) {
   return mapRows(r.rows)
 }
 
+// notification model: createNotification creates a new record.
 export async function createNotification({ type, title, message, href, dedupeKey }) {
   if (dedupeKey) {
     const existing = await pool.query(`SELECT * FROM admin_notifications WHERE dedupe_key = $1`, [
@@ -24,6 +27,7 @@ export async function createNotification({ type, title, message, href, dedupeKey
   return mapRow(r.rows[0])
 }
 
+// notification model: markNotificationRead updates existing records.
 export async function markNotificationRead(id) {
   const r = await pool.query(
     `UPDATE admin_notifications SET read = true WHERE id = $1 RETURNING *`,
@@ -32,12 +36,14 @@ export async function markNotificationRead(id) {
   return mapRow(r.rows[0])
 }
 
+// notification model: markAllNotificationsRead updates existing records.
 export async function markAllNotificationsRead() {
   await pool.query(`UPDATE admin_notifications SET read = true WHERE read = false`)
   return { success: true }
 }
 
 /** Ensure a low-stock notification exists for each product under threshold. */
+// notification model: syncLowStockNotifications runs model logic/query operations.
 export async function syncLowStockNotifications() {
   const r = await pool.query(
     `SELECT id, name, stock, COALESCE(low_stock_threshold, 5) AS thr
@@ -55,3 +61,4 @@ export async function syncLowStockNotifications() {
     })
   }
 }
+

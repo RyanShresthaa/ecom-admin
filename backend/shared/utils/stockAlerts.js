@@ -5,6 +5,7 @@ import pool from '../config/connectDB.js';
 import { findUserById } from '../models/user.model.js';
 import { sendLowStockAlert } from './orderEmails.js';
 
+// Evaluate low-stock products and trigger seller alert emails.
 export async function checkLowStockForProducts(productIds) {
     if (!productIds?.length) return;
     const r = await pool.query(

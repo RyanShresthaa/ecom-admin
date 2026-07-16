@@ -24,10 +24,13 @@ import {
 
 const inventoryRouter = Router();
 
+// Warehouse directory management endpoints.
 inventoryRouter.get('/warehouses', auth, staff, listWarehousesController);
 inventoryRouter.post('/warehouses', auth, admin, validateBody(createWarehouseBodySchema), createWarehouseController);
+// Product-level stock visibility and movement history endpoints.
 inventoryRouter.get('/product/:productId/breakdown', auth, staff, getProductInventoryBreakdownController);
 inventoryRouter.get('/movements', auth, staff, listInventoryMovementsController);
+// Inventory mutation endpoints for add/remove/transfer operations.
 inventoryRouter.post('/add', auth, staff, validateBody(inventoryAddBodySchema), addStockController);
 inventoryRouter.post('/remove', auth, staff, validateBody(inventoryRemoveBodySchema), removeStockController);
 inventoryRouter.post('/transfer', auth, staff, validateBody(inventoryTransferBodySchema), transferStockController);

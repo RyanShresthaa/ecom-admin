@@ -2,12 +2,14 @@ import { Link, useParams } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  DownloadSimple,
   EnvelopeSimple,
   Phone,
   MapPin,
   ShoppingBag,
   CurrencyDollar,
   CalendarBlank,
+  SpinnerGap,
 } from '@phosphor-icons/react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,12 +19,14 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { PageLoader } from '@/components/common/PageLoader'
 import { DataTable } from '@/components/common/DataTable'
 import { PaymentStatusBadge } from '@/components/common/StatusBadge'
-import { useCustomerQuery, useCustomerOrdersQuery } from '@/hooks/useCustomers'
+import { useCustomerQuery, useCustomerOrdersQuery, useExportCustomerCsv } from '@/hooks/useCustomers'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
+import { paymentMethodLabel } from '@/lib/paymentMethod'
 import { createColumnHelper } from '@tanstack/react-table'
 
 const orderColumnHelper = createColumnHelper()
 
+// Customer detail page — column definitions for the paginated order history table.
 function getOrderHistoryColumns() {
   return [
     orderColumnHelper.accessor('id', {
@@ -47,6 +51,12 @@ function getOrderHistoryColumns() {
         <span className="font-mono text-sm font-medium tabular-nums">{formatCurrency(info.getValue())}</span>
       ),
     }),
+    orderColumnHelper.accessor('paymentMethod', {
+      header: 'Method',
+      cell: (info) => (
+        <span className="text-sm text-muted-foreground">{paymentMethodLabel(info.getValue())}</span>
+      ),
+    }),
     orderColumnHelper.accessor('paymentStatus', {
       header: 'Payment',
       cell: (info) => <PaymentStatusBadge status={info.getValue()} />,
@@ -58,11 +68,14 @@ function getOrderHistoryColumns() {
   ]
 }
 
+// Customer detail page — profile, contact info, addresses, LTV stats, and order history.
 export default function CustomerDetail() {
   const { id } = useParams()
   const { data: customer, isLoading } = useCustomerQuery(id)
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 })
+  const exportCustomerCsv = useExportCustomerCsv()
 
+  // Paginate order history independently from the main customer record.
   const orderParams = useMemo(
     () => ({ page: pagination.pageIndex, pageSize: pagination.pageSize }),
     [pagination]
@@ -73,6 +86,7 @@ export default function CustomerDetail() {
 
   if (isLoading) return <PageLoader />
 
+  // Show not-found state when the customer ID does not match any record.
   if (!customer) {
     return (
       <div className="flex flex-col items-center gap-4 py-20">
@@ -84,6 +98,7 @@ export default function CustomerDetail() {
     )
   }
 
+  // Normalize arrays and derive lifetime-value metrics for the summary cards.
   const addresses = Array.isArray(customer.addresses) ? customer.addresses : []
   const tags = Array.isArray(customer.tags) ? customer.tags : []
   const orderCount = Number(customer.orderCount || 0)
@@ -101,12 +116,28 @@ export default function CustomerDetail() {
         title={customer.name}
         description={`Customer since ${formatDate(customer.createdAt)}`}
         actions={
-          <Button variant="outline" size="sm" className="gap-1.5" asChild>
-            <Link to="/customers">
-              <ArrowLeft size={14} />
-              Back
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => exportCustomerCsv.mutate(customer.id)}
+              disabled={exportCustomerCsv.isPending}
+            >
+              {exportCustomerCsv.isPending ? (
+                <SpinnerGap size={14} className="animate-spin" />
+              ) : (
+                <DownloadSimple size={14} />
+              )}
+              Export CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link to="/customers">
+                <ArrowLeft size={14} />
+                Back
+              </Link>
+            </Button>
+          </div>
         }
       />
 

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { useExportProductsCsv, useImportProductsCsv } from '@/hooks/useProducts'
 
+// Products list page — export catalog to CSV and import products from a file or paste.
 export function CsvImportExport() {
   const [importOpen, setImportOpen] = useState(false)
   const [csvText, setCsvText] = useState('')
@@ -20,6 +21,7 @@ export function CsvImportExport() {
   const exportCsv = useExportProductsCsv()
   const importCsv = useImportProductsCsv()
 
+  // Read chosen CSV file into the import textarea.
   function handleFileSelect(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -29,6 +31,7 @@ export function CsvImportExport() {
     e.target.value = ''
   }
 
+  // Submit pasted or uploaded CSV content to bulk-create/update products.
   function handleImport() {
     if (!csvText.trim()) return
     importCsv.mutate(csvText, {

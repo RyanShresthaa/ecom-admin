@@ -10,6 +10,7 @@ import {
 } from '../../shared/models/subCategory.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 
+// POST /api/subcategory/add — creates a new product subcategory.
 export const AddSubCategoryController = async (request, response) => {
     try {
         const { name, image, category } = request.body;
@@ -23,6 +24,7 @@ export const AddSubCategoryController = async (request, response) => {
     }
 };
 
+// GET /api/subcategory/get — lists available product subcategories.
 export const getSubCategoryController = async (request, response) => {
     try {
         const data = await findSubCategories();
@@ -32,6 +34,7 @@ export const getSubCategoryController = async (request, response) => {
     }
 };
 
+// PUT /api/subcategory/update — updates an existing subcategory.
 export const updateSubCategoryController = async (request, response) => {
     try {
         const { _id, name, image, category } = request.body;
@@ -46,6 +49,7 @@ export const updateSubCategoryController = async (request, response) => {
     }
 };
 
+// DELETE /api/subcategory/delete — deletes a product subcategory.
 export const deleteSubCategoryController = async (request, response) => {
     try {
         const deleted = await deleteSubCategory(pickId(request.body._id));
@@ -54,3 +58,4 @@ export const deleteSubCategoryController = async (request, response) => {
         return response.status(500).json({ message: error.message || error, error: true, success: false });
     }
 };
+

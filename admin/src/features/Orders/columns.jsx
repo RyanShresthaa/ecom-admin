@@ -5,13 +5,16 @@ import { Eye } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { PaymentStatusDropdown } from '@/features/Orders/PaymentStatusDropdown'
 import { OrderStatusDropdown } from '@/features/Orders/OrderStatusDropdown'
+import { paymentMethodLabel } from '@/lib/paymentMethod'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
 
 const columnHelper = createColumnHelper()
 
+// Orders list page — column definitions for the orders DataTable.
 export function getOrderColumns({ onView, enableSelection = false, rowSelection, onRowSelectionChange }) {
   const columns = []
 
+  // Optional checkbox column for bulk status updates when user has write access.
   if (enableSelection) {
     columns.push(
       columnHelper.display({
@@ -93,6 +96,13 @@ export function getOrderColumns({ onView, enableSelection = false, rowSelection,
       header: 'Total',
       cell: (info) => (
         <span className="font-mono text-sm font-medium tabular-nums">{formatCurrency(info.getValue())}</span>
+      ),
+    }),
+    columnHelper.accessor('paymentMethod', {
+      header: 'Method',
+      enableSorting: false,
+      cell: (info) => (
+        <span className="text-sm text-muted-foreground">{paymentMethodLabel(info.getValue())}</span>
       ),
     }),
     columnHelper.accessor('paymentStatus', {

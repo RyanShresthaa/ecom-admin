@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { updateUser } from '../models/user.model.js';
 import { getRefreshSecret, getRefreshTokenExpiresIn } from '../config/security.js';
 
+// Auth: issue refresh JWT, persist on user row for silent token renewal.
 const generateRefreshToken = async (userId) => {
     const token = jwt.sign({ id: userId }, getRefreshSecret(), {
         expiresIn: getRefreshTokenExpiresIn(),

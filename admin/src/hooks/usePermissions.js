@@ -13,6 +13,7 @@ import { hasPermission, getAccessibleSections } from '@/lib/permissions'
 export function usePermissions() {
   const { role } = useAuth()
 
+  // Permission view-model: exposes role, checker, and allowed nav sections.
   return useMemo(
     () => ({
       role,

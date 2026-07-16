@@ -8,16 +8,18 @@
  * /api/cart/get:
  *   get:
  *     tags: [Cart]
- *     summary: Get cart
- *     security: [{ cookieAuth: [] }]
+ *     summary: Get cart (auth or guest via X-Guest-Id)
+ *     parameters:
+ *       - in: header
+ *         name: X-Guest-Id
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Cart items }
  *
  * /api/cart/add:
  *   post:
  *     tags: [Cart]
- *     summary: Add to cart
- *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     summary: Add to cart (guest or logged-in)
  *     responses:
  *       200: { description: Added }
  *
@@ -25,7 +27,6 @@
  *   put:
  *     tags: [Cart]
  *     summary: Update quantity
- *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
  *     responses:
  *       200: { description: Updated }
  *
@@ -33,9 +34,15 @@
  *   delete:
  *     tags: [Cart]
  *     summary: Remove cart line
- *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
  *     responses:
  *       200: { description: Removed }
+ *
+ * /api/cart/validate:
+ *   post:
+ *     tags: [Cart]
+ *     summary: Validate stock/publish; body.autofix optional
+ *     responses:
+ *       200: { description: Validation result }
  *
  * /api/order/preview-checkout:
  *   post:
@@ -49,10 +56,34 @@
  *     responses:
  *       200: { description: Pricing summary }
  *
+ * /api/order/place:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Place order with paymentMethod cash or stripe
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdempotencyKeyHeader'
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             allOf:
+ *               - $ref: '#/components/schemas/CheckoutBody'
+ *               - type: object
+ *                 required: [paymentMethod]
+ *                 properties:
+ *                   paymentMethod:
+ *                     type: string
+ *                     enum: [cash, stripe]
+ *     responses:
+ *       200: { description: Order placed (cash) or Stripe session (stripe) }
+ *       409: { description: Idempotency conflict }
+ *       503: { description: Stripe not configured (production) }
+ *
  * /api/order/place-cod:
  *   post:
  *     tags: [Orders]
- *     summary: Place COD order
+ *     summary: Place cash / COD order (alias of paymentMethod=cash)
  *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
  *     parameters:
  *       - $ref: '#/components/parameters/IdempotencyKeyHeader'
@@ -67,7 +98,7 @@
  * /api/order/place-online:
  *   post:
  *     tags: [Orders]
- *     summary: Online checkout (Stripe or mock in dev)
+ *     summary: Stripe checkout (alias of paymentMethod=stripe)
  *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
  *     parameters:
  *       - $ref: '#/components/parameters/IdempotencyKeyHeader'
@@ -78,6 +109,23 @@
  *     responses:
  *       200: { description: Order or Stripe session }
  *       503: { description: Payment not configured (production) }
+ *
+ * /api/order/confirm-stripe:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Confirm paid Stripe Checkout session and create order
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId]
+ *             properties:
+ *               sessionId: { type: string }
+ *     responses:
+ *       200: { description: Order created or already confirmed }
+ *       402: { description: Payment not completed }
  *
  * /api/order/my-orders:
  *   get:
@@ -111,10 +159,51 @@
  * /api/order/update-status:
  *   put:
  *     tags: [Orders]
- *     summary: Update order status (Admin)
+ *     summary: Update order status (FSM-validated delivery + optional tracking)
  *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
  *     responses:
  *       200: { description: Updated }
+ *       400: { description: Illegal delivery transition }
+ *
+ * /api/order/delivery-statuses:
+ *   get:
+ *     tags: [Orders]
+ *     summary: List delivery lifecycle statuses + carriers
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: Status list }
+ *
+ * /api/order/tracking:
+ *   put:
+ *     tags: [Orders]
+ *     summary: Set tracking number/carrier on an order group
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Tracking updated }
+ *
+ * /api/order/reorder:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Re-add a past order to the cart
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Cart updated }
+ *
+ * /api/shop/shipping/zones:
+ *   get:
+ *     tags: [Shop]
+ *     summary: List shipping zones + rates (staff)
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: Zones }
+ *
+ * /api/shop/shipping/quote:
+ *   post:
+ *     tags: [Shop]
+ *     summary: Quote shipping for city/state/country + subtotal
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: Quote }
  *
  * /api/address/get:
  *   get:

@@ -41,7 +41,7 @@ Without HTTPS, session cookies are not safe on the internet.
 ### 3. Backups
 
 ```bash
-npm run db:backup
+# Use provider snapshots, or run pg_dump manually (no npm wrapper)
 ```
 
 - Schedules: daily cron on server or provider snapshots
@@ -53,6 +53,7 @@ npm run db:backup
 | Tool | Env | Purpose |
 |------|-----|---------|
 | Health URL | — | `GET /api/health` every 1–5 min |
+| Ready URL | — | `GET /api/ready` (DB required; Redis if `REDIS_REQUIRED=true`) |
 | Sentry | `SENTRY_DSN` | Error tracking |
 | Logs | host | JSON logs from `utils/logger.js` |
 

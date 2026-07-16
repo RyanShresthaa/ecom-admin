@@ -18,7 +18,6 @@ const rawDatabaseUrl =
   process.env.POSTGRES_PRISMA_URL ||
   ''
 
-// Some Neon URLs include channel_binding=require which can break serverless drivers.
 const databaseUrl = rawDatabaseUrl.replace(/([?&])channel_binding=require&?/g, '$1').replace(/[?&]$/, '')
 
 const usePostgres = Boolean(databaseUrl)
@@ -30,9 +29,10 @@ let schemaReady = false
 let stateLoadedAt = 0
 let normalizedOnce = false
 
-/** Local/dev: keep memory cache. Vercel: short TTL so warm isolates stay fast but stay mostly fresh. */
+// Local/dev: keep memory cache. 
 const CACHE_TTL_MS = process.env.VERCEL ? 2_500 : Number.POSITIVE_INFINITY
 
+// File-storage helper: ensures the local data directory exists.
 function ensureDataDir() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
 }
@@ -68,12 +68,14 @@ async function writeToPostgres(data) {
   `
 }
 
+// File-storage reader: loads JSON DB snapshot from disk.
 function readFromFile() {
   ensureDataDir()
   if (!existsSync(DB_PATH)) return null
   return JSON.parse(readFileSync(DB_PATH, 'utf8'))
 }
 
+// File-storage writer: persists JSON DB snapshot to disk.
 function writeToFile(data) {
   ensureDataDir()
   writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8')
@@ -131,16 +133,19 @@ export async function ensureDb({ force = false } = {}) {
 }
 
 /** @deprecated Use ensureDb() — kept for startup compatibility */
+// Legacy alias used by older startup flows.
 export function loadDb() {
   return ensureDb()
 }
 
+// Persistence API: saves current in-memory state to active storage backend.
 export async function saveDb() {
   if (!state) await ensureDb()
   await persist()
   stateLoadedAt = Date.now()
 }
 
+// Read API: returns loaded in-memory DB state (throws if not initialized).
 export function getDb() {
   if (!state) {
     throw new Error('Database not loaded. Call ensureDb() before getDb().')
@@ -148,6 +153,7 @@ export function getDb() {
   return state
 }
 
+// Write API: runs a mutator and persists updated state.
 export async function updateDb(mutator) {
   // On Vercel, refresh before write to reduce lost updates across isolates.
   await ensureDb({ force: Boolean(process.env.VERCEL) })
@@ -157,15 +163,18 @@ export async function updateDb(mutator) {
   return state
 }
 
+// ID helper: generates incremental prefixed identifiers.
 export function nextId(db, key, prefix, pad = 5) {
   db.counters[key] = (db.counters[key] || 0) + 1
   return `${prefix}-${String(db.counters[key]).padStart(pad, '0')}`
 }
 
+// Storage mode helper: true when Postgres backend is enabled.
 export function isUsingPostgres() {
   return usePostgres
 }
 
+// Complaint detector: checks whether an order already has complaint notes/events.
 function orderHasComplaintNote(order) {
   const sources = [
     ...(order.internalNotes || []),
@@ -181,6 +190,7 @@ const BACKFILL_COMPLAINT_TEXTS = [
   'Customer complained item was not as described.',
 ]
 
+// Data normalization: injects synthetic complaint notes for legacy seeded orders.
 function backfillOrderComplaints(db) {
   let changed = false
   for (const order of db.orders || []) {
@@ -209,6 +219,7 @@ function backfillOrderComplaints(db) {
   return changed
 }
 
+// Data normalization: merges duplicate inventory rows into a single main-warehouse row.
 function consolidateInventoryToOneRowPerProduct(db) {
   const byProduct = new Map()
   for (const item of db.inventory || []) {
@@ -278,6 +289,7 @@ function consolidateInventoryToOneRowPerProduct(db) {
   return true
 }
 
+// Global normalizer: applies one-time compatibility/data-cleanup migrations.
 function normalizeDb(db) {
   let changed = false
   const emailMap = {

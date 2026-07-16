@@ -11,11 +11,12 @@ import { useAuth } from '@/context/AuthContext'
 import { useLoginMutation } from '@/hooks/useAuthApi'
 import { ROLE_LABELS } from '@/lib/permissions'
 
-/** Shared-API staff (seed: npm run seed:staff). Buyer accounts cannot sign in here. */
+// Login page — pre-filled staff credentials for local/demo sign-in.
 const DEMO_ACCOUNTS = [
   { email: 'staff.verify@matinacrafts.com', password: 'StaffVerify123!', role: 'admin' },
 ]
 
+// Login page — email/password form that authenticates staff and redirects after sign-in.
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,8 +27,10 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // Preserve the route the user tried to visit before being sent to login.
   const redirectTo = location.state?.from?.pathname ?? '/'
 
+  // Login page — client-side validation for required email and password fields.
   function validate() {
     const next = {}
     if (!email.trim()) next.email = 'Email is required'
@@ -36,6 +39,7 @@ export default function Login() {
     return Object.keys(next).length === 0
   }
 
+  // Login page — submit credentials to the API and store the session on success.
   function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
@@ -52,6 +56,7 @@ export default function Login() {
     )
   }
 
+  // Login page — populate the form from a demo staff account shortcut.
   function fillDemoAccount(account) {
     setEmail(account.email)
     setPassword(account.password)

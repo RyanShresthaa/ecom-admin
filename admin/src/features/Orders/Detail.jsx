@@ -16,7 +16,9 @@ import { useOrderQuery } from '@/hooks/useOrders'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
+import { paymentMethodLabel } from '@/lib/paymentMethod'
 
+// Order detail page — full view of customer, items, status controls, timeline, and notes.
 export default function OrderDetail() {
   const { id } = useParams()
   const { data: order, isLoading } = useOrderQuery(id)
@@ -82,6 +84,10 @@ export default function OrderDetail() {
               <CardTitle className="text-sm font-semibold">Status</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3 pt-0">
+              <div className="rounded-lg border border-border p-3">
+                <p className="mb-1.5 text-xs text-muted-foreground">Payment method</p>
+                <p className="text-sm font-medium">{paymentMethodLabel(order.paymentMethod)}</p>
+              </div>
               <div className="rounded-lg border border-border p-3">
                 <p className="mb-1.5 text-xs text-muted-foreground">Payment</p>
                 {canWrite ? (

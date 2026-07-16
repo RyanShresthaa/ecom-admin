@@ -16,6 +16,7 @@ const serveFrontend = existsSync(join(DIST_DIR, 'index.html'))
 
 const app = createApp()
 
+// Production serving: host built frontend while preserving /api routes.
 if (serveFrontend) {
   app.use(express.static(DIST_DIR))
   app.get('*', (req, res, next) => {
@@ -33,6 +34,7 @@ app.listen(PORT, () => {
     console.log('Run "npm run build" then "npm start" to serve the production app.')
   }
 
+  // Async warm-up: initialize storage in background after server starts.
   ensureDb()
     .then(() => {
       console.log(

@@ -16,6 +16,7 @@ import {
     removeStockInTransaction,
     transferStockInTransaction,
 } from '../../shared/utils/inventoryStock.js';
+import { queueLowStockCheck } from '../../shared/queue/enqueue.js';
 
 async function assertInventoryAccess(req, productId) {
     const pid = pickId(productId);
@@ -40,6 +41,7 @@ async function assertInventoryAccess(req, productId) {
     throw err;
 }
 
+// GET /api/inventory/warehouses - lists all warehouses available to staff.
 export async function listWarehousesController(req, res) {
     try {
         const data = await listWarehouses();
@@ -49,6 +51,7 @@ export async function listWarehousesController(req, res) {
     }
 }
 
+// POST /api/inventory/warehouses - creates a warehouse record with unique code.
 export async function createWarehouseController(req, res) {
     try {
         const { code, name } = req.body || {};
@@ -65,6 +68,7 @@ export async function createWarehouseController(req, res) {
     }
 }
 
+// GET /api/inventory/product/:productId/breakdown - returns per-warehouse stock and totals.
 export async function getProductInventoryBreakdownController(req, res) {
     try {
         const productId = await assertInventoryAccess(req, req.params.productId);
@@ -76,6 +80,7 @@ export async function getProductInventoryBreakdownController(req, res) {
     }
 }
 
+// GET /api/inventory/movements - returns movement history with role-aware product constraints.
 export async function listInventoryMovementsController(req, res) {
     try {
         const productId = req.query.productId ? pickId(req.query.productId) : null;
@@ -94,10 +99,12 @@ export async function listInventoryMovementsController(req, res) {
     }
 }
 
+// POST /api/inventory/add - adds stock and logs inventory movement in one transaction.
 export async function addStockController(req, res) {
     try {
         const { productId, warehouseId, quantity, reason, note } = req.body || {};
         const pid = await assertInventoryAccess(req, productId);
+        // Use a DB transaction to keep stock mutation and movement log atomic.
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
@@ -110,6 +117,7 @@ export async function addStockController(req, res) {
                 note,
             });
             await client.query('COMMIT');
+            queueLowStockCheck([pid]).catch(() => {});
             return res.status(201).json({ message: 'Stock added', data: result, error: false, success: true });
         } catch (e) {
             await client.query('ROLLBACK');
@@ -122,10 +130,12 @@ export async function addStockController(req, res) {
     }
 }
 
+// POST /api/inventory/remove - removes stock and logs inventory movement atomically.
 export async function removeStockController(req, res) {
     try {
         const { productId, warehouseId, quantity, reason, note } = req.body || {};
         const pid = await assertInventoryAccess(req, productId);
+        // Use a DB transaction to avoid partial stock-removal writes.
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
@@ -138,6 +148,7 @@ export async function removeStockController(req, res) {
                 note,
             });
             await client.query('COMMIT');
+            queueLowStockCheck([pid]).catch(() => {});
             return res.json({ message: 'Stock removed', data: result, error: false, success: true });
         } catch (e) {
             await client.query('ROLLBACK');
@@ -150,6 +161,7 @@ export async function removeStockController(req, res) {
     }
 }
 
+// POST /api/inventory/transfer - moves stock between warehouses in a single transaction.
 export async function transferStockController(req, res) {
     try {
         const { productId, fromWarehouseId, toWarehouseId, quantity, note } = req.body || {};
@@ -159,6 +171,7 @@ export async function transferStockController(req, res) {
         if (!fromW || !toW) {
             return res.status(400).json({ message: 'fromWarehouseId and toWarehouseId are required', error: true, success: false });
         }
+        // Wrap transfer in a transaction so source and destination updates stay consistent.
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
@@ -171,6 +184,7 @@ export async function transferStockController(req, res) {
                 note,
             });
             await client.query('COMMIT');
+            queueLowStockCheck([pid]).catch(() => {});
             return res.json({ message: 'Stock transferred', data: result, error: false, success: true });
         } catch (e) {
             await client.query('ROLLBACK');

@@ -4,6 +4,7 @@
 import { createReview, findReviewsByProduct, getProductRatingSummary, deleteReview } from '../../shared/models/review.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 
+// POST /api/review/add — creates a product review from a verified buyer.
 export async function addReviewController(req, res) {
     try {
         const productId = pickId(req.body.productId);
@@ -22,6 +23,7 @@ export async function addReviewController(req, res) {
     }
 }
 
+// GET /api/review/get — fetches product reviews and ratings.
 export async function getReviewsController(req, res) {
     try {
         const productId = pickId(req.params.productId);
@@ -35,6 +37,7 @@ export async function getReviewsController(req, res) {
     }
 }
 
+// DELETE /api/review/delete — removes a review by owner or admin.
 export async function deleteReviewController(req, res) {
     try {
         const ok = await deleteReview(pickId(req.params.id), req.userId);
@@ -44,3 +47,4 @@ export async function deleteReviewController(req, res) {
         return res.status(500).json({ message: e.message, error: true, success: false });
     }
 }
+

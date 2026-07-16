@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tansta
 import { toast } from 'sonner'
 
 import { api } from '@/lib/api'
+import { downloadCsv, rowsToCsv } from '@/lib/csv'
+import { paymentMethodLabel } from '@/lib/paymentMethod'
 import { queryKeys } from '@/lib/queryKeys'
 
+// Orders page query: fetch paginated orders list.
 export function useOrdersQuery(params) {
   return useQuery({
     queryKey: queryKeys.orders.list(params),
@@ -13,6 +16,7 @@ export function useOrdersQuery(params) {
   })
 }
 
+// Order detail query: fetch one order record by id.
 export function useOrderQuery(id) {
   return useQuery({
     queryKey: queryKeys.orders.detail(id),
@@ -22,6 +26,7 @@ export function useOrderQuery(id) {
   })
 }
 
+// Cache helper: invalidates order-adjacent queries after order mutations.
 function invalidateOrderRelatedQueries(queryClient, orderId) {
   queryClient.invalidateQueries({ queryKey: queryKeys.orders.all })
   queryClient.invalidateQueries({ queryKey: queryKeys.customers.all })
@@ -35,6 +40,7 @@ function invalidateOrderRelatedQueries(queryClient, orderId) {
   }
 }
 
+// Mutation: updates a single order status with optimistic cache refresh.
 export function useUpdateOrderStatus() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -47,6 +53,7 @@ export function useUpdateOrderStatus() {
   })
 }
 
+// Mutation: applies bulk order status update.
 export function useBulkUpdateOrderStatus() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -59,6 +66,7 @@ export function useBulkUpdateOrderStatus() {
   })
 }
 
+// Mutation: adds internal note to an order.
 export function useAddOrderNote() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -71,6 +79,7 @@ export function useAddOrderNote() {
   })
 }
 
+// Mutation: creates a new order from admin panel.
 export function useCreateOrder() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -80,5 +89,35 @@ export function useCreateOrder() {
       toast.success('Order created')
     },
     onError: (err) => toast.error(err.message || 'Failed to create order'),
+  })
+}
+
+// Mutation: exports one month of orders as CSV download.
+export function useExportOrdersMonthCsv() {
+  return useMutation({
+    mutationFn: (payload) => api.orders.exportMonthCsv(payload),
+    onSuccess: ({ rows, year, month }) => {
+      const headers = [
+        'orderId',
+        'date',
+        'customerId',
+        'customerName',
+        'customerEmail',
+        'paymentMethod',
+        'paymentStatus',
+        'deliveryStatus',
+        'itemCount',
+        'totalAmount',
+      ]
+      const csvRows = rows.map((r) => ({
+        ...r,
+        paymentMethod: paymentMethodLabel(r.paymentMethod),
+        date: r.date ? new Date(r.date).toISOString() : '',
+      }))
+      const csv = rowsToCsv(headers, csvRows)
+      downloadCsv(csv, `orders-${year}-${String(month).padStart(2, '0')}.csv`)
+      toast.success(`Exported ${rows.length} orders for ${year}-${String(month).padStart(2, '0')}`)
+    },
+    onError: (err) => toast.error(err.message || 'Failed to export orders'),
   })
 }

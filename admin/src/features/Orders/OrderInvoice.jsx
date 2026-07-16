@@ -2,9 +2,12 @@ import { Printer } from '@phosphor-icons/react'
 
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { paymentMethodLabel } from '@/lib/paymentMethod'
 import { DEFAULT_SETTINGS } from '@/lib/constants'
 
+// Order detail page — button that opens a printable invoice in a new window.
 export function OrderInvoice({ order }) {
+  // Build invoice HTML and trigger the browser print dialog.
   function handlePrint() {
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
@@ -67,7 +70,7 @@ export function OrderInvoice({ order }) {
 
           <div class="section">
             <h2>Payment & delivery</h2>
-            <p>Payment: ${order.paymentStatus} · Delivery: ${order.deliveryStatus}</p>
+            <p>Method: ${paymentMethodLabel(order.paymentMethod)} · Payment: ${order.paymentStatus} · Delivery: ${order.deliveryStatus}</p>
           </div>
         </body>
       </html>

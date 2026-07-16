@@ -49,16 +49,20 @@ const DEFAULT_SETTINGS = {
 }
 
 let seed = 7
+// Deterministic pseudo-random generator for repeatable seed data.
 function rand() {
   seed = (seed * 16807) % 2147483647
   return (seed - 1) / 2147483646
 }
+// Seed helper: picks one random entry from an array.
 function pick(arr) {
   return arr[Math.floor(rand() * arr.length)]
 }
+// Seed helper: random integer in inclusive range.
 function randInt(min, max) {
   return Math.floor(rand() * (max - min + 1)) + min
 }
+// Seed helper: returns ISO datetime offset by N days.
 function daysAgo(n) {
   const d = new Date()
   d.setDate(d.getDate() - n)
@@ -66,6 +70,7 @@ function daysAgo(n) {
   return d.toISOString()
 }
 
+// Seed factory: generates complete mock dataset for local file/postgres bootstrap.
 export function createSeedData() {
   const users = [
     {

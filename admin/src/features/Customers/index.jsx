@@ -20,6 +20,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
+// Customers list page — searchable, filterable table of all customer profiles.
 export default function Customers() {
   const [search, setSearch] = useState('')
   const [tag, setTag] = useState('all')
@@ -31,6 +32,7 @@ export default function Customers() {
   const { can } = usePermissions()
   const canWrite = can(PERMISSIONS.CUSTOMERS_WRITE)
 
+  // Build API query params from pagination, sorting, search, and tag filter.
   const params = useMemo(
     () => ({
       page: pagination.pageIndex,
@@ -44,6 +46,7 @@ export default function Customers() {
 
   const { data, isLoading, isFetching, refetch } = useCustomersQuery(params)
 
+  // Reset to page 0 when search or filter changes so results stay in sync.
   function resetPage(setter) {
     return (value) => {
       setter(value)

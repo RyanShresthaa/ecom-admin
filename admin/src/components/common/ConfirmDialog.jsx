@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+// Reusable destructive-action confirmation modal (delete, cancel order, bulk actions, etc.).
 export function ConfirmDialog({
   open,
   onOpenChange,

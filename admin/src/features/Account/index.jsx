@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { PageLoader } from '@/components/common/PageLoader'
 import { useAccountQuery, useUpdateAccount, useUpdatePassword } from '@/hooks/useAccount'
 
+// Account settings page — edit sign-in name, email, and password for the admin user.
 export default function Account() {
   const { data: account, isLoading } = useAccountQuery()
   const updateAccount = useUpdateAccount()
@@ -22,6 +23,7 @@ export default function Account() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
+  // Account settings page — pre-fill profile fields when account data loads.
   useEffect(() => {
     if (account) {
       setName(account.name)
@@ -29,13 +31,16 @@ export default function Account() {
     }
   }, [account])
 
+  // Account settings page — full-page loader while account data is fetched.
   if (isLoading) return <PageLoader />
 
+  // Account settings page — save updated name and email to the account API.
   function handleProfileSave(event) {
     event.preventDefault()
     updateAccount.mutate({ name: name.trim(), email: email.trim() })
   }
 
+  // Account settings page — validate and submit a password change request.
   function handlePasswordSave(event) {
     event.preventDefault()
 
@@ -56,6 +61,7 @@ export default function Account() {
     )
   }
 
+  // Account settings page — flag mismatch before submit to show inline validation.
   const passwordsMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword
 
   return (

@@ -1,9 +1,11 @@
+// feedback model: handles feedback table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `feedback` — customer comments on product, seller, or business (optional user).
  */
 import pool from '../config/connectDB.js';
 import { mapRow, mapRows } from '../utils/sql.js';
 
+// feedback model: insertFeedback creates a new record.
 export async function insertFeedback({
     userId,
     targetType,
@@ -30,6 +32,7 @@ export async function insertFeedback({
     return mapRow(r.rows[0]);
 }
 
+// feedback model: listFeedback reads and returns records.
 export async function listFeedback({ limit = 50, skip = 0, targetType } = {}) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -51,3 +54,4 @@ export async function listFeedback({ limit = 50, skip = 0, targetType } = {}) {
     );
     return mapRows(r.rows);
 }
+

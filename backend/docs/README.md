@@ -35,14 +35,14 @@ docker compose up --build   # API + Postgres + email worker
 | Feature | Detail |
 |---------|--------|
 | **X-Request-Id** | Every response echoes a request ID (send your own header or server generates UUID). Included on 404/500 JSON when available. |
-| **Zod bodies** | `POST /api/user/register`, `/login`, `/order/preview-checkout`, `/place-cod`, `/place-online`, **`/api/sales/*`**, **`/api/purchases/*`** mutations — malformed input returns **400** before controllers. |
+| **Zod bodies** | `POST /api/user/register`, `/login`, `/order/preview-checkout`, `/place`, `/place-cod`, `/place-online`, **`/api/payment/refund`**, **`/api/sales/*`**, **`/api/purchases/*`** mutations — malformed input returns **400** before controllers. |
 | **Schemas** | `validation/schemas.js` — extend sparingly. |
 
 ---
 
 ## Idempotent checkout
 
-Send header on `POST /api/order/place-cod` (and mock `place-online`):
+Send header on `POST /api/order/place-cod`, `POST /api/order/place` (cash), and mock `place-online` / stripe confirm:
 
 ```http
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
@@ -53,21 +53,28 @@ Missing header → checkout works as before.
 
 ---
 
-## Email queue
+## Background jobs (BullMQ + Redis)
+
+Preferred production setup — Express enqueues jobs, workers process them asynchronously.
 
 In `.env`:
 
 ```env
-EMAIL_USE_QUEUE=true
+REDIS_URL=redis://localhost:6379
+QUEUE_ENABLED=true
 ```
 
-Run in a second terminal:
+Run workers in a second terminal:
 
 ```bash
-npm run email:worker
+npm run queue:worker
 ```
 
-Register, password reset, and order emails are stored in `email_queue` and sent by the worker so SMTP slowness does not block API responses.
+**Queues:** email, payment-webhook, inventory, image-processing, notification, invoice, retry, analytics, cache-invalidation, scheduled (+ enterprise stubs: recommendation, fraud-detection, machine-learning, warehouse-sync, search-index).
+
+**Monitor:** Bull Board at `/api/admin/queues` (staff login required).
+
+**Legacy:** PostgreSQL `email_queue` still works when `EMAIL_USE_QUEUE=true` and `QUEUE_ENABLED=false` (`npm run email:worker`).
 
 ---
 
@@ -85,7 +92,6 @@ npm run dev
 |--------|---------|
 | `npm run dev` | Start API (default port **5000**) |
 | `npm run db:migrate` | Apply SQL migrations (`db/migrations/`) |
-| `npm run db:backup` | Backup PostgreSQL database |
 | `npm run check:smtp` | Test email configuration |
 
 ---
@@ -117,7 +123,7 @@ Defined in `server.js`:
 
 **CSRF not required when:** no `accessToken` / `refreshToken` cookies (public catalog POST, coupon validate).
 
-**Exempt paths (always):** register, login, **login-pin**, google, verify-email, forgot/reset password, **forgot/reset PIN**, refresh-token, health, **feedback submit** (anonymous).
+**Exempt paths (always):** register, login, **login-pin**, google, verify-email, forgot/reset password, **forgot/reset PIN**, refresh-token, health, ready, **feedback submit** (anonymous). Paths under `/api/v1/...` share the same exemptions.
 
 **Postman:** enable cookies; after login copy `csrfToken` → Headers → `X-CSRF-Token`.
 
@@ -141,7 +147,7 @@ Middleware: `middleware/auth.js`, `middleware/roles.js` (`admin`, `staff`), `mid
 
 | File | Responsibility |
 |------|----------------|
-| `server.js` | App bootstrap, middleware chain, route mounting, health check |
+| `server.js` | App bootstrap, middleware chain, `/api` + `/api/v1` mounts, health + ready |
 | `package.json` | Dependencies & npm scripts |
 
 ### `config/`
@@ -162,10 +168,10 @@ Middleware: `middleware/auth.js`, `middleware/roles.js` (`admin`, `staff`), `mid
 | Route prefix | Route file | Controller | Model(s) |
 |--------------|------------|------------|----------|
 | `/api/user` | `user.route.js` | `user.controller.js` | `user.model.js` |
-| `/api/product` | `product.route.js` | `product.controller.js` | `product.model.js` |
+| `/api/product` | `product.route.js` | `product.controller.js` | `product.model.js`, `variant.model.js` |
 | `/api/category` | `category.route.js` | `category.controller.js` | `category.model.js` |
 | `/api/subcategory` | `subcategory.route.js` | `subcategory.controller.js` | `subcategory.model.js` |
-| `/api/cart` | `cart.route.js` | `cart.controller.js` | `cartproduct.model.js` |
+| `/api/cart` | `cart.route.js` | `cart.controller.js` | `cartproduct.model.js` (guest + user) |
 | `/api/order` | `order.route.js` | `order.controller.js` | `order.model.js` |
 | `/api/address` | `address.route.js` | `address.controller.js` | `address.model.js` |
 | `/api/admin` | `admin.route.js` | `admin.controller.js` | `user`, `order`, `audit` |
@@ -176,7 +182,7 @@ Middleware: `middleware/auth.js`, `middleware/roles.js` (`admin`, `staff`), `mid
 | `/api/sales` | `sales.route.js` | `sales.controller.js` | `sales.model.js`, `order.model.js` |
 | `/api/purchases` | `purchase.route.js` | `purchase.controller.js` | `purchase.model.js`, `settings.model.js` |
 | `/api/shop` | `shop.route.js` | `settings.controller.js` | `settings.model.js` |
-| `/api/payment` | `payment.route.js` | `payment.controller.js` | `order.model.js` |
+| `/api/payment` | `payment.route.js` | `payment.controller.js`, `refund.controller.js` | `refund.model.js`, `services/payments/*` |
 | `/api/upload` | `upload.route.js` | (inline) | Cloudinary util |
 
 ### `middleware/`
@@ -235,7 +241,6 @@ Middleware: `middleware/auth.js`, `middleware/roles.js` (`admin`, `staff`), `mid
 | File | Purpose |
 |------|---------|
 | `migrate.mjs` | Runs all migrations in order |
-| `backup-db.mjs` | `pg_dump` wrapper |
 | `check-smtp.mjs` | Verify SMTP credentials |
 
 ---
@@ -337,10 +342,83 @@ VAT formula: **line net (excl. VAT)** = qty × unit price excl. VAT; **VAT** = n
 | Method | Path | Notes |
 |--------|------|-------|
 | POST | `/preview-checkout` | `{ addressId, useCart?, couponCode?, list_items? }` |
-| POST | `/place-cod` | Same body; server totals + stock |
-| POST | `/place-online` | Mock pay or Stripe session |
+| POST | `/place` | `{ paymentMethod: "cash"\|"stripe", addressId, … }` — cash places order; stripe returns Checkout `url` |
+| POST | `/place-cod` | Alias of cash |
+| POST | `/place-online` | Alias of stripe |
+| POST | `/confirm-stripe` | `{ sessionId }` after Stripe redirect — creates paid order |
+| POST | `/reorder` | `{ orderGroupId }` — copy past order into cart |
+| GET | `/delivery-statuses` | Staff: FSM statuses + carriers |
+| PUT | `/tracking` | Staff: `{ orderGroupId, tracking_number, carrier }` |
+| PUT | `/update-status` | Staff: FSM delivery + payment; optional tracking |
 | GET | `/my-orders` | |
 | GET | `/invoice/:id` | |
+
+### Shipping — `/api/shop/shipping`
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/zones` | Staff list zones + rates |
+| POST | `/zones` | Create zone (`match_type`: city/state/country/default) |
+| PUT/DELETE | `/zones` | Update / delete zone |
+| POST/PUT/DELETE | `/rates` | Zone rates (`rate`, `free_min`) |
+| POST | `/quote` | `{ city, state, country, subtotal }` → fee |
+
+Checkout uses zones when `addressId` is provided (else shop flat fee).
+
+### Scale / marketplace — feature-flagged
+
+Enable via `PUT /api/flags` `{ "key": "mfa", "enabled": true }` (Admin).
+
+| Prefix | Feature |
+|--------|---------|
+| `/api/flags` | Feature flags |
+| `/api/mfa` | TOTP enroll/disable; login uses `/api/user/mfa-verify` |
+| `/api/fx` | FX rates + convert |
+| `/api/loyalty` | Points balance / redeem |
+| `/api/recommendations` | Related products |
+| `/api/reservations` | Stock holds |
+| `/api/seller` | Earnings + payouts |
+| `/api/push` | Device tokens + stub send |
+
+Migration: `017_scale_features.sql`.
+
+### Cart — `/api/cart` (Phase 4)
+
+Guest or logged-in. Anonymous clients use `X-Guest-Id` header or `guest_id` cookie (auto-minted).
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/add` | `{ productId, variantId?, quantity? }` |
+| GET | `/get` | Cart lines |
+| PUT | `/update` | `{ _id, quantity }` |
+| DELETE | `/delete` | `{ _id }` |
+| POST | `/validate` | `{ autofix?: true }` — stock/publish check |
+| POST | `/purge-expired` | Staff: delete expired guest carts |
+
+On login, guest cart merges into the user cart automatically. Guest lines expire after `GUEST_CART_TTL_DAYS` (default 14). Product search uses Postgres FTS (`search` query param).
+
+### Production hardening (Phase 5)
+
+| Piece | Notes |
+|-------|--------|
+| Optional Redis | Set `REDIS_URL` for shared cache + rate limits; omit for in-memory (single instance) |
+| `/api/ready` | Readiness: DB required; Redis only if `REDIS_REQUIRED=true` |
+| `/api/v1` | Alias of `/api` (same routers) |
+| CI | `.github/workflows/backend-ci.yml` — lint + unit tests |
+| Docker | `docker-compose.yml` includes Redis; API gets `REDIS_URL=redis://redis:6379` |
+
+### Payment / refunds — `/api/payment`
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/create-intent` | Mock intent (dev) |
+| POST | `/verify` | Mock verify |
+| POST | `/refund` | Staff: full/partial **manual** refund ledger (+ stock + credit note). Stripe provider → 501 until keys exist |
+| GET | `/refunds` | List (`?orderRowId=` / `?orderId=`) |
+| GET | `/refunds/:id` | One refund |
+| GET | `/refunds/by-order-row/:orderRowId` | Refunds for one order line |
+
+Run migration `014_payment_refunds.sql` before using refunds.
 
 ### Admin — `/api/admin`
 
@@ -479,7 +557,8 @@ VAT formula: **line net (excl. VAT)** = qty × unit price excl. VAT; **VAT** = n
 | Tests | `npm test` (security + VAT math + DB purchase flows), `npm run test:api` (server smoke) |
 | CI/CD | GitHub Actions `.github/workflows/backend-ci.yml` |
 | Idempotent checkout | Header `Idempotency-Key` on `place-cod` / mock `place-online` |
-| Email queue | `EMAIL_USE_QUEUE=true` + `npm run email:worker` |
+| Background jobs | `QUEUE_ENABLED=true` + `REDIS_URL` + `npm run queue:worker` |
+| Email (legacy PG) | `EMAIL_USE_QUEUE=true` + `npm run email:worker` (when BullMQ off) |
 
 ---
 

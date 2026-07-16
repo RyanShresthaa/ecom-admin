@@ -14,6 +14,7 @@ import {
     findSalesSeries,
     updateOrder,
     findOrderById,
+    findOrdersByPaymentId,
 } from '../../shared/models/order.model.js';
 import { restoreStock, decrementStock } from '../../shared/utils/orderStock.js';
 import pool from '../../shared/config/connectDB.js';
@@ -31,8 +32,23 @@ import { getClientIp, getUserAgent } from '../../shared/utils/requestMeta.js';
 import { isMockPaymentAllowed, MOCK_PAYMENT_DISABLED_MSG } from '../../shared/config/payments.js';
 import { withCheckoutIdempotency } from '../../shared/utils/checkoutIdempotency.js';
 import { addOrderNote, listNotesForOrderGroup } from '../../shared/models/orderNotes.model.js';
-import { createNotification } from '../../shared/models/notification.model.js';
+import { queueNotification } from '../../shared/queue/enqueue.js';
 import { addStockInTransaction } from '../../shared/utils/inventoryStock.js';
+import {
+    resolvePairedStatuses,
+    isReturnLikeState,
+} from '../../shared/services/payments/index.js';
+import { incrementVariantStock, decrementVariantStock } from '../../shared/models/variant.model.js';
+import { syncProductStockFromVariants } from '../../shared/services/catalog/index.js';
+import {
+    assertDeliveryTransition,
+    fulfillmentTimestamps,
+    listAllowedTransitions,
+    applyTracking,
+    reorderToCart,
+    DELIVERY_STATUS_LIST,
+    CARRIERS,
+} from '../../shared/services/fulfillment/index.js';
 
 export const pricewithDiscount = (price, dis = 1) => unitPriceAfterDiscount(price, dis);
 
@@ -56,6 +72,7 @@ async function runCheckout(request, { paymentId, payment_status }) {
         list_items,
         couponCode,
         useCart: useCart === true || !list_items?.length,
+        addressId,
     });
     summary.currency = settings.currency;
 
@@ -88,10 +105,12 @@ function checkoutErrorStatus(error) {
     return /stock|not found|not available|coupon|cart|empty|addressId/i.test(msg) ? 400 : 500;
 }
 
+/** Cash / COD — payment_id stored as CASH for admin payment-method display. */
+// POST /api/order/place-cod — places a cash-on-delivery order.
 export async function CashOnDeliveryOrderController(request, response) {
     try {
         const { status, body } = await withCheckoutIdempotency(request, () =>
-            runCheckout(request, { paymentId: '', payment_status: 'CASH ON DELIVERY' }),
+            runCheckout(request, { paymentId: 'CASH', payment_status: 'CASH ON DELIVERY' }),
         );
         return response.status(status).json(body);
     } catch (error) {
@@ -100,6 +119,25 @@ export async function CashOnDeliveryOrderController(request, response) {
     }
 }
 
+function checkoutCurrency(settings) {
+    const raw = String(settings?.currency || process.env.STRIPE_CURRENCY || 'inr').trim().toLowerCase();
+    return raw || 'inr';
+}
+
+function stripeListSnapshot(summary) {
+    const list = summary.lines.map((l) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+    }));
+    const json = JSON.stringify(list);
+    return json.length <= 450 ? json : '';
+}
+
+/**
+ * Stripe / card checkout: create Checkout Session (or mock-paid order when Stripe unset + mock allowed).
+ * Client must call confirm-stripe after redirect when using a real session.
+ */
+// POST /api/order/place-online — initializes online checkout payment flow.
 export async function paymentController(request, response) {
     try {
         const userId = request.userId;
@@ -112,11 +150,12 @@ export async function paymentController(request, response) {
             return response.status(400).json({ message: 'Invalid delivery address', error: true, success: false });
         }
 
-        const { summary, coupon, settings: _settings } = await resolveCheckoutLines({
+        const { summary, coupon, settings } = await resolveCheckoutLines({
             userId,
             list_items,
             couponCode,
             useCart: useCart === true || !list_items?.length,
+            addressId,
         });
 
         if (!Stripe) {
@@ -129,17 +168,19 @@ export async function paymentController(request, response) {
             }
             const { status, body } = await withCheckoutIdempotency(request, () =>
                 runCheckout(request, {
-                    paymentId: `MOCK-${Date.now()}`,
+                    paymentId: `STRIPE-MOCK-${Date.now()}`,
                     payment_status: 'PAID',
                 }),
             );
-            return response.status(status).json(body);
+            return response.status(status).json({ ...body, paymentMethod: 'stripe' });
         }
 
         const user = await findUserById(userId);
+        const currency = checkoutCurrency(settings);
+        const listJson = stripeListSnapshot(summary);
         const line_items = summary.lines.map((item) => ({
             price_data: {
-                currency: 'inr',
+                currency,
                 product_data: {
                     name: item.product.name,
                     images: item.product.image,
@@ -150,21 +191,30 @@ export async function paymentController(request, response) {
             quantity: item.quantity,
         }));
 
+        const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5174';
         const session = await Stripe.checkout.sessions.create({
             submit_type: 'pay',
             mode: 'payment',
             payment_method_types: ['card'],
             customer_email: user.email,
             metadata: {
+                paymentMethod: 'stripe',
                 userId: String(userId),
                 addressId: String(pickId(addressId)),
                 couponCode: coupon?.code || '',
+                list_items: listJson,
+                useCart: listJson ? '0' : '1',
             },
             line_items,
-            success_url: `${process.env.FRONTEND_URL || process.env.CLIENT_URL}/success`,
-            cancel_url: `${process.env.FRONTEND_URL || process.env.CLIENT_URL}/cancel`,
+            success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/cancel`,
         });
-        return response.status(200).json({ ...session, pricing: summary });
+        return response.status(200).json({
+            id: session.id,
+            url: session.url,
+            paymentMethod: 'stripe',
+            pricing: summary,
+        });
     } catch (error) {
         const msg = error.message || String(error);
         const status = /stock|not found|not available|coupon|cart/i.test(msg) ? 400 : 500;
@@ -172,6 +222,115 @@ export async function paymentController(request, response) {
     }
 }
 
+/**
+ * Unified customer checkout: body.paymentMethod = "cash" | "stripe".
+ * cash → place order unpaid (CASH); stripe → Checkout Session (or mock paid).
+ */
+// POST /api/order/place — places order using unified payment method payload.
+export async function placeOrderController(request, response) {
+    const method = String(request.body?.paymentMethod || '').toLowerCase();
+    if (method === 'cash') {
+        return CashOnDeliveryOrderController(request, response);
+    }
+    if (method === 'stripe') {
+        return paymentController(request, response);
+    }
+    return response.status(400).json({
+        message: 'paymentMethod must be "cash" or "stripe"',
+        error: true,
+        success: false,
+    });
+}
+
+/**
+ * After Stripe Checkout success redirect: verify session paid, then create order.
+ * Body: { sessionId }. Idempotent on payment_intent / session id.
+ */
+// POST /api/order/confirm-stripe — confirms Stripe session and creates paid order.
+export async function confirmStripeCheckoutController(request, response) {
+    try {
+        if (!Stripe) {
+            return response.status(503).json({
+                message: 'Stripe is not configured',
+                error: true,
+                success: false,
+            });
+        }
+
+        const sessionId = String(request.body?.sessionId || '').trim();
+        if (!sessionId) {
+            return response.status(400).json({ message: 'sessionId is required', error: true, success: false });
+        }
+
+        const session = await Stripe.checkout.sessions.retrieve(sessionId);
+        if (!session || session.mode !== 'payment') {
+            return response.status(400).json({ message: 'Invalid Stripe session', error: true, success: false });
+        }
+        if (session.payment_status !== 'paid') {
+            return response.status(402).json({
+                message: 'Payment not completed',
+                error: true,
+                success: false,
+                payment_status: session.payment_status,
+            });
+        }
+
+        const meta = session.metadata || {};
+        const sessionUserId = Number(meta.userId);
+        if (!sessionUserId || sessionUserId !== Number(request.userId)) {
+            return response.status(403).json({ message: 'Session does not belong to this user', error: true, success: false });
+        }
+
+        const paymentKey = String(session.payment_intent || session.id);
+        const existing = await findOrdersByPaymentId(paymentKey);
+        if (existing.length) {
+            return response.json({
+                message: 'Order already confirmed',
+                error: false,
+                success: true,
+                data: existing,
+                paymentMethod: 'stripe',
+                replayed: true,
+            });
+        }
+
+        let list_items;
+        if (meta.list_items) {
+            try {
+                list_items = JSON.parse(meta.list_items);
+            } catch {
+                list_items = undefined;
+            }
+        }
+
+        const checkoutReq = {
+            ...request,
+            body: {
+                addressId: meta.addressId,
+                couponCode: meta.couponCode || undefined,
+                list_items,
+                useCart: meta.useCart === '1' || !list_items?.length,
+            },
+            headers: {
+                ...request.headers,
+                'idempotency-key': request.headers['idempotency-key'] || `stripe-${session.id}`,
+            },
+        };
+
+        const { status, body } = await withCheckoutIdempotency(checkoutReq, () =>
+            runCheckout(checkoutReq, {
+                paymentId: paymentKey,
+                payment_status: 'PAID',
+            }),
+        );
+        return response.status(status).json({ ...body, paymentMethod: 'stripe' });
+    } catch (error) {
+        const status = checkoutErrorStatus(error);
+        return response.status(status).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+// POST /api/order/preview-checkout — previews totals, shipping, and discounts before placing order.
 export async function previewCheckoutController(request, response) {
     try {
         const { summary, settings } = await resolveCheckoutLines({
@@ -179,6 +338,7 @@ export async function previewCheckoutController(request, response) {
             list_items: request.body.list_items,
             couponCode: request.body.couponCode,
             useCart: request.body.useCart === true || !request.body.list_items?.length,
+            addressId: request.body.addressId,
         });
         return response.json({
             data: { ...summary, currency: settings.currency },
@@ -190,6 +350,7 @@ export async function previewCheckoutController(request, response) {
     }
 }
 
+// GET /api/order/my-orders — returns current user's order history.
 export async function getOrderDetailsController(request, response) {
     try {
         const orderlist = await findOrdersByUser(request.userId);
@@ -199,6 +360,7 @@ export async function getOrderDetailsController(request, response) {
     }
 }
 
+// GET /api/order/all — lists all orders for staff/admin operations.
 export async function getAllOrdersController(request, response) {
     try {
         // Skip per-line address hydration — list UIs don't need it and it was N+1 slow.
@@ -210,6 +372,7 @@ export async function getAllOrdersController(request, response) {
 }
 
 /** GET /api/order/admin-list — paginated grouped orders for staff tables */
+// GET /api/order/admin-list — returns paginated admin order listing.
 export async function getAdminOrderListController(request, response) {
     try {
         const src = { ...request.query, ...request.body };
@@ -238,6 +401,7 @@ export async function getAdminOrderListController(request, response) {
 }
 
 /** GET /api/order/group/:orderId — lines for one checkout group */
+// GET /api/order/group/:orderId — fetches grouped order rows by order id.
 export async function getOrderGroupController(request, response) {
     try {
         const orderId = request.params.orderId;
@@ -255,6 +419,7 @@ export async function getOrderGroupController(request, response) {
 }
 
 /** GET /api/order/sales-series?days=14 */
+// GET /api/order/sales-series — returns sales trend metrics for admin dashboard.
 export async function getSalesSeriesController(request, response) {
     try {
         const days = Number(request.query.days) || 14;
@@ -266,6 +431,7 @@ export async function getSalesSeriesController(request, response) {
 }
 
 /** GET /api/order/by-product/:productId */
+// GET /api/order/by-product/:productId — lists orders containing a specific product.
 export async function getOrdersByProductController(request, response) {
     try {
         const productId = request.params.productId;
@@ -281,22 +447,23 @@ export async function getOrdersByProductController(request, response) {
     }
 }
 
-const isCancelledStatus = (s) => /^cancel/i.test(String(s || ''));
-const isReturnedStatus = (s) => /^returned$/i.test(String(s || ''));
-const isRefundedStatus = (s) => /^refunded$/i.test(String(s || ''));
-const isReturnLikeState = (delivery, payment) =>
-    isReturnedStatus(delivery) || isRefundedStatus(payment) || isCancelledStatus(delivery);
-
 async function adjustStockForLine(previous, { restore }) {
     const productId = pickId(previous.productId);
+    const variantId = pickId(previous.variantId || previous.variant_id || previous.product_details?.variantId);
     const qty = Math.max(1, Number(previous.quantity || previous.product_details?.quantity || 1));
     if (!productId || !qty) return;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const map = new Map([[productId, qty]]);
-        if (restore) await restoreStock(client, map);
-        else await decrementStock(client, map);
+        if (variantId) {
+            if (restore) await incrementVariantStock(client, new Map([[variantId, qty]]));
+            else await decrementVariantStock(client, new Map([[variantId, qty]]));
+            await syncProductStockFromVariants(productId, client);
+        } else {
+            const map = new Map([[productId, qty]]);
+            if (restore) await restoreStock(client, map);
+            else await decrementStock(client, map);
+        }
         await client.query('COMMIT');
     } catch (err) {
         await client.query('ROLLBACK');
@@ -306,50 +473,18 @@ async function adjustStockForLine(previous, { restore }) {
     }
 }
 
-/**
- * Sync Returned ↔ Refunded, restore/re-reserve stock, keep cancel restore behavior.
- */
-function resolvePairedStatuses(previous, { delivery_status, payment_status }) {
-    const prevDelivery = previous?.delivery_status || previous?.deliveryStatus || '';
-    const prevPayment = previous?.payment_status || previous?.paymentStatus || '';
-
-    let nextDelivery = delivery_status != null ? delivery_status : prevDelivery;
-    let nextPayment = payment_status != null ? payment_status : prevPayment;
-
-    // Returned ↔ Refunded
-    if (delivery_status != null && isReturnedStatus(delivery_status) && !isRefundedStatus(nextPayment)) {
-        nextPayment = 'Refunded';
-    }
-    if (payment_status != null && isRefundedStatus(payment_status) && !isReturnedStatus(nextDelivery)) {
-        nextDelivery = 'Returned';
-    }
-
-    // Leaving return/refund undoes the paired field when the other wasn't set explicitly
-    if (
-        delivery_status != null &&
-        !isReturnedStatus(delivery_status) &&
-        isReturnedStatus(prevDelivery) &&
-        payment_status == null &&
-        isRefundedStatus(nextPayment)
-    ) {
-        nextPayment = 'Paid';
-    }
-    if (
-        payment_status != null &&
-        !isRefundedStatus(payment_status) &&
-        isRefundedStatus(prevPayment) &&
-        delivery_status == null &&
-        isReturnedStatus(nextDelivery)
-    ) {
-        nextDelivery = 'Delivered';
-    }
-
-    return { nextDelivery, nextPayment, prevDelivery, prevPayment };
-}
-
+// PUT /api/order/update-status — updates delivery/payment status workflow.
 export async function updateOrderStatusController(request, response) {
     try {
-        const { _id, delivery_status, payment_status } = request.body || {};
+        const {
+            _id,
+            delivery_status,
+            payment_status,
+            tracking_number,
+            trackingNumber,
+            carrier,
+            skipTransitionCheck,
+        } = request.body || {};
         if (!_id) {
             return response.status(400).json({ message: 'provide _id', error: true, success: false });
         }
@@ -357,6 +492,14 @@ export async function updateOrderStatusController(request, response) {
         const previous = await findOrderById(orderId);
         if (!previous) {
             return response.status(404).json({ message: 'Order not found', error: true, success: false });
+        }
+
+        // Validate delivery FSM when staff changes delivery_status
+        if (delivery_status != null && !skipTransitionCheck) {
+            assertDeliveryTransition(
+                previous.delivery_status || previous.deliveryStatus,
+                delivery_status,
+            );
         }
 
         const { nextDelivery, nextPayment, prevDelivery, prevPayment } = resolvePairedStatuses(previous, {
@@ -376,10 +519,21 @@ export async function updateOrderStatusController(request, response) {
             stockRestored = false;
         }
 
+        const ts = fulfillmentTimestamps(nextDelivery, previous);
+        const trackNum =
+            tracking_number !== undefined
+                ? tracking_number
+                : trackingNumber !== undefined
+                  ? trackingNumber
+                  : undefined;
+
         const updated = await updateOrder(orderId, {
             delivery_status: nextDelivery,
             payment_status: nextPayment,
             stock_restored: stockRestored,
+            tracking_number: trackNum,
+            carrier: carrier !== undefined ? carrier : undefined,
+            ...ts,
         });
 
         if (nextDelivery && nextDelivery !== prevDelivery && previous.userId) {
@@ -405,17 +559,92 @@ export async function updateOrderStatusController(request, response) {
                 delivery_status: nextDelivery,
                 payment_status: nextPayment,
                 stock_restored: stockRestored,
+                tracking_number: trackNum,
+                carrier,
             },
             ip: getClientIp(request),
             userAgent: getUserAgent(request),
         });
 
-        return response.json({ message: 'updated', data: updated, error: false, success: true });
+        return response.json({
+            message: 'updated',
+            data: updated,
+            allowedNext: listAllowedTransitions(nextDelivery),
+            error: false,
+            success: true,
+        });
     } catch (error) {
-        return response.status(500).json({ message: error.message || error, error: true, success: false });
+        const status = error.status || 500;
+        return response.status(status).json({ message: error.message || error, error: true, success: false });
     }
 }
 
+/** GET /api/order/delivery-statuses — FSM reference for admin UI */
+// GET /api/order/delivery-statuses — lists allowed delivery status transitions.
+export async function listDeliveryStatusesController(_req, res) {
+    return res.json({
+        data: {
+            statuses: DELIVERY_STATUS_LIST,
+            carriers: CARRIERS,
+        },
+        error: false,
+        success: true,
+    });
+}
+
+/** PUT /api/order/tracking — set tracking on all lines in a group */
+// PUT /api/order/tracking — updates shipment tracking details for an order.
+export async function updateTrackingController(req, res) {
+    try {
+        const body = req.body || {};
+        const updated = await applyTracking({
+            orderGroupId: body.orderGroupId || body.orderId,
+            orderRowId: body.orderRowId || body._id,
+            trackingNumber: body.tracking_number ?? body.trackingNumber,
+            carrier: body.carrier,
+        });
+        await logAudit({
+            adminId: req.userId,
+            action: 'order.tracking_update',
+            entityType: 'order',
+            entityId: updated[0]?.orderId || updated[0]?.id,
+            details: {
+                tracking_number: body.tracking_number ?? body.trackingNumber,
+                carrier: body.carrier,
+            },
+            ip: getClientIp(req),
+            userAgent: getUserAgent(req),
+        });
+        return res.json({ message: 'Tracking updated', data: updated, error: false, success: true });
+    } catch (error) {
+        const status = error.status || 500;
+        return res.status(status).json({ message: error.message, error: true, success: false });
+    }
+}
+
+/** POST /api/order/reorder — copy past order into cart */
+// POST /api/order/reorder — rebuilds cart/order draft from a previous order.
+export async function reorderController(req, res) {
+    try {
+        const body = req.body || {};
+        const result = await reorderToCart({
+            userId: req.userId,
+            orderGroupId: body.orderGroupId || body.orderId,
+            orderRowId: body.orderRowId || body._id,
+        });
+        return res.json({
+            message: 'Items added to cart',
+            data: result,
+            error: false,
+            success: true,
+        });
+    } catch (error) {
+        const status = error.status || 500;
+        return res.status(status).json({ message: error.message, error: true, success: false });
+    }
+}
+
+// GET /api/order/invoice/:id — returns invoice data for an order.
 export async function getInvoiceController(request, response) {
     try {
         const order = await findOrderById(pickId(request.params.id));
@@ -437,9 +666,10 @@ export async function getInvoiceController(request, response) {
 }
 
 /** Staff manual order (admin dashboard). */
+// POST /api/order/admin-create — creates an order manually from admin panel.
 export async function adminCreateOrderController(request, response) {
     try {
-        const { customerId, items, paymentStatus, deliveryStatus, note, author } = request.body || {};
+        const { customerId, items, paymentStatus, paymentMethod, deliveryStatus, note, author } = request.body || {};
         const userId = pickId(customerId);
         if (!userId || !Array.isArray(items) || !items.length) {
             return response.status(400).json({
@@ -517,7 +747,7 @@ export async function adminCreateOrderController(request, response) {
                 unitPrice: line.unitPrice,
                 lineTotal: line.lineTotal,
             },
-            paymentId: 'ADMIN',
+            paymentId: String(paymentMethod || 'CASH').toUpperCase(),
             payment_status: paymentStatus || 'Paid',
             delivery_status: deliveryStatus || 'Pending',
             delivery_address: null,
@@ -537,7 +767,7 @@ export async function adminCreateOrderController(request, response) {
                 author: author || request.user?.name || 'Staff',
             });
         }
-        await createNotification({
+        await queueNotification({
             type: 'order',
             title: 'New order created',
             message: `Order ${orderId} for ${customer.name || customer.email}`,
@@ -566,6 +796,7 @@ export async function adminCreateOrderController(request, response) {
     }
 }
 
+// GET /api/order/notes/:orderGroupId — lists internal notes for order group.
 export async function listOrderNotesController(request, response) {
     try {
         const orderGroupId = request.params.orderGroupId || request.query.orderId;
@@ -579,6 +810,7 @@ export async function listOrderNotesController(request, response) {
     }
 }
 
+// POST /api/order/notes — adds an internal note to an order group.
 export async function addOrderNoteController(request, response) {
     try {
         const orderGroupId = request.body?.orderId || request.body?.orderGroupId || request.params.orderGroupId;
@@ -596,3 +828,4 @@ export async function addOrderNoteController(request, response) {
         return response.status(500).json({ message: error.message || error, error: true, success: false });
     }
 }
+

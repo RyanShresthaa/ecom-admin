@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 
 import { api } from '@/lib/api'
 
+// Auth mutation: sign in with credentials.
 export function useLoginMutation() {
   return useMutation({
     mutationFn: (payload) => api.auth.login(payload),
@@ -10,6 +11,7 @@ export function useLoginMutation() {
   })
 }
 
+// Auth mutation: request password reset token/link.
 export function useForgotPasswordMutation() {
   return useMutation({
     mutationFn: (payload) => api.auth.requestPasswordReset(payload),
@@ -17,6 +19,7 @@ export function useForgotPasswordMutation() {
   })
 }
 
+// Auth mutation: submit password reset payload.
 export function useResetPasswordMutation() {
   return useMutation({
     mutationFn: (payload) => api.auth.resetPassword(payload),

@@ -2,9 +2,12 @@
  * Cloudinary upload helper used by upload route / avatar flows.
  */
 import uploadImageCloudinary from "../../shared/utils/uploadImageCloudinary.js";
+import { queueImageProcessing } from "../../shared/queue/enqueue.js";
 
+// POST /api/upload/image — uploads image file and returns hosted URL.
 const uploadImageController = async (req, res) => {
     try {
+        // Validate multipart payload before forwarding to Cloudinary.
         const file = req.file;
         if (!file) {
             return res.status(400).json({
@@ -14,9 +17,15 @@ const uploadImageController = async (req, res) => {
             });
         }
         const uploadResult = await uploadImageCloudinary(file);
+        const url = uploadResult?.secure_url || uploadResult;
+        queueImageProcessing({
+            url,
+            publicId: uploadResult?.public_id,
+            transforms: 'auto',
+        }).catch(() => {});
         return res.json({
             message: "Image uploaded successfully",
-            data: uploadResult?.secure_url || uploadResult,
+            data: url,
             error: false,
             success: true
         });

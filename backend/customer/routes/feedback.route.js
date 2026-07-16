@@ -9,6 +9,7 @@ import { feedbackSubmitBodySchema } from '../../shared/validation/schemas.js';
 import { submitFeedbackController } from '../controllers/feedback.controller.js';
 
 const feedbackRouter = Router();
+// POST /submit - submit feedback with optional auth and request-body validation.
 feedbackRouter.post('/submit', optionalAuth, validateBody(feedbackSubmitBodySchema), submitFeedbackController);
 
 export default feedbackRouter;

@@ -7,6 +7,7 @@ import { formatCurrency, getInitials } from '@/lib/utils'
 
 const columnHelper = createColumnHelper()
 
+// Customers list page — table columns for name, contact, orders, LTV, and view action.
 export function getCustomerColumns({ onView }) {
   return [
     columnHelper.accessor('name', {

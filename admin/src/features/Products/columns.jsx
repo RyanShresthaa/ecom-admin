@@ -14,6 +14,7 @@ import { formatCurrency } from '@/lib/utils'
 
 const columnHelper = createColumnHelper()
 
+// Products list page — table columns for catalog overview, metrics, and row actions.
 export function getProductColumns({ onEdit, onDelete, canWrite = true }) {
   const columns = [
     columnHelper.accessor('name', {

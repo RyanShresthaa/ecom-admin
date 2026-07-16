@@ -9,11 +9,14 @@ import { useAccountQuery } from '@/hooks/useAccount'
 import { formatDate, getInitials } from '@/lib/utils'
 import { ROLE_LABELS } from '@/lib/permissions'
 
+// Profile page — read-only view of the signed-in admin's account details.
 export default function Profile() {
   const { data: account, isLoading } = useAccountQuery()
 
+  // Profile page — full-page loader while account data is fetched.
   if (isLoading) return <PageLoader />
 
+  // Profile page — fallback when account data cannot be loaded.
   if (!account) {
     return (
       <div className="flex flex-col items-center gap-4 py-20">
@@ -61,6 +64,7 @@ export default function Profile() {
   )
 }
 
+// Profile page — labeled field row with icon for a single account attribute.
 function ProfileField({ icon: Icon, label, value, className }) {
   return (
     <div className={className}>

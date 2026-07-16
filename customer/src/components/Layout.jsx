@@ -1,6 +1,7 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
+// Shared storefront shell — top nav with auth-aware links and page outlet.
 export function Layout() {
   const { user, logout } = useAuth()
 

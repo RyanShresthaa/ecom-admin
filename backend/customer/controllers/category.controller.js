@@ -10,6 +10,7 @@ import {
 } from '../../shared/models/category.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 
+// POST /api/category/add — creates a new product category.
 export const AddCategoryController = async (request, response) => {
     try {
         const { name, image } = request.body;
@@ -23,6 +24,7 @@ export const AddCategoryController = async (request, response) => {
     }
 };
 
+// GET /api/category/get — lists available product categories.
 export const getCategoryController = async (request, response) => {
     try {
         const data = await findCategories();
@@ -32,6 +34,7 @@ export const getCategoryController = async (request, response) => {
     }
 };
 
+// PUT /api/category/update — updates an existing category.
 export const updateCategoryController = async (request, response) => {
     try {
         const { _id, name, image } = request.body;
@@ -42,6 +45,7 @@ export const updateCategoryController = async (request, response) => {
     }
 };
 
+// DELETE /api/category/delete — soft-deletes a product category.
 export const deleteCategoryController = async (request, response) => {
     try {
         const id = pickId(request.body._id);
@@ -58,3 +62,4 @@ export const deleteCategoryController = async (request, response) => {
         return response.status(500).json({ message: error.message || error, success: false, error: true });
     }
 };
+

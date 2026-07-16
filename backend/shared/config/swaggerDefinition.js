@@ -1,6 +1,7 @@
 /**
  * OpenAPI 3 base spec (info, servers, security schemes, tags). Path YAML lives in docs/openapi/*.paths.js (swagger-jsdoc).
  */
+// Define base OpenAPI metadata, security schemes, and shared schemas.
 export const swaggerDefinition = {
     openapi: '3.0.3',
     info: {
@@ -113,6 +114,7 @@ Docs: \`docs/README.md\` · Deploy: \`docs/DEPLOYMENT.md\`
 };
 
 /** Reusable response references for @openapi blocks in route files */
+// Export common response objects reused across documented API routes.
 export const swaggerResponses = {
     unauthorized: { description: 'Not logged in', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
     forbidden: { description: 'CSRF or role denied', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },

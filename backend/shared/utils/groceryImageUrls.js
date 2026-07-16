@@ -27,6 +27,7 @@ const P = {
   dairyCup: u("1550583724-b2692b40b0b6"),
 };
 
+// Handle groceryImageUrls utility logic for defaultGroceryImage.
 export const defaultGroceryImage = P.store;
 
 const CATEGORY = {
@@ -41,6 +42,7 @@ const CATEGORY = {
   "Home Cleaning": P.cleaningAisle,
 };
 
+// Map grocery category names to representative image URLs.
 export function categoryImageFromName(name) {
   return CATEGORY[name] || P.store;
 }
@@ -75,6 +77,7 @@ const SUB = {
   Laundry: P.cleaningAisle,
 };
 
+// Map grocery sub-category names to representative image URLs.
 export function subCategoryImageFromName(name) {
   return SUB[name] || P.store;
 }
@@ -111,6 +114,7 @@ const PRODUCT_RULES = [
   [/floor cleaner|disinfectant|bathroom cleaner|detergent|fabric conditioner|detergent bars|laundry/i, P.cleaningAisle],
 ];
 
+// Resolve best-match product image URL from product naming patterns.
 export function productImageFromName(name) {
   if (!name || typeof name !== "string") return P.store;
   for (const [re, url] of PRODUCT_RULES) {

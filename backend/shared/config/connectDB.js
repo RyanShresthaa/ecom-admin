@@ -7,6 +7,7 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
+// Build postgres pool settings from DATABASE_URL or discrete DB_* env vars.
 function buildPoolConfig() {
   const connectionString =
     process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL
@@ -27,12 +28,15 @@ function buildPoolConfig() {
   }
 }
 
+// Initialize shared PostgreSQL connection pool for all API modules.
 const pool = new Pool(buildPoolConfig())
 
+// Log successful database client connections.
 pool.on('connect', () => {
   console.log('Connected to the database')
 })
 
+// Fail fast when the pool emits an unrecoverable error.
 pool.on('error', (err) => {
   console.error('Database connection error:', err)
   process.exit(1)

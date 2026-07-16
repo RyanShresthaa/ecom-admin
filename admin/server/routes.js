@@ -1,24 +1,72 @@
-import { randomBytes } from 'node:crypto'
-
 import { Router } from 'express'
 
-import { getDb, nextId, saveDb, updateDb } from './db.js'
+import { getDb } from './db.js'
+import { enrichProductRow, getProductMetrics, getReorderSuggestions, paginateList, removeProductFromOrders, toPublicUser } from './utils.js'
 import {
-  computeDashboardStats,
-  computeSalesSeries,
-  enrichCustomerRow,
-  enrichProductRow,
-  getProductMetrics,
-  getReorderSuggestions,
-  paginateList,
-  removeProductFromOrders,
-  syncCustomerStats,
-  syncInventoryLowStock,
-  toPublicUser,
-} from './utils.js'
+  parseSorting,
+  syncProductStockFromInventory,
+  recordStockMovement,
+  enrichMovementRow,
+  enrichInventoryRow,
+  enrichPurchaseOrder,
+  getProductAvailableStock,
+  syncProductStockField,
+  deductOrderStock,
+  applyOrderStatusUpdates,
+  syncInventoryFromProducts,
+} from './services/domain.service.js'
+
+import { login, session as authSession, logout, forgotPassword, resetPassword } from './controllers/auth.controller.js'
+import { stats as dashboardStats, salesSeries as dashboardSalesSeries, recentOrders as dashboardRecentOrders } from './controllers/dashboard.controller.js'
+import { listCustomers, getCustomerById, getCustomerOrders, patchCustomer } from './controllers/customers.controller.js'
+import { createProductsController } from './controllers/products.controller.js'
+import { createOrdersController } from './controllers/orders.controller.js'
+import { createInventoryController } from './controllers/inventory.controller.js'
+import {
+  getSettings,
+  updateSettings,
+  search,
+  listNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  getAccount,
+  patchAccount,
+  changePassword,
+} from './controllers/system.controller.js'
 
 const router = Router()
 
+const productsController = createProductsController({
+  parseSorting,
+  paginateList,
+  enrichProductRow,
+  getProductMetrics,
+  getProductAvailableStock,
+  syncProductStockField,
+  syncInventoryFromProducts,
+  removeProductFromOrders,
+})
+
+const ordersController = createOrdersController({
+  parseSorting,
+  paginateList,
+  applyOrderStatusUpdates,
+  deductOrderStock,
+  syncCustomerStats,
+})
+
+const inventoryController = createInventoryController({
+  parseSorting,
+  paginateList,
+  getReorderSuggestions,
+  enrichInventoryRow,
+  enrichMovementRow,
+  recordStockMovement,
+  syncProductStockFromInventory,
+  enrichPurchaseOrder,
+})
+
+// Auth helper: resolves current user from Authorization bearer token.
 function getUserFromToken(db, token) {
   if (!token) return null
   const userId = db.sessions[token]
@@ -27,6 +75,7 @@ function getUserFromToken(db, token) {
   return user ? toPublicUser(user) : null
 }
 
+// Route guard: requires authenticated session token for protected endpoints.
 function requireAuth(req, res, next) {
   const db = getDb()
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, '')
@@ -37,1193 +86,74 @@ function requireAuth(req, res, next) {
   next()
 }
 
-function parseSorting(query) {
-  if (query.sorting && typeof query.sorting === 'string') {
-    try {
-      query.sorting = JSON.parse(query.sorting)
-    } catch {
-      query.sorting = []
-    }
-  }
-  return query
-}
-
-function syncProductStockFromInventory(db, productId) {
-  const product = db.products.find((p) => p.id === productId)
-  if (!product) return
-
-  const total = db.inventory
-    .filter((item) => item.productId === productId)
-    .reduce((sum, item) => sum + item.stockQuantity, 0)
-  product.stock = total
-
-  // Keep variant stocks aligned with inventory so Products UI stays in sync.
-  if (product.variants?.length) {
-    const variantTotal = product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
-    if (variantTotal === total) return
-
-    if (variantTotal <= 0) {
-      product.variants.forEach((variant, index) => {
-        variant.stock = index === 0 ? total : 0
-      })
-      return
-    }
-
-    let remaining = total
-    product.variants.forEach((variant, index) => {
-      if (index === product.variants.length - 1) {
-        variant.stock = remaining
-        return
-      }
-      const share = Math.floor((total * (variant.stock || 0)) / variantTotal)
-      variant.stock = share
-      remaining -= share
-    })
-  }
-}
-
-function recordStockMovement(db, item, { delta, reasonCode, reasonLabel, author, note }) {
-  const threshold = item.threshold ?? db.settings.lowStockThreshold
-  const previousQty = item.stockQuantity
-  const newQty = Math.max(0, previousQty + delta)
-  item.stockQuantity = newQty
-  item.threshold = threshold
-  item.lowStock = newQty <= threshold
-
-  const movement = {
-    id: nextId(db, 'movement', 'MOV'),
-    inventoryId: item.id,
-    productId: item.productId,
-    productName: item.productName,
-    sku: item.sku,
-    reasonCode,
-    reasonLabel,
-    delta: newQty - previousQty,
-    previousQty,
-    newQty,
-    warehouse: item.warehouse,
-    author: author || 'System',
-    note: note || '',
-    createdAt: new Date().toISOString(),
-  }
-  db.stockMovements.unshift(movement)
-  return movement
-}
-
-function enrichMovementRow(db, movement) {
-  const inv = db.inventory.find((item) => item.id === movement.inventoryId)
-  const product = db.products.find((p) => p.id === (movement.productId || inv?.productId))
-  return {
-    ...movement,
-    productId: product?.id || movement.productId || inv?.productId || null,
-    productName: product?.name || inv?.productName || movement.productName,
-    sku: product?.sku || inv?.sku || movement.sku,
-    warehouse: inv?.warehouse || movement.warehouse,
-    currentStock: inv?.stockQuantity ?? null,
-  }
-}
-
-function enrichInventoryRow(db, item) {
-  const product = db.products.find((p) => p.id === item.productId)
-  const threshold = item.threshold ?? db.settings.lowStockThreshold
-  return {
-    ...item,
-    productName: product?.name || item.productName,
-    sku: product?.sku || item.sku,
-    category: product?.category || item.category,
-    threshold,
-    lowStock: item.stockQuantity <= threshold,
-  }
-}
-
-function enrichPurchaseOrder(db, po) {
-  return {
-    ...po,
-    items: (po.items || []).map((item) => {
-      const inv = db.inventory.find((row) => row.id === item.inventoryId)
-      const product = db.products.find((p) => p.id === (item.productId || inv?.productId))
-      return {
-        ...item,
-        productId: product?.id || item.productId || inv?.productId || null,
-        productName: product?.name || inv?.productName || item.productName,
-        sku: product?.sku || inv?.sku || item.sku,
-        warehouse: inv?.warehouse || item.warehouse || null,
-        currentStock: inv?.stockQuantity ?? null,
-      }
-    }),
-  }
-}
-
-function adjustProductInventory(db, productId, quantity, context) {
-  if (quantity === 0) return
-
-  const product = db.products.find((p) => p.id === productId)
-  if (!product) throw new Error('Product not found')
-
-  const inventoryItems = db.inventory.filter((item) => item.productId === productId)
-  if (inventoryItems.length === 0) throw new Error(`No inventory found for ${product.name}`)
-
-  if (quantity < 0) {
-    const requested = Math.abs(quantity)
-    const available = inventoryItems.reduce((sum, item) => sum + item.stockQuantity, 0)
-    if (available < requested) {
-      throw new Error(`Insufficient stock for ${product.name}`)
-    }
-
-    let remaining = requested
-    for (const item of [...inventoryItems].sort((a, b) => b.stockQuantity - a.stockQuantity)) {
-      if (remaining <= 0) break
-      const amount = Math.min(item.stockQuantity, remaining)
-      if (amount <= 0) continue
-      recordStockMovement(db, item, { ...context, delta: -amount })
-      remaining -= amount
-    }
-  } else {
-    const [item] = inventoryItems
-    recordStockMovement(db, item, { ...context, delta: quantity })
-  }
-
-  syncProductStockFromInventory(db, productId)
-}
-
-function updateVariantStock(product, variantId, quantity) {
-  if (!product?.variants?.length) return
-  if (variantId) {
-    const variant = product.variants.find((v) => v.id === variantId)
-    if (!variant) throw new Error(`Variant not found for ${product.name}`)
-    const nextStock = (variant.stock || 0) + quantity
-    if (nextStock < 0) throw new Error(`Insufficient variant stock for ${product.name}`)
-    variant.stock = nextStock
-    return
-  }
-
-  let remaining = Math.abs(quantity)
-  const variants = [...product.variants].sort((a, b) => (b.stock || 0) - (a.stock || 0))
-  for (const variant of variants) {
-    if (remaining <= 0) break
-    const available = variant.stock || 0
-    if (available <= 0) continue
-    const amount = Math.min(available, remaining)
-    variant.stock = available - amount
-    remaining -= amount
-  }
-  if (remaining > 0) {
-    throw new Error(`Insufficient variant stock for ${product.name}`)
-  }
-}
-
-function getProductAvailableStock(dbOrProduct, maybeProduct) {
-  const db = maybeProduct ? dbOrProduct : null
-  const product = maybeProduct || dbOrProduct
-  if (db) {
-    const inventoryTotal = db.inventory
-      .filter((item) => item.productId === product.id)
-      .reduce((sum, item) => sum + item.stockQuantity, 0)
-    if (db.inventory.some((item) => item.productId === product.id)) return inventoryTotal
-  }
-  if (product.variants?.length) {
-    return product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
-  }
-  return product.stock || 0
-}
-
-function syncProductStockField(product) {
-  if (product.variants?.length) {
-    product.stock = product.variants.reduce((sum, variant) => sum + (variant.stock || 0), 0)
-  }
-}
-
-function deductOrderStock(db, order, author) {
-  if (order.stockDeducted) return
-
-  for (const item of order.items) {
-    const product = db.products.find((p) => p.id === item.productId)
-    if (!product) throw new Error(`Product not found for ${item.name}`)
-    if (getProductAvailableStock(db, product) < item.qty) {
-      throw new Error(`Insufficient stock for ${product.name}`)
-    }
-    updateVariantStock(product, item.variantId, -item.qty)
-    syncProductStockField(product)
-  }
-
-  for (const item of order.items) {
-    adjustProductInventory(db, item.productId, -item.qty, {
-      reasonCode: 'sold',
-      reasonLabel: 'Order stock reserved',
-      author,
-      note: `Order ${order.id}`,
-    })
-  }
-
-  order.stockDeducted = true
-  order.stockReturned = false
-}
-
-function returnOrderStock(db, order, author) {
-  if (!order.stockDeducted || order.stockReturned) return
-
-  for (const item of order.items) {
-    const product = db.products.find((p) => p.id === item.productId)
-    if (!product) continue
-    if (item.variantId) {
-      updateVariantStock(product, item.variantId, item.qty)
-    } else if (product.variants?.length) {
-      product.variants[0].stock = (product.variants[0].stock || 0) + item.qty
-    }
-    syncProductStockField(product)
-    adjustProductInventory(db, item.productId, item.qty, {
-      reasonCode: 'returned',
-      reasonLabel: 'Order returned',
-      author,
-      note: `Order ${order.id}`,
-    })
-  }
-
-  order.stockReturned = true
-}
-
-function reReserveOrderStock(db, order, author) {
-  if (!order.stockReturned) return
-  order.stockReturned = false
-  order.stockDeducted = false
-  deductOrderStock(db, order, author)
-}
-
-function pushOrderHistory(order, entry) {
-  order.statusHistory = order.statusHistory || []
-  order.statusHistory.push({
-    id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    timestamp: new Date().toISOString(),
-    ...entry,
-  })
-}
-
-/**
- * Apply delivery/payment updates with Returned ↔ Refunded kept in sync,
- * stock restored/re-reserved, and customer lifetime stats refreshed.
- */
-function applyOrderStatusUpdates(db, order, { deliveryStatus, paymentStatus, author = 'System' } = {}) {
-  const prevDelivery = order.deliveryStatus
-  const prevPayment = order.paymentStatus
-
-  let nextDelivery = deliveryStatus ?? prevDelivery
-  let nextPayment = paymentStatus ?? prevPayment
-
-  // Returned implies refunded, and refunded implies returned.
-  if (deliveryStatus === 'Returned' && nextPayment !== 'Refunded') {
-    nextPayment = 'Refunded'
-  }
-  if (paymentStatus === 'Refunded' && nextDelivery !== 'Returned') {
-    nextDelivery = 'Returned'
-  }
-
-  // Leaving return/refund undoes the paired status when the other wasn't explicitly set.
-  if (deliveryStatus && deliveryStatus !== 'Returned' && prevDelivery === 'Returned' && paymentStatus == null) {
-    if (nextPayment === 'Refunded') nextPayment = 'Paid'
-  }
-  if (paymentStatus && paymentStatus !== 'Refunded' && prevPayment === 'Refunded' && deliveryStatus == null) {
-    if (nextDelivery === 'Returned') nextDelivery = 'Delivered'
-  }
-
-  if (nextDelivery !== prevDelivery) {
-    order.deliveryStatus = nextDelivery
-    pushOrderHistory(order, {
-      type: 'delivery',
-      message: `Delivery status changed to ${nextDelivery}`,
-      deliveryStatus: nextDelivery,
-      author,
-    })
-  }
-
-  if (nextPayment !== prevPayment) {
-    order.paymentStatus = nextPayment
-    pushOrderHistory(order, {
-      type: 'payment',
-      message: `Payment status changed to ${nextPayment}`,
-      paymentStatus: nextPayment,
-      author,
-    })
-  }
-
-  const isReturnState = nextDelivery === 'Returned' || nextPayment === 'Refunded'
-  const wasReturnState = prevDelivery === 'Returned' || prevPayment === 'Refunded'
-
-  if (isReturnState) {
-    returnOrderStock(db, order, author)
-  } else if (wasReturnState && order.stockReturned) {
-    reReserveOrderStock(db, order, author)
-  } else if (nextDelivery === 'Shipped' || nextDelivery === 'Delivered') {
-    deductOrderStock(db, order, author)
-  }
-
-  syncCustomerStats(db, order.customerId)
-  return order
-}
 
 // --- Auth ---
-router.post('/auth/login', async (req, res) => {
-  const db = getDb()
-  const { email, password } = req.body || {}
-  const match = db.users.find((u) => u.email === email && u.password === password)
-  if (!match) return res.status(401).json({ message: 'Invalid email or password' })
-  const token = randomBytes(32).toString('hex')
-  db.sessions[token] = match.id
-  await saveDb()
-  res.json({ user: toPublicUser(match), token })
-})
-
-router.get('/auth/session', async (req, res) => {
-  const db = getDb()
-  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '')
-  const user = getUserFromToken(db, token)
-  if (!user) return res.status(401).json({ message: 'Session expired' })
-  res.json({ user })
-})
-
-router.post('/auth/logout', requireAuth, async (req, res) => {
-  await updateDb((db) => {
-    delete db.sessions[req.token]
-  })
-  res.json({ success: true })
-})
-
-router.post('/auth/forgot-password', async (req, res) => {
-  const db = getDb()
-  const { email } = req.body || {}
-  const user = db.users.find((u) => u.email === email)
-  if (!user) return res.status(404).json({ message: 'No account found with that email' })
-  const token = randomBytes(16).toString('hex')
-  db.resetTokens[token] = { email, expires: Date.now() + 3600000 }
-  await saveDb()
-  res.json({ success: true, devResetToken: token })
-})
-
-router.post('/auth/reset-password', async (req, res) => {
-  const db = getDb()
-  const { token, password } = req.body || {}
-  const reset = db.resetTokens[token]
-  if (!reset || reset.expires < Date.now()) {
-    return res.status(400).json({ message: 'Invalid or expired reset token' })
-  }
-  const user = db.users.find((u) => u.email === reset.email)
-  if (!user) return res.status(400).json({ message: 'Invalid reset token' })
-  user.password = password
-  delete db.resetTokens[token]
-  await saveDb()
-  res.json({ success: true })
-})
+router.post('/auth/login', login)
+router.get('/auth/session', authSession)
+router.post('/auth/logout', requireAuth, logout)
+router.post('/auth/forgot-password', forgotPassword)
+router.post('/auth/reset-password', resetPassword)
 
 // --- Dashboard ---
-router.get('/dashboard/stats', async (_req, res) => {
-  res.json(computeDashboardStats(getDb()))
-})
-
-router.get('/dashboard/sales-series', async (_req, res) => {
-  res.json(computeSalesSeries(getDb()))
-})
-
-router.get('/dashboard/recent-orders', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({
-    ...req.query,
-    sorting: req.query.sorting || JSON.stringify([{ id: 'date', desc: true }]),
-  })
-  const list = paginateList(db.orders, query, {
-    searchFields: ['id', 'customerName', 'customerEmail'],
-    filterFn: (row, q) => {
-      if (q.date && !String(row.date).startsWith(String(q.date))) return false
-      return true
-    },
-  })
-  list.rows = list.rows.map((o) => ({
-    id: o.id,
-    customerId: o.customerId,
-    customerName: o.customerName,
-    customerEmail: o.customerEmail,
-    date: o.date,
-    totalAmount: o.totalAmount,
-    paymentStatus: o.paymentStatus,
-    deliveryStatus: o.deliveryStatus,
-  }))
-  res.json(list)
-})
+router.get('/dashboard/stats', dashboardStats)
+router.get('/dashboard/sales-series', dashboardSalesSeries)
+router.get('/dashboard/recent-orders', dashboardRecentOrders)
 
 // --- Customers ---
-router.get('/customers', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({
-    ...req.query,
-    sorting: req.query.sorting || JSON.stringify([{ id: 'createdAt', desc: true }]),
-  })
-  const rows = db.customers.map((customer) => enrichCustomerRow(db, customer))
-  const list = paginateList(rows, query, {
-    searchFields: ['id', 'name', 'email', 'phone', 'tags'],
-    filterFn: (row, q) => {
-      if (q.tag && q.tag !== 'all') {
-        const tag = String(q.tag).toLowerCase()
-        if (!(row.tags || []).some((entry) => String(entry).toLowerCase() === tag)) return false
-      }
-      return true
-    },
-  })
-  res.json(list)
-})
-
-router.get('/customers/:id', async (req, res) => {
-  const customer = getDb().customers.find((c) => c.id === req.params.id)
-  if (!customer) return res.status(404).json({ message: 'Customer not found' })
-  res.json(customer)
-})
-
-router.get('/customers/:id/orders', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({ ...req.query })
-  const rows = db.orders.filter((o) => o.customerId === req.params.id)
-  res.json(paginateList(rows, query))
-})
-
-router.patch('/customers/:id', async (req, res) => {
-  let updated = null
-  await updateDb((db) => {
-    const idx = db.customers.findIndex((c) => c.id === req.params.id)
-    if (idx === -1) return
-    db.customers[idx] = { ...db.customers[idx], ...req.body, id: req.params.id }
-    updated = db.customers[idx]
-  })
-  if (!updated) return res.status(404).json({ message: 'Customer not found' })
-  res.json(updated)
-})
+router.get('/customers', listCustomers)
+router.get('/customers/:id', getCustomerById)
+router.get('/customers/:id/orders', getCustomerOrders)
+router.patch('/customers/:id', patchCustomer)
 
 // --- Products ---
-router.get('/products/options', async (req, res) => {
-  const db = getDb()
-  const status = req.query.status || 'active'
-  const rows = db.products
-    .filter((product) => status === 'all' || product.status === status)
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .map((product) => ({
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      price: product.price,
-      stock: getProductAvailableStock(db, product),
-      status: product.status,
-      variants: product.variants || [],
-      createdAt: product.createdAt,
-    }))
-  res.json({ rows })
-})
+router.get('/products/options', productsController.options)
+router.get('/products', productsController.list)
+router.get('/products/categories', productsController.categories)
+router.get('/products/export/csv', productsController.exportCsv)
+router.post('/products/import/csv', productsController.importCsv)
+router.get('/products/:id/analytics', productsController.analytics)
+router.get('/products/:id', productsController.getById)
 
-router.get('/products', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({
-    ...req.query,
-    sorting: req.query.sorting || JSON.stringify([{ id: 'createdAt', desc: true }]),
-  })
-  const rows = db.products.map((product) => enrichProductRow(db, product))
-  res.json(
-    paginateList(rows, query, {
-      searchFields: ['name', 'sku', 'id'],
-      filterFn: (row, q) => {
-        if (q.category && q.category !== 'all' && row.category !== q.category) return false
-        if (q.status && q.status !== 'all' && row.status !== q.status) return false
-        return true
-      },
-    })
-  )
-})
-
-router.get('/products/categories', async (_req, res) => {
-  res.json(getDb().categories)
-})
-
-router.get('/products/export/csv', async (_req, res) => {
-  const db = getDb()
-  const header = 'id,name,category,price,stock,sku,status'
-  const lines = db.products.map((p) =>
-    [p.id, p.name, p.category, p.price, p.stock, p.sku, p.status]
-      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      .join(',')
-  )
-  res.json({ csv: [header, ...lines].join('\n'), filename: 'products.csv' })
-})
-
-router.post('/products/import/csv', async (req, res) => {
-  const { csv } = req.body || {}
-  const lines = String(csv || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-  let imported = 0
-  await updateDb((db) => {
-    for (const line of lines) {
-      const cols = line.match(/("([^"]|"")*"|[^,]+)/g)?.map((c) => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim()) || []
-      if (cols.length < 6) continue
-
-      const [rawId, name, category, price, stock, sku, status = 'active'] = cols
-      if (rawId.toLowerCase() === 'id') continue
-
-      const existing = rawId ? db.products.find((p) => p.id === rawId) : null
-      if (existing) {
-        Object.assign(existing, {
-          name,
-          category,
-          price: Number(price),
-          stock: Number(stock),
-          sku: sku || existing.sku,
-          status,
-        })
-        syncProductStockField(existing)
-      } else {
-        const id = rawId && !db.products.some((p) => p.id === rawId) ? rawId : nextId(db, 'product', 'PRD')
-        let finalSku = sku || id
-        while (db.products.some((p) => p.sku === finalSku)) {
-          finalSku = `${finalSku}-${db.products.length + 1}`
-        }
-        const product = {
-          id,
-          name,
-          category,
-          price: Number(price),
-          stock: Number(stock),
-          sku: finalSku,
-          status,
-          description: '',
-          image: null,
-          variants: [],
-          rating: 4.5,
-          createdAt: new Date().toISOString(),
-        }
-        db.products.unshift(product)
-      }
-      imported++
-    }
-    syncInventoryFromProducts(db)
-  })
-  res.json({ imported })
-})
-
-router.get('/products/:id/analytics', async (req, res) => {
-  const db = getDb()
-  const product = db.products.find((entry) => entry.id === req.params.id)
-  if (!product) return res.status(404).json({ message: 'Product not found' })
-  const metrics = getProductMetrics(db, product.id)
-  res.json({
-    product: {
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      stock: enrichProductRow(db, product).stock,
-    },
-    stats: {
-      sold: metrics.soldQty,
-      refunded: metrics.refundedQty,
-      complaints: metrics.complaintCount,
-      buyers: metrics.buyers.length,
-      revenue: metrics.revenue,
-    },
-    buyers: metrics.buyers,
-    orderHistory: metrics.orderHistory,
-    refunds: metrics.refunds,
-    complaints: metrics.complaints,
-  })
-})
-
-router.get('/products/:id', async (req, res) => {
-  const db = getDb()
-  const product = db.products.find((p) => p.id === req.params.id)
-  if (!product) return res.status(404).json({ message: 'Product not found' })
-  res.json(enrichProductRow(db, product))
-})
-
-function normalizeProductName(name) {
-  return String(name || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-}
-
-function findProductByName(db, name, excludeId = null) {
-  const normalized = normalizeProductName(name)
-  if (!normalized) return null
-  return (
-    db.products.find(
-      (product) =>
-        product.id !== excludeId && normalizeProductName(product.name) === normalized
-    ) || null
-  )
-}
-
-router.post('/products', async (req, res) => {
-  const db = getDb()
-  const duplicate = findProductByName(db, req.body?.name)
-  if (duplicate) {
-    return res.status(409).json({
-      message: `A product named "${duplicate.name}" already exists. Change the name, or open the existing product if it's the same one.`,
-      code: 'DUPLICATE_PRODUCT_NAME',
-      existingProduct: { id: duplicate.id, name: duplicate.name, sku: duplicate.sku },
-    })
-  }
-
-  let product = null
-  await updateDb((db) => {
-    const id = nextId(db, 'product', 'PRD')
-    product = {
-      id,
-      name: String(req.body.name || '').trim(),
-      category: req.body.category,
-      price: Number(req.body.price) || 0,
-      stock: Number(req.body.stock) || 0,
-      sku: req.body.sku || id,
-      status: req.body.status || 'active',
-      description: req.body.description || '',
-      image: req.body.image ?? null,
-      variants: req.body.variants || [],
-      rating: 4.5,
-      createdAt: new Date().toISOString(),
-    }
-    db.products.unshift(product)
-    syncInventoryFromProducts(db)
-  })
-  res.status(201).json(product)
-})
-
-router.put('/products/:id', async (req, res) => {
-  const db = getDb()
-  const existing = db.products.find((p) => p.id === req.params.id)
-  if (!existing) return res.status(404).json({ message: 'Product not found' })
-
-  const nextName = req.body?.name != null ? String(req.body.name).trim() : existing.name
-  const duplicate = findProductByName(db, nextName, req.params.id)
-  if (duplicate) {
-    return res.status(409).json({
-      message: `A product named "${duplicate.name}" already exists. Change the name, or open the existing product if it's the same one.`,
-      code: 'DUPLICATE_PRODUCT_NAME',
-      existingProduct: { id: duplicate.id, name: duplicate.name, sku: duplicate.sku },
-    })
-  }
-
-  let updated = null
-  await updateDb((db) => {
-    const idx = db.products.findIndex((p) => p.id === req.params.id)
-    if (idx === -1) return
-    const {
-      soldQty: _soldQty,
-      refundedQty: _refundedQty,
-      complaintCount: _complaintCount,
-      pendingQty: _pendingQty,
-      ...safeBody
-    } = req.body || {}
-    updated = {
-      ...db.products[idx],
-      ...safeBody,
-      id: req.params.id,
-      name: nextName,
-      price: Number(req.body.price ?? db.products[idx].price),
-      stock: Number(req.body.stock ?? db.products[idx].stock),
-    }
-    db.products[idx] = updated
-    syncInventoryFromProducts(db)
-  })
-  if (!updated) return res.status(404).json({ message: 'Product not found' })
-  res.json(updated)
-})
-
-router.delete('/products/:id', async (req, res) => {
-  let found = false
-  await updateDb((db) => {
-    const before = db.products.length
-    db.products = db.products.filter((p) => p.id !== req.params.id)
-    db.inventory = db.inventory.filter((i) => i.productId !== req.params.id)
-    found = db.products.length < before
-    if (found) {
-      removeProductFromOrders(db, req.params.id)
-    }
-  })
-  if (!found) return res.status(404).json({ message: 'Product not found' })
-  res.status(204).end()
-})
-
-router.post('/products/:id/image', async (req, res) => {
-  let updated = null
-  await updateDb((db) => {
-    const idx = db.products.findIndex((p) => p.id === req.params.id)
-    if (idx === -1) return
-    db.products[idx].image = req.body?.imageDataUrl ?? db.products[idx].image
-    updated = db.products[idx]
-  })
-  if (!updated) return res.status(404).json({ message: 'Product not found' })
-  res.json(updated)
-})
+router.post('/products', productsController.create)
+router.put('/products/:id', productsController.update)
+router.delete('/products/:id', productsController.remove)
+router.post('/products/:id/image', productsController.updateImage)
 
 // --- Orders ---
-router.get('/orders', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({
-    ...req.query,
-    sorting: req.query.sorting || JSON.stringify([{ id: 'date', desc: true }]),
-  })
-  res.json(
-    paginateList(db.orders, query, {
-      searchFields: ['id', 'customerName', 'customerEmail'],
-      filterFn: (row, q) => {
-        if (q.deliveryStatus && q.deliveryStatus !== 'all' && row.deliveryStatus !== q.deliveryStatus) return false
-        if (q.paymentStatus && q.paymentStatus !== 'all' && row.paymentStatus !== q.paymentStatus) return false
-        if (q.customerId && row.customerId !== q.customerId) return false
-        if (q.dateFrom && row.date < q.dateFrom) return false
-        if (q.dateTo && row.date > q.dateTo) return false
-        return true
-      },
-    })
-  )
-})
-
-router.get('/orders/:id', async (req, res) => {
-  const order = getDb().orders.find((o) => o.id === req.params.id)
-  if (!order) return res.status(404).json({ message: 'Order not found' })
-  res.json(order)
-})
-
-router.patch('/orders/:id/status', async (req, res) => {
-  let updated = null
-  try {
-    await updateDb((db) => {
-      const idx = db.orders.findIndex((o) => o.id === req.params.id)
-      if (idx === -1) return
-      const order = db.orders[idx]
-      const { deliveryStatus, paymentStatus } = req.body || {}
-      const author = req.body.author || 'System'
-      updated = applyOrderStatusUpdates(db, order, { deliveryStatus, paymentStatus, author })
-    })
-  } catch (err) {
-    return res.status(400).json({ message: err.message || 'Unable to update order status' })
-  }
-  if (!updated) return res.status(404).json({ message: 'Order not found' })
-  res.json(updated)
-})
-
-router.post('/orders/bulk-status', async (req, res) => {
-  const { ids = [], deliveryStatus, paymentStatus } = req.body || {}
-  let updated = 0
-  try {
-    await updateDb((db) => {
-      for (const id of ids) {
-        const order = db.orders.find((o) => o.id === id)
-        if (!order) continue
-        const author = req.body.author || 'System'
-        applyOrderStatusUpdates(db, order, { deliveryStatus, paymentStatus, author })
-        updated++
-      }
-    })
-  } catch (err) {
-    return res.status(400).json({ message: err.message || 'Unable to update orders' })
-  }
-  res.json({ updated })
-})
-
-router.post('/orders/:id/notes', async (req, res) => {
-  let updated = null
-  await updateDb((db) => {
-    const order = db.orders.find((o) => o.id === req.params.id)
-    if (!order) return
-    const note = {
-      id: `note-${Date.now()}`,
-      text: req.body.text,
-      author: req.body.author || 'Staff',
-      createdAt: new Date().toISOString(),
-    }
-    order.internalNotes = order.internalNotes || []
-    order.internalNotes.push(note)
-    order.statusHistory.push({
-      id: `hist-${Date.now()}-n`,
-      type: 'note',
-      message: req.body.text,
-      timestamp: note.createdAt,
-      author: note.author,
-    })
-    updated = order
-  })
-  if (!updated) return res.status(404).json({ message: 'Order not found' })
-  res.json(updated)
-})
-
-router.post('/orders', async (req, res) => {
-  let order = null
-  try {
-    await updateDb((db) => {
-      const customer = db.customers.find((c) => c.id === req.body.customerId)
-      if (!customer) return
-      const items = (req.body.items || []).map((item) => {
-        const product = db.products.find((p) => p.id === item.productId)
-        return {
-          name: product?.name || 'Unknown product',
-          sku: product?.sku || '',
-          productId: item.productId,
-          variantId: item.variantId,
-          qty: item.qty,
-          price: product?.price || 0,
-        }
-      })
-      const totalAmount = Math.round(items.reduce((s, i) => s + i.price * i.qty, 0) * 100) / 100
-      const now = new Date().toISOString()
-      const author = req.body.author || 'Staff'
-      order = {
-        id: nextId(db, 'order', 'ORD'),
-        customerId: customer.id,
-        customerName: customer.name,
-        customerEmail: customer.email,
-        date: now,
-        totalAmount,
-        paymentStatus: req.body.paymentStatus || 'Paid',
-        deliveryStatus: req.body.deliveryStatus || 'Pending',
-        shippingAddress: `${customer.addresses?.[0]?.line1 || ''}, ${customer.addresses?.[0]?.city || ''}`,
-        items,
-        internalNotes: req.body.note
-          ? [{ id: `note-${Date.now()}`, text: req.body.note, author, createdAt: now }]
-          : [],
-        statusHistory: [
-          { id: `hist-${Date.now()}`, type: 'created', message: 'Order created', timestamp: now, author },
-        ],
-        stockDeducted: false,
-        stockReturned: false,
-      }
-      deductOrderStock(db, order, author)
-      db.orders.unshift(order)
-      syncCustomerStats(db, customer.id)
-      db.notifications.unshift({
-        id: nextId(db, 'notification', 'NTF'),
-        type: 'order',
-        title: 'New order created',
-        message: `Order ${order.id} for ${customer.name}`,
-        href: `/orders/${order.id}`,
-        read: false,
-        createdAt: now,
-      })
-    })
-  } catch (err) {
-    return res.status(400).json({ message: err.message || 'Unable to create order' })
-  }
-  if (!order) return res.status(400).json({ message: 'Invalid order data' })
-  res.status(201).json(order)
-})
+router.get('/orders', ordersController.list)
+router.get('/orders/:id', ordersController.getById)
+router.patch('/orders/:id/status', ordersController.updateStatus)
+router.post('/orders/bulk-status', ordersController.bulkStatus)
+router.post('/orders/:id/notes', ordersController.addNote)
+router.post('/orders', ordersController.create)
 
 // --- Inventory ---
-router.get('/inventory', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({ ...req.query })
-  const rows = db.inventory.map((item) => enrichInventoryRow(db, item))
-  res.json(
-    paginateList(rows, query, {
-      searchFields: ['productName', 'sku', 'id', 'warehouse'],
-      filterFn: (row, q) => {
-        if (q.warehouse && q.warehouse !== 'all' && row.warehouse !== q.warehouse) return false
-        if (q.stockLevel === 'low' && !row.lowStock) return false
-        if (q.stockLevel === 'ok' && row.lowStock) return false
-        return true
-      },
-    })
-  )
-})
-
-router.get('/inventory/warehouses', async (_req, res) => {
-  res.json(getDb().warehouses)
-})
-
-router.get('/inventory/adjustment-reasons', async (_req, res) => {
-  res.json(getDb().adjustmentReasons)
-})
-
-router.get('/inventory/movements', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({ ...req.query })
-  const rows = db.stockMovements.map((movement) => enrichMovementRow(db, movement))
-  res.json(
-    paginateList(rows, query, {
-      searchFields: ['productName', 'sku', 'reasonLabel', 'warehouse'],
-      filterFn: (row, q) => {
-        if (q.reasonCode && q.reasonCode !== 'all' && row.reasonCode !== q.reasonCode) return false
-        if (q.inventoryId && row.inventoryId !== q.inventoryId) return false
-        return true
-      },
-    })
-  )
-})
-
-router.post('/inventory/adjust', async (req, res) => {
-  const { inventoryId, delta, reasonCode, note, author } = req.body || {}
-  let result = null
-  await updateDb((db) => {
-    const item = db.inventory.find((i) => i.id === inventoryId)
-    if (!item) return
-    const reason = db.adjustmentReasons.find((r) => r.code === reasonCode)
-    const movement = recordStockMovement(db, item, {
-      delta: Number(delta) || 0,
-      reasonCode,
-      reasonLabel: reason?.label || reasonCode,
-      author: author || 'Staff',
-      note: note || '',
-    })
-    syncProductStockFromInventory(db, item.productId)
-
-    if (item.lowStock) {
-      db.notifications.unshift({
-        id: nextId(db, 'notification', 'NTF'),
-        type: 'inventory',
-        title: 'Low stock alert',
-        message: `${item.productName} is below threshold in ${item.warehouse}`,
-        href: '/inventory',
-        read: false,
-        createdAt: new Date().toISOString(),
-      })
-    }
-    result = { success: true, inventory: enrichInventoryRow(db, item), movement: enrichMovementRow(db, movement) }
-  })
-  if (!result) return res.status(404).json({ message: 'Inventory item not found' })
-  res.json(result)
-})
-
-router.get('/inventory/reorder-suggestions', async (req, res) => {
-  res.json(getReorderSuggestions(getDb(), req.query.urgency))
-})
-
-router.get('/inventory/purchase-orders', async (req, res) => {
-  const db = getDb()
-  const query = parseSorting({ ...req.query })
-  const rows = db.purchaseOrders.map((po) => enrichPurchaseOrder(db, po))
-  res.json(
-    paginateList(rows, query, {
-      searchFields: ['id', 'supplier'],
-      filterFn: (row, q) => {
-        if (q.status && q.status !== 'all' && row.status !== q.status) return false
-        return true
-      },
-    })
-  )
-})
-
-router.get('/inventory/purchase-orders/:id', async (req, res) => {
-  const db = getDb()
-  const po = db.purchaseOrders.find((p) => p.id === req.params.id)
-  if (!po) return res.status(404).json({ message: 'Purchase order not found' })
-  res.json(enrichPurchaseOrder(db, po))
-})
-
-router.post('/inventory/purchase-orders', async (req, res) => {
-  let po = null
-  await updateDb((db) => {
-    const items = (req.body.items || []).map((item) => {
-      const inv = db.inventory.find((row) => row.id === item.inventoryId)
-      const product = db.products.find((p) => p.id === (item.productId || inv?.productId))
-      return {
-        inventoryId: item.inventoryId,
-        productId: product?.id || item.productId || inv?.productId || null,
-        productName: product?.name || inv?.productName || item.productName,
-        sku: product?.sku || inv?.sku || item.sku,
-        warehouse: inv?.warehouse || item.warehouse || null,
-        qtyOrdered: Number(item.qtyOrdered) || 0,
-        unitCost: Number(item.unitCost) || 0,
-      }
-    })
-    const totalCost = Math.round(items.reduce((s, i) => s + i.qtyOrdered * i.unitCost, 0) * 100) / 100
-    po = {
-      id: nextId(db, 'po', 'PO'),
-      supplier: req.body.supplier,
-      items,
-      totalCost,
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-      expectedDate: req.body.expectedDate || null,
-      notes: req.body.notes || '',
-    }
-    db.purchaseOrders.unshift(po)
-  })
-  res.status(201).json(po)
-})
-
-router.patch('/inventory/purchase-orders/:id/status', async (req, res) => {
-  let updated = null
-  await updateDb((db) => {
-    const po = db.purchaseOrders.find((p) => p.id === req.params.id)
-    if (!po) return
-    const previousStatus = po.status
-    po.status = req.body.status
-    if (req.body.status === 'received' && previousStatus !== 'received') {
-      const touchedProducts = new Set()
-      for (const item of po.items) {
-        const inv = db.inventory.find((i) => i.id === item.inventoryId)
-        if (!inv) continue
-        recordStockMovement(db, inv, {
-          delta: Number(item.qtyOrdered) || 0,
-          reasonCode: 'po_received',
-          reasonLabel: 'Purchase order received',
-          author: req.body.author || 'Staff',
-          note: `PO ${po.id}`,
-        })
-        touchedProducts.add(inv.productId)
-      }
-      for (const productId of touchedProducts) {
-        syncProductStockFromInventory(db, productId)
-      }
-    }
-    updated = enrichPurchaseOrder(db, po)
-  })
-  if (!updated) return res.status(404).json({ message: 'Purchase order not found' })
-  res.json(updated)
-})
+router.get('/inventory', inventoryController.list)
+router.get('/inventory/warehouses', inventoryController.warehouses)
+router.get('/inventory/adjustment-reasons', inventoryController.adjustmentReasons)
+router.get('/inventory/movements', inventoryController.movements)
+router.post('/inventory/adjust', inventoryController.adjust)
+router.get('/inventory/reorder-suggestions', inventoryController.reorderSuggestions)
+router.get('/inventory/purchase-orders', inventoryController.purchaseOrders)
+router.get('/inventory/purchase-orders/:id', inventoryController.getPurchaseOrderById)
+router.post('/inventory/purchase-orders', inventoryController.createPurchaseOrder)
+router.patch('/inventory/purchase-orders/:id/status', inventoryController.updatePurchaseOrderStatus)
 
 // --- Settings ---
-router.get('/settings', async (_req, res) => {
-  res.json(getDb().settings)
-})
-
-router.put('/settings', async (req, res) => {
-  let settings = null
-  await updateDb((db) => {
-    db.settings = { ...db.settings, ...req.body }
-    syncInventoryLowStock(db)
-    settings = db.settings
-  })
-  res.json(settings)
-})
+router.get('/settings', getSettings)
+router.put('/settings', updateSettings)
 
 // --- Search ---
-router.get('/search', async (req, res) => {
-  const db = getDb()
-  const q = String(req.query.q || '').toLowerCase()
-  const limit = Number(req.query.limit) || 5
-  if (!q) return res.json({ customers: [], products: [], orders: [] })
-
-  const customers = db.customers
-    .filter((c) => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q))
-    .slice(0, limit)
-    .map((c) => ({ id: c.id, name: c.name, email: c.email }))
-
-  const products = db.products
-    .filter((p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
-    .slice(0, limit)
-    .map((p) => ({ id: p.id, name: p.name, sku: p.sku, price: p.price }))
-
-  const orders = db.orders
-    .filter((o) => o.id.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q))
-    .slice(0, limit)
-    .map((o) => ({ id: o.id, customerName: o.customerName, totalAmount: o.totalAmount }))
-
-  res.json({ customers, products, orders })
-})
+router.get('/search', search)
 
 // --- Notifications ---
-router.get('/notifications', async (_req, res) => {
-  res.json(getDb().notifications)
-})
-
-router.patch('/notifications/:id/read', async (req, res) => {
-  let updated = null
-  await updateDb((db) => {
-    const n = db.notifications.find((x) => x.id === req.params.id)
-    if (!n) return
-    n.read = true
-    updated = n
-  })
-  if (!updated) return res.status(404).json({ message: 'Notification not found' })
-  res.json(updated)
-})
-
-router.post('/notifications/read-all', async (_req, res) => {
-  await updateDb((db) => {
-    for (const n of db.notifications) n.read = true
-  })
-  res.json({ success: true })
-})
+router.get('/notifications', listNotifications)
+router.patch('/notifications/:id/read', markNotificationRead)
+router.post('/notifications/read-all', markAllNotificationsRead)
 
 // --- Account ---
-router.get('/account', requireAuth, async (req, res) => {
-  res.json(req.user)
-})
-
-router.patch('/account', requireAuth, async (req, res) => {
-  let updated = null
-  await updateDb((db) => {
-    const idx = db.users.findIndex((u) => u.id === req.user.id)
-    if (idx === -1) return
-    db.users[idx] = { ...db.users[idx], name: req.body.name ?? db.users[idx].name, email: req.body.email ?? db.users[idx].email }
-    updated = toPublicUser(db.users[idx])
-  })
-  res.json(updated)
-})
-
-router.post('/account/password', requireAuth, async (req, res) => {
-  const { currentPassword, newPassword } = req.body || {}
-  const db = getDb()
-  const user = db.users.find((u) => u.id === req.user.id)
-  if (!user || user.password !== currentPassword) {
-    return res.status(400).json({ message: 'Current password is incorrect' })
-  }
-  user.password = newPassword
-  await saveDb()
-  res.json({ success: true })
-})
-
-function syncInventoryFromProducts(db) {
-  const threshold = db.settings.lowStockThreshold
-  const primaryWarehouse = 'Main Warehouse'
-
-  for (const product of db.products) {
-    const targetStock = product.variants?.length
-      ? product.variants.reduce((sum, variant) => sum + (Number(variant.stock) || 0), 0)
-      : Number(product.stock) || 0
-
-    let items = db.inventory.filter((i) => i.productId === product.id)
-
-    // One inventory row per product (no multi-warehouse duplicates).
-    if (items.length === 0) {
-      db.inventory.push({
-        id: nextId(db, 'inventory', 'INV'),
-        productId: product.id,
-        productName: product.name,
-        category: product.category,
-        sku: product.sku,
-        stockQuantity: targetStock,
-        threshold,
-        warehouse: primaryWarehouse,
-        lowStock: targetStock <= threshold,
-      })
-      syncProductStockFromInventory(db, product.id)
-      continue
-    }
-
-    if (items.length > 1) {
-      const primary = items.find((item) => item.warehouse === primaryWarehouse) || items[0]
-      const total = items.reduce((sum, item) => sum + (item.stockQuantity || 0), 0)
-      primary.stockQuantity = total
-      primary.warehouse = primaryWarehouse
-      const keepId = primary.id
-      db.inventory = db.inventory.filter((item) => item.productId !== product.id || item.id === keepId)
-      items = [primary]
-    }
-
-    const [item] = items
-    item.productName = product.name
-    item.category = product.category
-    item.sku = product.sku
-    item.warehouse = primaryWarehouse
-    item.threshold = threshold
-
-    const currentTotal = item.stockQuantity || 0
-    const delta = targetStock - currentTotal
-    if (delta !== 0) {
-      recordStockMovement(db, item, {
-        delta,
-        reasonCode: 'product_sync',
-        reasonLabel: 'Product stock update',
-        author: 'System',
-        note: `Synced from product ${product.id}`,
-      })
-    } else {
-      item.lowStock = currentTotal <= threshold
-    }
-
-    syncProductStockFromInventory(db, product.id)
-  }
-}
+router.get('/account', requireAuth, getAccount)
+router.patch('/account', requireAuth, patchAccount)
+router.post('/account/password', requireAuth, changePassword)
 
 export default router

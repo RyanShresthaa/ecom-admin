@@ -1,9 +1,11 @@
+// coupon model: handles coupon table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `coupons` — lookup, create, atomic increment, delete.
  */
 import pool from '../config/connectDB.js';
 import { mapRow, mapRows } from '../utils/sql.js';
 
+// coupon model: findCouponByCode reads and returns records.
 export async function findCouponByCode(code) {
     const r = await pool.query(
         `SELECT * FROM coupons WHERE UPPER(code) = UPPER($1) AND active = true`,
@@ -16,11 +18,13 @@ export async function findCouponByCode(code) {
     return mapRow(row);
 }
 
+// coupon model: findAllCoupons reads and returns records.
 export async function findAllCoupons() {
     const r = await pool.query(`SELECT * FROM coupons ORDER BY created_at DESC`);
     return mapRows(r.rows);
 }
 
+// coupon model: createCoupon creates a new record.
 export async function createCoupon(data) {
     const r = await pool.query(
         `INSERT INTO coupons (code, discount_type, discount_value, min_order_amt, max_uses, expires_at, active)
@@ -38,6 +42,7 @@ export async function createCoupon(data) {
     return mapRow(r.rows[0]);
 }
 
+// coupon model: incrementCouponUse updates existing records.
 export async function incrementCouponUse(code) {
     await pool.query(
         `UPDATE coupons SET used_count = used_count + 1, updated_at = NOW() WHERE UPPER(code) = UPPER($1)`,
@@ -46,6 +51,7 @@ export async function incrementCouponUse(code) {
 }
 
 /** Atomically consume one coupon use inside an open transaction (checks max_uses / expiry). */
+// coupon model: incrementCouponUseInTransaction updates existing records.
 export async function incrementCouponUseInTransaction(client, code) {
     const r = await client.query(
         `UPDATE coupons
@@ -62,6 +68,8 @@ export async function incrementCouponUseInTransaction(client, code) {
     }
 }
 
+// coupon model: deleteCoupon deletes matching records.
 export async function deleteCoupon(id) {
     await pool.query(`DELETE FROM coupons WHERE id = $1`, [id]);
 }
+

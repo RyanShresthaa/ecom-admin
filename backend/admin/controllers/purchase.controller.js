@@ -125,6 +125,7 @@ async function persistDraftBillLines(client, billId, bodyLines) {
     return { built, totals };
 }
 
+// POST /api/purchases/suppliers - creates a supplier profile for procurement flows.
 export async function createSupplierController(req, res) {
     try {
         const b = req.body;
@@ -142,6 +143,7 @@ export async function createSupplierController(req, res) {
     }
 }
 
+// GET /api/purchases/suppliers - lists suppliers with optional search and paging.
 export async function listSuppliersController(req, res) {
     try {
         const data = await listSuppliers({
@@ -155,6 +157,7 @@ export async function listSuppliersController(req, res) {
     }
 }
 
+// GET /api/purchases/suppliers/:id - fetches a single supplier record.
 export async function getSupplierController(req, res) {
     try {
         const row = await findSupplierById(req.params.id);
@@ -165,6 +168,7 @@ export async function getSupplierController(req, res) {
     }
 }
 
+// PUT /api/purchases/suppliers/:id - updates editable supplier details.
 export async function updateSupplierController(req, res) {
     try {
         const b = req.body;
@@ -182,6 +186,7 @@ export async function updateSupplierController(req, res) {
     }
 }
 
+// POST /api/purchases/bills - creates a draft purchase bill shell with generated number.
 export async function createPurchaseBillController(req, res) {
     const client = await pool.connect();
     try {
@@ -221,6 +226,7 @@ export async function createPurchaseBillController(req, res) {
     }
 }
 
+// PATCH /api/purchases/bills/:id - updates draft bill fields, lines, totals, and HTML snapshot.
 export async function patchPurchaseBillController(req, res) {
     const client = await pool.connect();
     try {
@@ -232,6 +238,7 @@ export async function patchPurchaseBillController(req, res) {
         const { lines, billDate, dueDate, notes, warehouseId, companyVatPan, currency } = req.body;
         const c = await companyDisplayFromSettings();
         await client.query('BEGIN');
+        // Rebuild persisted lines and totals when the patch includes a full lines array.
         if (Array.isArray(lines)) {
             if (!lines.length) {
                 await client.query('ROLLBACK');
@@ -301,6 +308,7 @@ export async function patchPurchaseBillController(req, res) {
     }
 }
 
+// GET /api/purchases/bills/:id - returns bill details with lines, payments, returns, and supplier.
 export async function getPurchaseBillController(req, res) {
     try {
         const bill = await findPurchaseBillById(req.params.id);
@@ -315,6 +323,7 @@ export async function getPurchaseBillController(req, res) {
     }
 }
 
+// GET /api/purchases/bills/:id/preview - generates current bill HTML plus payment summary.
 export async function previewPurchaseBillController(req, res) {
     try {
         const bill = await findPurchaseBillById(req.params.id);
@@ -340,6 +349,7 @@ export async function previewPurchaseBillController(req, res) {
     }
 }
 
+// GET /api/purchases/bills - lists purchase bills by status/supplier with pagination.
 export async function listPurchaseBillsController(req, res) {
     try {
         const data = await listPurchaseBills({
@@ -354,6 +364,7 @@ export async function listPurchaseBillsController(req, res) {
     }
 }
 
+// POST /api/purchases/bills/:id/receive - receives a draft bill and books inventory into stock.
 export async function receivePurchaseBillController(req, res) {
     const client = await pool.connect();
     try {
@@ -379,6 +390,7 @@ export async function receivePurchaseBillController(req, res) {
             phone: sup?.phone,
             email: sup?.email,
         };
+        // Add stock for each bill line tied to a tracked product.
         for (const ln of lines) {
             if (ln.product_id) {
                 await addStockInTransaction(client, {
@@ -412,6 +424,7 @@ export async function receivePurchaseBillController(req, res) {
     }
 }
 
+// POST /api/purchases/bills/:id/void - voids a draft purchase bill.
 export async function voidPurchaseBillController(req, res) {
     const client = await pool.connect();
     try {
@@ -432,6 +445,7 @@ export async function voidPurchaseBillController(req, res) {
     }
 }
 
+// POST /api/purchases/bills/:id/payments - records outgoing payment against a received bill.
 export async function createPurchasePaymentController(req, res) {
     const client = await pool.connect();
     try {
@@ -478,6 +492,7 @@ export async function createPurchasePaymentController(req, res) {
     }
 }
 
+// GET /api/purchases/bills/:id/payments - lists all payments made for a bill.
 export async function listPurchasePaymentsController(req, res) {
     try {
         const bill = await findPurchaseBillById(req.params.id);
@@ -489,6 +504,7 @@ export async function listPurchasePaymentsController(req, res) {
     }
 }
 
+// POST /api/purchases/bills/:id/returns - creates a draft purchase return with prorated amounts.
 export async function createPurchaseReturnController(req, res) {
     const client = await pool.connect();
     try {
@@ -516,6 +532,7 @@ export async function createPurchaseReturnController(req, res) {
         });
         const acc = { subtotal_excl_vat: 0, vat_amt: 0, total_incl_vat: 0 };
         const viewLines = [];
+        // Validate each requested return line and compute return totals incrementally.
         for (const rl of retLines) {
             const billLineId = pickId(rl.purchaseBillLineId || rl.purchase_bill_line_id);
             const bl = await findPurchaseBillLineById(billLineId);
@@ -585,6 +602,7 @@ export async function createPurchaseReturnController(req, res) {
     }
 }
 
+// GET /api/purchases/returns/:id - returns a purchase return with lines and source bill.
 export async function getPurchaseReturnController(req, res) {
     try {
         const row = await findPurchaseReturnById(req.params.id);
@@ -597,6 +615,7 @@ export async function getPurchaseReturnController(req, res) {
     }
 }
 
+// GET /api/purchases/returns - lists purchase returns for a specific bill.
 export async function listPurchaseReturnsController(req, res) {
     try {
         const billId = req.query.billId;
@@ -610,6 +629,7 @@ export async function listPurchaseReturnsController(req, res) {
     }
 }
 
+// POST /api/purchases/returns/:id/approve - approves return and removes stock from warehouse.
 export async function approvePurchaseReturnController(req, res) {
     const client = await pool.connect();
     try {
@@ -625,6 +645,7 @@ export async function approvePurchaseReturnController(req, res) {
             return res.status(400).json({ message: 'No warehouse on bill', error: true, success: false });
         }
         await client.query('BEGIN');
+        // Reverse inventory for approved return lines that map to products.
         for (const ln of lines) {
             if (ln.product_id) {
                 await removeStockInTransaction(client, {
@@ -651,6 +672,7 @@ export async function approvePurchaseReturnController(req, res) {
     }
 }
 
+// POST /api/purchases/returns/:id/void - voids a draft purchase return.
 export async function voidPurchaseReturnController(req, res) {
     const client = await pool.connect();
     try {

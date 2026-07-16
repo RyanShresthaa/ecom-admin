@@ -6,8 +6,10 @@ import { getClientIp, getUserAgent } from '../utils/requestMeta.js';
 
 /** Log suspicious rate-limit / auth patterns at edge */
 export function securityRequestLogger(req, res, next) {
+    // Measure request duration for anomaly records.
     const start = Date.now();
     res.on('finish', () => {
+        // Persist abuse signal whenever rate limiting blocks a request.
         if (res.statusCode === 429) {
             logSecurityEvent({
                 userId: req.userId,

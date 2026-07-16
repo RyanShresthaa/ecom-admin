@@ -1,9 +1,11 @@
+// securityEvent model: handles securityEvent table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `security_events` — auth failures, CSRF blocks, etc.
  */
 import pool from '../config/connectDB.js';
 import { mapRow } from '../utils/sql.js';
 
+// securityEvent model: logSecurityEvent creates a new record.
 export async function logSecurityEvent({ userId, action, ip, userAgent, success = true, details = {} }) {
     const r = await pool.query(
         `INSERT INTO security_events (user_id, action, ip, user_agent, success, details)
@@ -13,6 +15,7 @@ export async function logSecurityEvent({ userId, action, ip, userAgent, success 
     return mapRow(r.rows[0]);
 }
 
+// securityEvent model: findSecurityEvents reads and returns records.
 export async function findSecurityEvents({ limit = 100, skip = 0, userId, action } = {}) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -36,3 +39,4 @@ export async function findSecurityEvents({ limit = 100, skip = 0, userId, action
         userEmail: row.user_email,
     }));
 }
+

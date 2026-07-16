@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 
+// Inventory page query: fetch paginated inventory rows.
 export function useInventoryQuery(params) {
   return useQuery({
     queryKey: queryKeys.inventory.list(params),
@@ -13,6 +14,7 @@ export function useInventoryQuery(params) {
   })
 }
 
+// Movements tab query: fetch stock movement history.
 export function useStockMovementsQuery(params) {
   return useQuery({
     queryKey: queryKeys.inventory.movements(params),
@@ -22,6 +24,7 @@ export function useStockMovementsQuery(params) {
   })
 }
 
+// Reorder tab query: fetch low-stock suggestions.
 export function useReorderSuggestionsQuery(params = {}) {
   return useQuery({
     queryKey: queryKeys.inventory.reorder(params),
@@ -30,6 +33,7 @@ export function useReorderSuggestionsQuery(params = {}) {
   })
 }
 
+// Purchase orders tab query: fetch paginated PO list.
 export function usePurchaseOrdersQuery(params) {
   return useQuery({
     queryKey: queryKeys.inventory.purchaseOrders.list(params),
@@ -39,6 +43,7 @@ export function usePurchaseOrdersQuery(params) {
   })
 }
 
+// Query: fetch adjustment reason options.
 export function useAdjustmentReasonsQuery() {
   return useQuery({
     queryKey: ['inventory', 'adjustment-reasons'],
@@ -47,6 +52,7 @@ export function useAdjustmentReasonsQuery() {
   })
 }
 
+// Query: fetch available warehouse options.
 export function useWarehousesQuery() {
   return useQuery({
     queryKey: ['inventory', 'warehouses'],
@@ -55,6 +61,7 @@ export function useWarehousesQuery() {
   })
 }
 
+// Mutation: perform manual stock adjustment.
 export function useAdjustStock() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -69,6 +76,7 @@ export function useAdjustStock() {
   })
 }
 
+// Mutation: create new purchase order draft.
 export function useCreatePurchaseOrder() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -81,6 +89,7 @@ export function useCreatePurchaseOrder() {
   })
 }
 
+// Mutation: transition purchase order status.
 export function useUpdatePurchaseOrderStatus() {
   const queryClient = useQueryClient()
   return useMutation({

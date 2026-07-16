@@ -7,11 +7,14 @@ import { pickId } from '../utils/sql.js';
 /** Seller may only edit/delete their own products; Admin may edit any. */
 export async function requireProductOwner(req, res, next) {
     try {
+        // Resolve target product id from body or route params.
         const id = pickId(req.body._id || req.params.id);
         if (!id) {
             return res.status(400).json({ message: 'Product id required', error: true, success: false });
         }
+        // Allow Admin role to bypass seller ownership checks.
         if (req.user?.role === 'Admin') return next();
+        // Restrict this middleware to seller/admin product-management routes.
         if (req.user?.role !== 'Seller') {
             return res.status(403).json({ message: 'Permission denied', error: true, success: false });
         }
@@ -19,6 +22,7 @@ export async function requireProductOwner(req, res, next) {
         if (!row) {
             return res.status(404).json({ message: 'Product not found', error: true, success: false });
         }
+        // Ensure seller can only mutate products they own.
         if (row.seller_id !== req.userId) {
             return res.status(403).json({ message: 'You can only manage your own products', error: true, success: false });
         }

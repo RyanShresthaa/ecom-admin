@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'orbit_admin_token'
 
+// HTTP error type: preserves status and parsed response body.
 export class ApiError extends Error {
   constructor(message, { status, body } = {}) {
     super(message)
@@ -9,6 +10,7 @@ export class ApiError extends Error {
   }
 }
 
+// Config error type: thrown when API base URL is unavailable.
 export class ApiNotConfiguredError extends Error {
   constructor() {
     super(
@@ -18,10 +20,12 @@ export class ApiNotConfiguredError extends Error {
   }
 }
 
+// URL helper: detects localhost/loopback API URLs.
 function isLoopbackApiUrl(url) {
   return /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(String(url || ''))
 }
 
+// Runtime helper: true when app runs on non-local/public host.
 function isBrowserOnPublicHost() {
   if (typeof window === 'undefined') return false
   const host = window.location.hostname
@@ -44,6 +48,7 @@ export function isApiConfigured() {
   return Boolean(getApiBaseUrl())
 }
 
+// Token helper: resolves auth token from override or localStorage.
 export function getStoredToken(override) {
   if (override) return override
   try {

@@ -4,8 +4,10 @@
 import { z } from 'zod';
 import { validatePinFormat } from '../utils/pin.js';
 
+// Validate product lines used by checkout preview/place endpoints.
 const productLine = z.object({
     productId: z.union([z.string(), z.number()]),
+    variantId: z.union([z.string(), z.number()]).optional().nullable(),
     quantity: z.number().int().positive().max(9999).optional(),
 });
 
@@ -42,6 +44,7 @@ export const loginBodySchema = z.object({
     // recaptchaToken: z.string().max(8000).optional(),
 });
 
+// Enforce PIN format rules for setup/change/reset PIN routes.
 const pinField = z.string().superRefine((val, ctx) => {
     const err = validatePinFormat(val);
     if (err) ctx.addIssue({ code: 'custom', message: err });
@@ -62,22 +65,41 @@ export const changePinBodySchema = z.object({
 });
 
 /** POST /api/user/forgot-pin */
-export const forgotPinBodySchema = z.object({
-    email: z.string().trim().email().max(320),
-});
+export const forgotPinBodySchema = z
+    .object({
+        email: z.string().trim().email().max(320).optional(),
+        mobile: z.string().trim().min(3).max(40).optional(),
+        channel: z.enum(['email', 'sms']).optional(),
+    })
+    // Require at least one recovery identifier for forgot-pin requests.
+    .refine((b) => Boolean(b.email || b.mobile), {
+        message: 'email or mobile is required',
+    });
 
 /** POST /api/user/verify-forgot-pin-otp */
-export const verifyForgotPinOtpBodySchema = z.object({
-    email: z.string().trim().email().max(320),
-    otp: z.string().trim().min(4).max(32),
-});
+export const verifyForgotPinOtpBodySchema = z
+    .object({
+        email: z.string().trim().email().max(320).optional(),
+        mobile: z.string().trim().min(3).max(40).optional(),
+        otp: z.string().trim().min(4).max(32),
+    })
+    // Ensure OTP verification includes either email or mobile context.
+    .refine((b) => Boolean(b.email || b.mobile), {
+        message: 'email or mobile is required',
+    });
 
 /** POST /api/user/reset-pin */
-export const resetPinBodySchema = z.object({
-    email: z.string().trim().email().max(320),
-    newPin: pinField,
-    confirmPin: z.string(),
-});
+export const resetPinBodySchema = z
+    .object({
+        email: z.string().trim().email().max(320).optional(),
+        mobile: z.string().trim().min(3).max(40).optional(),
+        newPin: pinField,
+        confirmPin: z.string(),
+    })
+    // Require account identifier before allowing PIN reset.
+    .refine((b) => Boolean(b.email || b.mobile), {
+        message: 'email or mobile is required',
+    });
 
 /** POST /api/user/login-pin */
 export const loginPinBodySchema = z.object({
@@ -108,7 +130,9 @@ export const feedbackSubmitBodySchema = z.object({
     comment: z.string().trim().min(1).max(8000),
 });
 
+// Shared product identifier schema for inventory mutation endpoints.
 const inventoryProductId = z.union([z.string().trim().min(1), z.number().int().positive()]);
+// Shared warehouse identifier schema for inventory operations.
 const warehouseIdField = z.union([z.string().trim().min(1), z.number().int().positive()]);
 
 /** POST /api/inventory/add */
@@ -144,16 +168,18 @@ export const createWarehouseBodySchema = z.object({
     name: z.string().trim().min(1).max(200),
 });
 
-/** POST /api/order/preview-checkout — address optional */
+/** POST /api/order/preview-checkout — address optional (enables zone shipping) */
 export const previewCheckoutBodySchema = z.object({
+    addressId: z.union([z.string().trim().min(1).max(64), z.number().int().positive()]).optional(),
     couponCode: z.string().trim().max(100).optional(),
     useCart: z.boolean().optional(),
     list_items: z.array(productLine).max(500).optional(),
 });
 
+// Shared address identifier for checkout routes that require delivery address.
 const addressId = z.union([z.string().trim().min(1).max(64), z.number().int().positive()]);
 
-/** POST place-cod / place-online — address required */
+/** Shared checkout body — address required */
 export const checkoutWithAddressBodySchema = z.object({
     addressId: addressId,
     couponCode: z.string().trim().max(100).optional(),
@@ -161,6 +187,80 @@ export const checkoutWithAddressBodySchema = z.object({
     list_items: z.array(productLine).max(500).optional(),
 });
 
+/** POST /api/order/place — customer chooses cash or stripe */
+export const placeOrderBodySchema = checkoutWithAddressBodySchema.extend({
+    paymentMethod: z.enum(['cash', 'stripe']),
+});
+
+/** POST /api/order/confirm-stripe — after Stripe Checkout redirect */
+export const confirmStripeBodySchema = z.object({
+    sessionId: z.string().trim().min(1).max(200),
+});
+
+/**
+ * POST /api/payment/refund — staff full/partial refund (Phase 1: provider manual).
+ * Stripe provider accepted in schema but returns 501 until implemented.
+ */
+export const createRefundBodySchema = z.object({
+    orderRowId: z.union([z.string().trim().min(1).max(64), z.number().int().positive()]),
+    amount: z.number().finite().positive().max(1_000_000_000).optional(),
+    reason: z.string().trim().max(2000).optional(),
+    provider: z.enum(['manual', 'stripe']).optional(),
+    restoreStock: z.boolean().optional(),
+    createCreditNote: z.boolean().optional(),
+});
+
+/** PUT /api/order/tracking */
+export const updateTrackingBodySchema = z
+    .object({
+        orderGroupId: z.string().trim().min(1).max(100).optional(),
+        orderId: z.string().trim().min(1).max(100).optional(),
+        orderRowId: z.union([z.string(), z.number()]).optional(),
+        _id: z.union([z.string(), z.number()]).optional(),
+        tracking_number: z.string().trim().max(100).optional().nullable(),
+        trackingNumber: z.string().trim().max(100).optional().nullable(),
+        carrier: z.string().trim().max(100).optional().nullable(),
+    })
+    // Require at least one order identifier before updating tracking.
+    .refine((b) => b.orderGroupId || b.orderId || b.orderRowId || b._id, {
+        message: 'orderGroupId or orderRowId required',
+    });
+
+/** POST /api/order/reorder */
+export const reorderBodySchema = z
+    .object({
+        orderGroupId: z.string().trim().min(1).max(100).optional(),
+        orderId: z.string().trim().min(1).max(100).optional(),
+        orderRowId: z.union([z.string(), z.number()]).optional(),
+        _id: z.union([z.string(), z.number()]).optional(),
+    })
+    // Ensure reorder requests point to an existing order reference.
+    .refine((b) => b.orderGroupId || b.orderId || b.orderRowId || b._id, {
+        message: 'orderGroupId or orderRowId required',
+    });
+
+/** Shipping zone create */
+export const shippingZoneBodySchema = z.object({
+    name: z.string().trim().min(1).max(120),
+    match_type: z.enum(['city', 'state', 'country', 'default']).optional(),
+    matchType: z.enum(['city', 'state', 'country', 'default']).optional(),
+    match_value: z.string().trim().max(120).optional(),
+    matchValue: z.string().trim().max(120).optional(),
+    active: z.boolean().optional(),
+    priority: z.number().int().min(0).max(10000).optional(),
+});
+
+export const shippingRateBodySchema = z.object({
+    zoneId: z.union([z.string(), z.number()]).optional(),
+    zone_id: z.union([z.string(), z.number()]).optional(),
+    rate: z.number().finite().min(0).max(1_000_000),
+    free_min: z.number().finite().min(0).optional().nullable(),
+    freeMin: z.number().finite().min(0).optional().nullable(),
+    currency: z.string().trim().max(10).optional(),
+    active: z.boolean().optional(),
+});
+
+// Shared product id type for sales quotation line items.
 const salesProductId = z.union([z.string(), z.number()]);
 
 /** Line item for POST/PATCH `/api/sales/quotations` */
@@ -171,6 +271,7 @@ export const salesQuotationLineSchema = z
         unitPrice: z.number().finite().optional(),
         unit_price: z.number().finite().optional(),
     })
+    // Require unit price field in either camelCase or snake_case payloads.
     .superRefine((data, ctx) => {
         const u = data.unitPrice ?? data.unit_price;
         if (u == null || !Number.isFinite(u)) {
@@ -210,6 +311,7 @@ export const salesInvoiceDraftPatchBodySchema = z.object({
     regenerate: z.boolean().optional(),
 });
 
+// Optional foreign-key helper for warehouse and related entity ids.
 const pidOpt = z.union([z.string(), z.number()]).optional();
 
 /** POST/PATCH `/api/purchases/suppliers` */

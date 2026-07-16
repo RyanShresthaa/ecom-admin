@@ -32,6 +32,7 @@ import {
 
 const salesRouter = Router();
 
+// Quotation creation, status transitions, and customer acceptance routes.
 salesRouter.post('/quotations', auth, staff, validateBody(salesQuotationCreateBodySchema), createQuotationController);
 salesRouter.get('/quotations', auth, listQuotationsController);
 salesRouter.get('/quotations/:id', auth, getQuotationDetailController);
@@ -51,6 +52,7 @@ salesRouter.patch(
 );
 salesRouter.post('/quotations/:id/accept', auth, acceptQuotationAsCustomerController);
 
+// Sales invoice generation, revision, draft editing, issue, and void routes.
 salesRouter.post('/invoices/from-order/:orderId', auth, staff, createInvoiceFromOrderController);
 salesRouter.post('/invoices/by-order/:orderId/revise', auth, staff, reviseSalesInvoiceController);
 salesRouter.get('/invoices', auth, listSalesInvoicesController);
@@ -65,6 +67,7 @@ salesRouter.patch(
 salesRouter.post('/invoices/:id/issue', auth, staff, issueSalesInvoiceController);
 salesRouter.post('/invoices/:id/void', auth, staff, voidSalesInvoiceController);
 
+// Credit-note read endpoints scoped by role and ownership checks.
 salesRouter.get('/credit-notes', auth, listCreditNotesController);
 salesRouter.get('/credit-notes/:id', auth, getCreditNoteController);
 

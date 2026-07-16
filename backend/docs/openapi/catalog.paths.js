@@ -43,10 +43,18 @@
  * /api/product/delete-product:
  *   delete:
  *     tags: [Products]
- *     summary: Delete product
+ *     summary: Soft-delete product (sets deleted_at)
  *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
  *     responses:
- *       200: { description: Deleted }
+ *       200: { description: Soft-deleted }
+ *
+ * /api/product/restore-product:
+ *   post:
+ *     tags: [Products]
+ *     summary: Restore soft-deleted product
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Restored }
  *
  * /api/category/get-category:
  *   get:

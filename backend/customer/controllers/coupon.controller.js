@@ -6,6 +6,7 @@ import { logAudit } from '../../shared/models/audit.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 import { getClientIp, getUserAgent } from '../../shared/utils/requestMeta.js';
 
+// POST /api/coupon/validate — validates a coupon against order context.
 export async function validateCouponController(req, res) {
     try {
         const code = req.body.code || req.query.code;
@@ -19,6 +20,7 @@ export async function validateCouponController(req, res) {
     }
 }
 
+// GET /api/coupon/list — lists coupons for admin/staff management.
 export async function listCouponsController(req, res) {
     try {
         const data = await findAllCoupons();
@@ -28,6 +30,7 @@ export async function listCouponsController(req, res) {
     }
 }
 
+// POST /api/coupon/create — creates a new coupon rule.
 export async function createCouponController(req, res) {
     try {
         const { code, discount_type, discount_value, min_order_amt, max_uses, expires_at, active } = req.body;
@@ -50,6 +53,7 @@ export async function createCouponController(req, res) {
     }
 }
 
+// DELETE /api/coupon/delete — removes an existing coupon.
 export async function deleteCouponController(req, res) {
     try {
         await deleteCoupon(pickId(req.params.id));
@@ -67,3 +71,4 @@ export async function deleteCouponController(req, res) {
         return res.status(500).json({ message: e.message, error: true, success: false });
     }
 }
+

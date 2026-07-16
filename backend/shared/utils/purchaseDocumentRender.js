@@ -10,6 +10,7 @@ function esc(s) {
         .replace(/"/g, '&quot;');
 }
 
+// Render vendor purchase bill document HTML with tax and totals.
 export function renderPurchaseBillHtml({
     billNumber,
     billDate,
@@ -51,6 +52,7 @@ export function renderPurchaseBillHtml({
 </body></html>`;
 }
 
+// Render purchase return document HTML for supplier-facing records.
 export function renderPurchaseReturnHtml({
     returnNumber,
     billNumber,

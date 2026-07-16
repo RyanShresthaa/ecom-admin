@@ -13,18 +13,21 @@ import { useUpdateOrderStatus } from '@/hooks/useOrders'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
+// Payment status options shown in the dropdown menu.
 const OPTIONS = [
   { value: 'Paid', icon: CreditCard },
   { value: 'Unpaid', icon: Clock },
   { value: 'Refunded', icon: ArrowCounterClockwise },
 ]
 
+// Normalize API payment status strings to match dropdown option values.
 function normalizePaymentStatus(status) {
   const raw = String(status || '').trim()
   const match = OPTIONS.find((opt) => opt.value.toLowerCase() === raw.toLowerCase())
   return match?.value || raw
 }
 
+// Orders list/detail — inline dropdown to update payment status (read-only badge without write access).
 export function PaymentStatusDropdown({ order }) {
   const updateStatus = useUpdateOrderStatus()
   const { can } = usePermissions()

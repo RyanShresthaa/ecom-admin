@@ -135,6 +135,51 @@
  *     responses:
  *       200: { description: Verified }
  *
+ * /api/payment/refund:
+ *   post:
+ *     tags: [Payment]
+ *     summary: Staff full or partial refund (manual ledger; Stripe stubbed)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderRowId]
+ *             properties:
+ *               orderRowId: { oneOf: [{ type: string }, { type: integer }] }
+ *               amount: { type: number, description: Omit for full remaining balance }
+ *               reason: { type: string }
+ *               provider: { type: string, enum: [manual, stripe], default: manual }
+ *               restoreStock: { type: boolean }
+ *               createCreditNote: { type: boolean, default: true }
+ *     responses:
+ *       200: { description: Refund recorded }
+ *       400: { description: Validation / already refunded / amount too high }
+ *       501: { description: Stripe provider not implemented yet }
+ *
+ * /api/payment/refunds:
+ *   get:
+ *     tags: [Payment]
+ *     summary: List refunds (optional orderRowId / orderId filters)
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: Refund list }
+ *
+ * /api/payment/refunds/{id}:
+ *   get:
+ *     tags: [Payment]
+ *     summary: Get one refund by id
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Refund }
+ *       404: { description: Not found }
+ *
  * /api/upload/upload:
  *   post:
  *     tags: [Upload]

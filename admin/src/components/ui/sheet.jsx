@@ -5,11 +5,16 @@ import { X } from '@phosphor-icons/react'
 
 import { cn } from '@/lib/utils'
 
+// Sheet root for slide-over panel open state.
 const Sheet = DialogPrimitive.Root
+// Trigger element that opens the sheet panel.
 const SheetTrigger = DialogPrimitive.Trigger
+// Close control for dismissing the sheet.
 const SheetClose = DialogPrimitive.Close
+// Portal target for rendering sheet overlay and content.
 const SheetPortal = DialogPrimitive.Portal
 
+// Backdrop overlay displayed behind the sheet panel.
 const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
@@ -22,6 +27,7 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+// Side-based style variants for right and left sheet placements.
 const sheetVariants = cva(
   'fixed z-50 gap-4 bg-card p-6 shadow-2xl transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300',
   {
@@ -38,6 +44,7 @@ const sheetVariants = cva(
   }
 )
 
+// Slide-over content container with built-in close button.
 const SheetContent = React.forwardRef(({ side = 'right', className, children, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
@@ -56,11 +63,13 @@ const SheetContent = React.forwardRef(({ side = 'right', className, children, ..
 ))
 SheetContent.displayName = DialogPrimitive.Content.displayName
 
+// Header wrapper for sheet title and description.
 const SheetHeader = ({ className, ...props }) => (
   <div className={cn('flex flex-col gap-1.5 text-left', className)} {...props} />
 )
 SheetHeader.displayName = 'SheetHeader'
 
+// Footer wrapper for sheet actions pinned near the bottom.
 const SheetFooter = ({ className, ...props }) => (
   <div
     className={cn('mt-auto flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end', className)}
@@ -69,6 +78,7 @@ const SheetFooter = ({ className, ...props }) => (
 )
 SheetFooter.displayName = 'SheetFooter'
 
+// Sheet title text element.
 const SheetTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
@@ -78,6 +88,7 @@ const SheetTitle = React.forwardRef(({ className, ...props }, ref) => (
 ))
 SheetTitle.displayName = DialogPrimitive.Title.displayName
 
+// Sheet description text element.
 const SheetDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}

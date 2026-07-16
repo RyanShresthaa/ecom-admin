@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tansta
 import { toast } from 'sonner'
 
 import { api } from '@/lib/api'
+import { downloadCsv, rowsToCsv } from '@/lib/csv'
+import { paymentMethodLabel } from '@/lib/paymentMethod'
 import { queryKeys } from '@/lib/queryKeys'
 
+// Customers page query: fetch paginated customers list.
 export function useCustomersQuery(params) {
   return useQuery({
     queryKey: queryKeys.customers.list(params),
@@ -12,6 +15,7 @@ export function useCustomersQuery(params) {
   })
 }
 
+// Customer detail query: fetch one customer profile.
 export function useCustomerQuery(id) {
   return useQuery({
     queryKey: queryKeys.customers.detail(id),
@@ -20,6 +24,7 @@ export function useCustomerQuery(id) {
   })
 }
 
+// Customer orders query: fetch paginated orders for selected customer.
 export function useCustomerOrdersQuery(customerId, params) {
   return useQuery({
     queryKey: queryKeys.customers.orders(customerId, params),
@@ -29,6 +34,7 @@ export function useCustomerOrdersQuery(customerId, params) {
   })
 }
 
+// Mutation: creates a new customer record.
 export function useCreateCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -42,6 +48,7 @@ export function useCreateCustomer() {
   })
 }
 
+// Mutation: updates customer fields.
 export function useUpdateCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -52,5 +59,40 @@ export function useUpdateCustomer() {
       toast.success('Customer updated')
     },
     onError: (err) => toast.error(err.message || 'Failed to update customer'),
+  })
+}
+
+// Mutation: exports customer profile + orders CSV.
+export function useExportCustomerCsv() {
+  return useMutation({
+    mutationFn: (id) => api.customers.exportDetailCsv(id),
+    onSuccess: ({ rows, filename, customer }) => {
+      const headers = [
+        'section',
+        'customerId',
+        'name',
+        'email',
+        'phone',
+        'status',
+        'orderCount',
+        'lifetimeValue',
+        'avgOrderValue',
+        'addresses',
+        'orderId',
+        'orderDate',
+        'paymentMethod',
+        'paymentStatus',
+        'deliveryStatus',
+        'orderTotal',
+      ]
+      const csvRows = rows.map((r) => ({
+        ...r,
+        paymentMethod: paymentMethodLabel(r.paymentMethod),
+        orderDate: r.orderDate ? new Date(r.orderDate).toISOString() : '',
+      }))
+      downloadCsv(rowsToCsv(headers, csvRows), filename)
+      toast.success(`Exported ${customer?.name || 'customer'} details`)
+    },
+    onError: (err) => toast.error(err.message || 'Failed to export customer'),
   })
 }

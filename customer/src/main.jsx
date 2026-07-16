@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import App from '@/App'
 import '@/index.css'
 
+// Customer app entry — mounts router + auth provider around the storefront shell.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

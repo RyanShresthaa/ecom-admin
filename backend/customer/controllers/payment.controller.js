@@ -5,6 +5,7 @@ import { updateOrdersPayment } from '../../shared/models/order.model.js';
 import { isMockPaymentAllowed, MOCK_PAYMENT_DISABLED_MSG } from '../../shared/config/payments.js';
 import Stripe from '../../shared/config/stripe.js';
 
+// POST /api/payment/create-intent — creates checkout payment intent payload.
 export const createPaymentIntentController = async (req, res) => {
     try {
         if (!Stripe && !isMockPaymentAllowed()) {
@@ -27,6 +28,7 @@ export const createPaymentIntentController = async (req, res) => {
     }
 };
 
+// POST /api/payment/verify — verifies payment confirmation payload.
 export const verifyPaymentController = async (req, res) => {
     try {
         if (!Stripe && !isMockPaymentAllowed()) {
@@ -50,3 +52,4 @@ export const verifyPaymentController = async (req, res) => {
         return res.status(500).json({ message: error.message || error, error: true, success: false });
     }
 };
+

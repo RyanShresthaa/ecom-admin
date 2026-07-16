@@ -33,6 +33,7 @@ import {
 import { logSecurityEvent } from '../../shared/models/securityEvent.model.js';
 import {
     findUserByEmail,
+    findUserByMobile,
     findUserByVerifyToken,
     findUserByGoogleId,
     findUserById,
@@ -44,6 +45,7 @@ import {
     deleteUserAccount,
     exportUserData,
 } from '../../shared/models/user.model.js';
+import { sendSmsDirect } from '../../shared/services/sms/index.js';
 
 export const PASSWORD_RESET_VERIFIED = 'VERIFIED';
 /** Same marker pattern in `pin_reset_otp` after email OTP is verified (before `reset-pin`). */
@@ -54,6 +56,45 @@ const googleOAuthClient = googleClientId ? new OAuth2Client(googleClientId) : nu
 
 const REGISTER_RESPONSE_MSG =
     'Registration successful. If this email is new, check your inbox to verify your account.';
+const OTP_DELIVERY_GENERIC = 'If an account exists, we sent reset instructions.';
+
+function normalizeEmail(value) {
+    return value ? String(value).trim().toLowerCase() : '';
+}
+
+function normalizeMobile(value) {
+    return value ? String(value).trim() : '';
+}
+
+async function findUserByIdentity({ email, mobile }) {
+    if (email) return findUserByEmail(email);
+    if (mobile) return findUserByMobile(mobile);
+    return null;
+}
+
+async function deliverOtp({ user, otp, purpose, channel = 'email' }) {
+    const wantsSms = channel === 'sms';
+    if (wantsSms && user.mobile) {
+        const sms = await sendSmsDirect({
+            to: user.mobile,
+            body: `Your ${purpose} code is ${otp}. It is valid for 1 hour.`,
+        });
+        if (sms.sent) return { deliveredVia: 'sms' };
+    }
+    if (user.email) {
+        await sendEmail({
+            sendTo: user.email,
+            subject: purpose,
+            html: `
+                <p>Hi ${user.name || 'there'},</p>
+                <p>Your ${purpose.toLowerCase()} code is:</p>
+                <p style="font-size:22px;font-weight:bold">${otp}</p>
+                <p>Valid for 1 hour. If you did not request this, ignore this message.</p>`,
+        });
+        return { deliveredVia: 'email' };
+    }
+    return { deliveredVia: 'none' };
+}
 
 function clearAuthCookies(response) {
     const accessOpts = getAccessCookieOptions();
@@ -82,9 +123,16 @@ async function issueAuthCookies(response, userId, req, { recordLoginSuccess: sho
     if (recordSuccess && req) {
         await recordLoginSuccess(userId, req);
     }
-    return { accesstoken, refreshToken, csrfToken };
+    // Phase 4: merge anonymous guest cart into this user (no SMTP)
+    let cartMerge = null;
+    if (req) {
+        const { tryMergeGuestCartOnLogin } = await import('../../shared/services/cart/index.js');
+        cartMerge = await tryMergeGuestCartOnLogin(req, response, userId);
+    }
+    return { accesstoken, refreshToken, csrfToken, cartMerge };
 }
 
+// POST /api/user/register — registers a new customer account.
 export async function registerUserController(request, response) {
     try {
         const { name, email, password } = request.body;
@@ -146,6 +194,7 @@ export async function registerUserController(request, response) {
     }
 }
 
+// POST /api/user/verify-email — verifies account email using OTP/token.
 export async function verifyEmailController(request, response) {
     try {
         const code = request.body?.code;
@@ -170,6 +219,7 @@ function mustVerifyEmailBeforeLogin(user) {
     return user.role !== ADMIN_ROLE && !user.verify_email;
 }
 
+// POST /api/user/login — authenticates user and issues session tokens.
 export async function loginController(request, response) {
     try {
         const { email, password } = request.body;
@@ -197,6 +247,21 @@ export async function loginController(request, response) {
             });
         }
 
+        // MFA step-up (when feature flag + user enrolled)
+        const { shouldRequireMfa, createMfaChallenge } = await import(
+            '../../shared/services/mfa/index.js'
+        );
+        if (await shouldRequireMfa(user)) {
+            const challenge = await createMfaChallenge(user.id);
+            return response.json({
+                message: 'MFA required',
+                error: false,
+                success: true,
+                mfaRequired: true,
+                data: challenge,
+            });
+        }
+
         const tokens = await issueAuthCookies(response, user.id, request);
         return response.json({
             message: 'Login successfully',
@@ -209,6 +274,34 @@ export async function loginController(request, response) {
     }
 }
 
+/** Complete login after MFA challenge from /login */
+// POST /api/user/mfa-verify — verifies MFA challenge during login.
+export async function mfaVerifyLoginController(request, response) {
+    try {
+        const { challengeToken, code } = request.body || {};
+        if (!challengeToken || !code) {
+            return response.status(400).json({
+                message: 'challengeToken and code are required',
+                error: true,
+                success: false,
+            });
+        }
+        const { verifyMfaChallenge } = await import('../../shared/services/mfa/index.js');
+        const { userId } = await verifyMfaChallenge(challengeToken, code);
+        const tokens = await issueAuthCookies(response, userId, request);
+        return response.json({
+            message: 'Login successfully',
+            error: false,
+            success: true,
+            data: tokens,
+        });
+    } catch (error) {
+        const status = error.status || 500;
+        return response.status(status).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+// POST /api/user/google — authenticates or creates account via Google.
 export async function googleLoginController(request, response) {
     try {
         const credential = request.body?.credential || request.body?.idToken;
@@ -267,6 +360,7 @@ export async function googleLoginController(request, response) {
     }
 }
 
+// POST /api/user/logout — revokes tokens and logs out current session.
 export async function logOutController(request, response) {
     try {
         clearAuthCookies(response);
@@ -287,6 +381,7 @@ export async function logOutController(request, response) {
     }
 }
 
+// PUT /api/user/upload-avatar — uploads and saves user profile avatar.
 export async function uploadAvatar(request, response) {
     try {
         const upload = await uploadImageCloudinary(request.file);
@@ -303,6 +398,7 @@ export async function uploadAvatar(request, response) {
     }
 }
 
+// PUT /api/user/update-user — updates profile fields for current user.
 export async function updateUserDetails(request, response) {
     try {
         const { name, email, mobile, password, currentPassword } = request.body;
@@ -347,47 +443,65 @@ export async function updateUserDetails(request, response) {
     }
 }
 
+// POST /api/user/forgot-password — issues password reset OTP/workflow.
 export async function forgotPasswordController(request, response) {
     try {
-        const { email } = request.body;
-        const generic =
-            'If an account exists for that email, we sent reset instructions.';
-        if (!email) {
-            return response.status(400).json({ message: 'provide email', error: true, success: false });
+        const email = normalizeEmail(request.body?.email);
+        const mobile = normalizeMobile(request.body?.mobile);
+        const channel = String(request.body?.channel || (mobile ? 'sms' : 'email')).toLowerCase();
+        if (!email && !mobile) {
+            return response.status(400).json({ message: 'provide email or mobile', error: true, success: false });
         }
-        const user = await findUserByEmail(email);
+        const user = await findUserByIdentity({ email, mobile });
         if (!user) {
-            return response.json({ message: generic, error: false, success: true });
+            return response.json({ message: OTP_DELIVERY_GENERIC, error: false, success: true });
         }
         const otp = String(generateOtp());
         const expireTime = new Date(Date.now() + 60 * 60 * 1000);
         await updateUser(user.id, { forgot_password_otp: otp, forgot_password_expiry: expireTime });
         try {
-            await sendEmail({
-                sendTo: email,
-                subject: 'Forgot Password',
-                html: forgotPasswordTemplate({ name: user.name, otp }),
-            });
+            if (channel === 'sms' && user.mobile) {
+                const sms = await sendSmsDirect({
+                    to: user.mobile,
+                    body: `Your forgot password code is ${otp}. It is valid for 1 hour.`,
+                });
+                if (!sms.sent && user.email) {
+                    await sendEmail({
+                        sendTo: user.email,
+                        subject: 'Forgot Password',
+                        html: forgotPasswordTemplate({ name: user.name, otp }),
+                    });
+                }
+            } else if (user.email) {
+                await sendEmail({
+                    sendTo: user.email,
+                    subject: 'Forgot Password',
+                    html: forgotPasswordTemplate({ name: user.name, otp }),
+                });
+            }
         } catch {
             // Avoid enumeration — same response as sent path
         }
-        return response.json({ message: generic, error: false, success: true });
+        return response.json({ message: OTP_DELIVERY_GENERIC, error: false, success: true });
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false });
     }
 }
 
+// POST /api/user/verify-forgot-password-otp — verifies password reset OTP.
 export async function verifyForgotPasswordOtp(request, response) {
     try {
-        const { email, otp } = request.body;
-        if (!email || !otp) {
+        const email = normalizeEmail(request.body?.email);
+        const mobile = normalizeMobile(request.body?.mobile);
+        const otp = request.body?.otp;
+        if ((!email && !mobile) || !otp) {
             return response.status(400).json({
-                message: 'Provide required field email, otp.',
+                message: 'Provide email or mobile, and otp.',
                 error: true,
                 success: false,
             });
         }
-        const user = await findUserByEmail(email);
+        const user = await findUserByIdentity({ email, mobile });
         if (!user) {
             return response.status(400).json({
                 message: 'Invalid or expired OTP',
@@ -412,12 +526,15 @@ export async function verifyForgotPasswordOtp(request, response) {
     }
 }
 
+// POST /api/user/reset-password — sets a new password after OTP verification.
 export async function resetpassword(request, response) {
     try {
-        const { email, newPassword, confirmPassword } = request.body;
-        if (!email || !newPassword || !confirmPassword) {
+        const email = normalizeEmail(request.body?.email);
+        const mobile = normalizeMobile(request.body?.mobile);
+        const { newPassword, confirmPassword } = request.body;
+        if ((!email && !mobile) || !newPassword || !confirmPassword) {
             return response.status(400).json({
-                message: 'provide required fields email, newPassword, confirmPassword',
+                message: 'provide identity (email or mobile), newPassword, confirmPassword',
                 error: true,
                 success: false,
             });
@@ -426,7 +543,7 @@ export async function resetpassword(request, response) {
         if (pwdErr) {
             return response.status(400).json({ message: pwdErr, error: true, success: false });
         }
-        const user = await findUserByEmail(email);
+        const user = await findUserByIdentity({ email, mobile });
         if (
             !user ||
             user.forgot_password_otp !== PASSWORD_RESET_VERIFIED ||
@@ -457,6 +574,7 @@ export async function resetpassword(request, response) {
     }
 }
 
+// POST /api/user/refresh-token — rotates and returns fresh auth tokens.
 export async function refreshToken(request, response) {
     try {
         const token = request.cookies.refreshToken || request.headers.authorization?.split(' ')[1];
@@ -521,6 +639,7 @@ export async function refreshToken(request, response) {
     }
 }
 
+// GET /api/user/user-details — returns authenticated user profile.
 export async function userDetails(request, response) {
     try {
         const user = await findUserPublicById(request.userId);
@@ -530,6 +649,7 @@ export async function userDetails(request, response) {
     }
 }
 
+// GET /api/user/export-account — exports account data for GDPR request.
 export async function exportAccountController(request, response) {
     try {
         const data = await exportUserData(request.userId);
@@ -544,6 +664,7 @@ export async function exportAccountController(request, response) {
     }
 }
 
+// DELETE /api/user/delete-account — permanently deletes authenticated account.
 export async function deleteAccountController(request, response) {
     try {
         const { confirm, password } = request.body || {};
@@ -585,6 +706,7 @@ export async function deleteAccountController(request, response) {
     }
 }
 
+// POST /api/user/apply-seller — submits seller application for review.
 export async function applyForSellerController(request, response) {
     try {
         const user = await findUserById(request.userId);
@@ -623,6 +745,7 @@ export async function applyForSellerController(request, response) {
     }
 }
 
+// GET /api/user/csrf — returns CSRF token for authenticated session.
 export async function getCsrfController(request, response) {
     try {
         if (!request.userId) {
@@ -637,6 +760,7 @@ export async function getCsrfController(request, response) {
 }
 
 /** First-time mobile PIN (hashed). Password accounts must send `password`; Google-only may omit. */
+// POST /api/user/setup-pin — creates transaction/login PIN for account.
 export async function setupPinController(request, response) {
     try {
         const { pin, confirmPin, password } = request.body || {};
@@ -683,6 +807,7 @@ export async function setupPinController(request, response) {
 }
 
 /** Change PIN while logged in (requires current PIN). */
+// POST /api/user/change-pin — updates existing account PIN.
 export async function changePinController(request, response) {
     try {
         const { currentPin, pin, confirmPin } = request.body || {};
@@ -715,33 +840,27 @@ export async function changePinController(request, response) {
     }
 }
 
-const FORGOT_PIN_GENERIC = 'If an account exists for that email, we sent PIN reset instructions.';
+const FORGOT_PIN_GENERIC = 'If an account exists, we sent PIN reset instructions.';
 
 /** Email OTP to reset PIN (does not affect password). */
+// POST /api/user/forgot-pin — initiates PIN reset OTP flow.
 export async function forgotPinController(request, response) {
     try {
-        const { email } = request.body || {};
-        if (!email) {
-            return response.status(400).json({ message: 'provide email', error: true, success: false });
+        const email = normalizeEmail(request.body?.email);
+        const mobile = normalizeMobile(request.body?.mobile);
+        const channel = String(request.body?.channel || (mobile ? 'sms' : 'email')).toLowerCase();
+        if (!email && !mobile) {
+            return response.status(400).json({ message: 'provide email or mobile', error: true, success: false });
         }
-        const user = await findUserByEmail(String(email).trim());
+        const user = await findUserByIdentity({ email, mobile });
         if (!user?.pin_hash) {
             return response.json({ message: FORGOT_PIN_GENERIC, error: false, success: true });
         }
         const otp = String(generateOtp());
         const expireTime = new Date(Date.now() + 60 * 60 * 1000);
         await updateUser(user.id, { pin_reset_otp: otp, pin_reset_expiry: expireTime });
-        const html = `
-            <p>Hi ${user.name || 'there'},</p>
-            <p>Use this code to reset your app PIN:</p>
-            <p style="font-size:22px;font-weight:bold">${otp}</p>
-            <p>Valid for 1 hour. If you did not request this, ignore this email.</p>`;
         try {
-            await sendEmail({
-                sendTo: user.email,
-                subject: 'Reset your app PIN',
-                html,
-            });
+            await deliverOtp({ user, otp, purpose: 'Reset your app PIN', channel });
         } catch {
             /* same generic response */
         }
@@ -751,17 +870,20 @@ export async function forgotPinController(request, response) {
     }
 }
 
+// POST /api/user/verify-forgot-pin-otp — verifies PIN reset OTP.
 export async function verifyForgotPinOtpController(request, response) {
     try {
-        const { email, otp } = request.body || {};
-        if (!email || !otp) {
+        const email = normalizeEmail(request.body?.email);
+        const mobile = normalizeMobile(request.body?.mobile);
+        const otp = request.body?.otp;
+        if ((!email && !mobile) || !otp) {
             return response.status(400).json({
-                message: 'Provide email and otp.',
+                message: 'Provide email or mobile, and otp.',
                 error: true,
                 success: false,
             });
         }
-        const user = await findUserByEmail(String(email).trim());
+        const user = await findUserByIdentity({ email, mobile });
         if (!user?.pin_hash) {
             return response.status(400).json({ message: 'Invalid or expired OTP', error: true, success: false });
         }
@@ -783,17 +905,20 @@ export async function verifyForgotPinOtpController(request, response) {
 }
 
 /** After verify-forgot-pin-otp, set new PIN (unauthenticated). */
+// POST /api/user/reset-pin — sets new PIN after OTP verification.
 export async function resetPinController(request, response) {
     try {
-        const { email, newPin, confirmPin } = request.body || {};
-        if (!email || !newPin || !confirmPin) {
+        const email = normalizeEmail(request.body?.email);
+        const mobile = normalizeMobile(request.body?.mobile);
+        const { newPin, confirmPin } = request.body || {};
+        if ((!email && !mobile) || !newPin || !confirmPin) {
             return response.status(400).json({
-                message: 'email, newPin, and confirmPin are required',
+                message: 'identity (email or mobile), newPin, and confirmPin are required',
                 error: true,
                 success: false,
             });
         }
-        const user = await findUserByEmail(String(email).trim());
+        const user = await findUserByIdentity({ email, mobile });
         if (
             !user?.pin_hash ||
             user.pin_reset_otp !== PIN_RESET_VERIFIED ||
@@ -825,6 +950,7 @@ export async function resetPinController(request, response) {
 }
 
 /** Mobile quick login with email + PIN (requires verified email and an existing PIN). */
+// POST /api/user/login-pin — authenticates user via PIN login flow.
 export async function loginPinController(request, response) {
     try {
         const { email, pin } = request.body || {};
@@ -872,6 +998,7 @@ export async function loginPinController(request, response) {
 }
 
 /** Soft-disable account; user stays in DB. Reactivate via admin `PUT /api/admin/users/:id/status`. */
+// POST /api/user/deactivate-account — deactivates account without hard delete.
 export async function deactivateAccountController(request, response) {
     try {
         const { confirm, password } = request.body || {};
@@ -917,3 +1044,4 @@ export async function deactivateAccountController(request, response) {
         return response.status(500).json({ message: error.message || error, error: true, success: false });
     }
 }
+

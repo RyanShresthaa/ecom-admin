@@ -1,3 +1,4 @@
+// Product category options used across admin forms and filters.
 export const CATEGORIES = [
   'Apparel',
   'Footwear',
@@ -9,6 +10,7 @@ export const CATEGORIES = [
   'Toys',
 ]
 
+// Stock-adjustment reason catalog used by inventory controls.
 export const ADJUSTMENT_REASONS = [
   { code: 'received', label: 'Stock received', type: 'in' },
   { code: 'returned', label: 'Customer return', type: 'in' },
@@ -19,6 +21,7 @@ export const ADJUSTMENT_REASONS = [
   { code: 'other', label: 'Other', type: 'either' },
 ]
 
+// Default settings values for first-run/bootstrap UI state.
 export const DEFAULT_SETTINGS = {
   taxRules: [
     { id: 1, label: 'Standard Sales Tax', rate: 8.25, region: 'United States' },
@@ -32,6 +35,7 @@ export const DEFAULT_SETTINGS = {
   lowStockThreshold: 15,
 }
 
+// Common supplier names shown in purchase-order creation flows.
 export const PO_SUPPLIERS = [
   'Matina Crafts Supply',
   'Pacific Goods Co.',

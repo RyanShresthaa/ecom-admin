@@ -27,17 +27,21 @@ import {
 
 const adminRouter = Router();
 adminRouter.use(adminLimiter);
+// Dashboard and notification routes for admin/staff control center.
 adminRouter.get("/stats", auth, staff, getDashboardStatsController);
 adminRouter.get("/notifications", auth, staff, listNotificationsController);
 adminRouter.patch("/notifications/:id/read", auth, staff, markNotificationReadController);
 adminRouter.post("/notifications/read-all", auth, staff, markAllNotificationsReadController);
+// User management routes for listing, creation, and profile lookup.
 adminRouter.get("/users", auth, staff, listUsersController);
 adminRouter.post("/users", auth, staff, validateBody(adminCreateCustomerBodySchema), createCustomerController);
 adminRouter.get("/users/:id", auth, staff, getUserDetailController);
+// Seller-request convenience route that reuses users listing with forced sellerRequest filter.
 adminRouter.get("/seller-requests", auth, admin, (req, res, next) => {
     req.query.sellerRequest = "true";
     return listUsersController(req, res, next);
 });
+// Privileged admin-only moderation, audit, and security visibility routes.
 adminRouter.put("/users/:id/role", auth, admin, setUserRoleController);
 adminRouter.put("/users/:id/status", auth, admin, validateBody(adminUserStatusBodySchema), setUserStatusController);
 adminRouter.post("/users/:id/approve-seller", auth, admin, approveSellerController);

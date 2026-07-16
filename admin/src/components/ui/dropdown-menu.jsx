@@ -4,13 +4,20 @@ import { Check, CaretRight, Circle } from '@phosphor-icons/react'
 
 import { cn } from '@/lib/utils'
 
+// Dropdown menu root for open state and keyboard navigation.
 const DropdownMenu = DropdownMenuPrimitive.Root
+// Trigger element that opens the dropdown menu.
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
+// Group wrapper for related menu items.
 const DropdownMenuGroup = DropdownMenuPrimitive.Group
+// Portal target for menu layers.
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal
+// Submenu root for nested dropdown sections.
 const DropdownMenuSub = DropdownMenuPrimitive.Sub
+// Radio group wrapper for single-selection menu options.
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 
+// Submenu trigger row with trailing chevron icon.
 const DropdownMenuSubTrigger = React.forwardRef(
   ({ className, inset, children, ...props }, ref) => (
     <DropdownMenuPrimitive.SubTrigger
@@ -29,6 +36,7 @@ const DropdownMenuSubTrigger = React.forwardRef(
 )
 DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName
 
+// Nested submenu content panel.
 const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
@@ -41,6 +49,7 @@ const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) =
 ))
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName
 
+// Main dropdown content panel rendered in a portal.
 const DropdownMenuContent = React.forwardRef(
   ({ className, sideOffset = 6, ...props }, ref) => (
     <DropdownMenuPrimitive.Portal>
@@ -58,6 +67,7 @@ const DropdownMenuContent = React.forwardRef(
 )
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
+// Standard clickable dropdown menu item.
 const DropdownMenuItem = React.forwardRef(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
@@ -71,6 +81,7 @@ const DropdownMenuItem = React.forwardRef(({ className, inset, ...props }, ref) 
 ))
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 
+// Checkbox-style menu item with check indicator.
 const DropdownMenuCheckboxItem = React.forwardRef(
   ({ className, children, checked, ...props }, ref) => (
     <DropdownMenuPrimitive.CheckboxItem
@@ -93,6 +104,7 @@ const DropdownMenuCheckboxItem = React.forwardRef(
 )
 DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName
 
+// Radio-style menu item with single-select indicator.
 const DropdownMenuRadioItem = React.forwardRef(({ className, children, ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
@@ -112,6 +124,7 @@ const DropdownMenuRadioItem = React.forwardRef(({ className, children, ...props 
 ))
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
 
+// Section label text for dropdown menu groups.
 const DropdownMenuLabel = React.forwardRef(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
@@ -125,6 +138,7 @@ const DropdownMenuLabel = React.forwardRef(({ className, inset, ...props }, ref)
 ))
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
 
+// Horizontal divider between logical menu sections.
 const DropdownMenuSeparator = React.forwardRef(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
@@ -134,6 +148,7 @@ const DropdownMenuSeparator = React.forwardRef(({ className, ...props }, ref) =>
 ))
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
 
+// Keyboard shortcut hint aligned to the right side.
 const DropdownMenuShortcut = ({ className, ...props }) => (
   <span className={cn('ml-auto text-xs tracking-widest opacity-60', className)} {...props} />
 )

@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
+// Primary workspace navigation links, each gated by an RBAC permission.
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: SquaresFour, end: true, permission: PERMISSIONS.DASHBOARD_VIEW },
   { to: '/customers', label: 'Customers', icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
@@ -25,8 +26,10 @@ const NAV_ITEMS = [
   { to: '/settings', label: 'Settings', icon: GearSix, permission: PERMISSIONS.SETTINGS_VIEW },
 ]
 
+// Left navigation rail for all dashboard pages; slides in as a drawer on mobile.
 export function Sidebar({ open, onClose }) {
   const { can } = usePermissions()
+  // Hide nav items the current role is not allowed to access.
   const visibleItems = NAV_ITEMS.filter((item) => can(item.permission))
 
   return (

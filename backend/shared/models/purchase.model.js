@@ -1,9 +1,11 @@
+// purchase model: handles purchase table/entity CRUD and query helpers.
 /**
  * Procurement: suppliers, Nepal VAT purchase bills, payment-out, purchase returns.
  */
 import pool from '../config/connectDB.js';
 import { mapRow, mapRows, pickId } from '../utils/sql.js';
 
+// purchase model: listSuppliers reads and returns records.
 export async function listSuppliers({ search, limit = 100, skip = 0 } = {}) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -21,11 +23,13 @@ export async function listSuppliers({ search, limit = 100, skip = 0 } = {}) {
     return mapRows(r.rows);
 }
 
+// purchase model: findSupplierById reads and returns records.
 export async function findSupplierById(id) {
     const r = await pool.query(`SELECT * FROM suppliers WHERE id = $1`, [pickId(id)]);
     return mapRow(r.rows[0]);
 }
 
+// purchase model: insertSupplier creates a new record.
 export async function insertSupplier(client, row) {
     const q = client || pool;
     const r = await q.query(
@@ -43,6 +47,7 @@ export async function insertSupplier(client, row) {
     return mapRow(r.rows[0]);
 }
 
+// purchase model: updateSupplier updates existing records.
 export async function updateSupplier(client, id, fields) {
     const q = client || pool;
     const allowed = ['name', 'vat_pan', 'address', 'phone', 'email', 'notes'];
@@ -62,11 +67,13 @@ export async function updateSupplier(client, id, fields) {
     return findSupplierById(id);
 }
 
+// purchase model: findPurchaseBillById reads and returns records.
 export async function findPurchaseBillById(id) {
     const r = await pool.query(`SELECT * FROM purchase_bills WHERE id = $1`, [pickId(id)]);
     return mapRow(r.rows[0]);
 }
 
+// purchase model: findPurchaseBillLines reads and returns records.
 export async function findPurchaseBillLines(billId) {
     const r = await pool.query(
         `SELECT * FROM purchase_bill_lines WHERE purchase_bill_id = $1 ORDER BY line_no, id`,
@@ -75,6 +82,7 @@ export async function findPurchaseBillLines(billId) {
     return mapRows(r.rows);
 }
 
+// purchase model: listPurchaseBills reads and returns records.
 export async function listPurchaseBills({ status, supplierId, limit = 50, skip = 0 } = {}) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -109,10 +117,12 @@ export async function listPurchaseBills({ status, supplierId, limit = 50, skip =
     return mapRows(r.rows);
 }
 
+// purchase model: deletePurchaseBillLines deletes matching records.
 export async function deletePurchaseBillLines(client, billId) {
     await client.query(`DELETE FROM purchase_bill_lines WHERE purchase_bill_id = $1`, [pickId(billId)]);
 }
 
+// purchase model: insertPurchaseBillLine creates a new record.
 export async function insertPurchaseBillLine(client, billId, lineNo, line) {
     await client.query(
         `INSERT INTO purchase_bill_lines (
@@ -134,6 +144,7 @@ export async function insertPurchaseBillLine(client, billId, lineNo, line) {
     );
 }
 
+// purchase model: insertPurchaseBill creates a new record.
 export async function insertPurchaseBill(client, row) {
     const r = await client.query(
         `INSERT INTO purchase_bills (
@@ -162,6 +173,7 @@ export async function insertPurchaseBill(client, row) {
     return mapRow(r.rows[0]);
 }
 
+// purchase model: updatePurchaseBill updates existing records.
 export async function updatePurchaseBill(client, id, fields) {
     const allowed = [
         'status',
@@ -198,6 +210,7 @@ export async function updatePurchaseBill(client, id, fields) {
     await client.query(`UPDATE purchase_bills SET ${sets.join(', ')} WHERE id = $${i}`, vals);
 }
 
+// purchase model: sumPaymentsForBill reads and returns records.
 export async function sumPaymentsForBill(client, billId) {
     const r = await client.query(
         `SELECT COALESCE(SUM(amount), 0)::numeric AS s FROM purchase_payments WHERE purchase_bill_id = $1`,
@@ -206,6 +219,7 @@ export async function sumPaymentsForBill(client, billId) {
     return Number(r.rows[0]?.s || 0);
 }
 
+// purchase model: listPaymentsForBill reads and returns records.
 export async function listPaymentsForBill(billId) {
     const r = await pool.query(
         `SELECT * FROM purchase_payments WHERE purchase_bill_id = $1 ORDER BY paid_at DESC, id DESC`,
@@ -214,6 +228,7 @@ export async function listPaymentsForBill(billId) {
     return mapRows(r.rows);
 }
 
+// purchase model: insertPurchasePayment creates a new record.
 export async function insertPurchasePayment(client, row) {
     const r = await client.query(
         `INSERT INTO purchase_payments (purchase_bill_id, amount, paid_at, method, reference, note, created_by_user_id)
@@ -231,6 +246,7 @@ export async function insertPurchasePayment(client, row) {
     return mapRow(r.rows[0]);
 }
 
+// purchase model: recomputePurchaseBillPaymentStatus updates existing records.
 export async function recomputePurchaseBillPaymentStatus(client, billId) {
     const bill = await client.query(`SELECT total_incl_vat, status FROM purchase_bills WHERE id = $1 FOR UPDATE`, [
         pickId(billId),
@@ -249,6 +265,7 @@ export async function recomputePurchaseBillPaymentStatus(client, billId) {
     return next;
 }
 
+// purchase model: insertPurchaseReturn creates a new record.
 export async function insertPurchaseReturn(client, row) {
     const r = await client.query(
         `INSERT INTO purchase_returns (
@@ -270,6 +287,7 @@ export async function insertPurchaseReturn(client, row) {
     return mapRow(r.rows[0]);
 }
 
+// purchase model: insertPurchaseReturnLine creates a new record.
 export async function insertPurchaseReturnLine(client, returnId, line) {
     await client.query(
         `INSERT INTO purchase_return_lines (
@@ -286,11 +304,13 @@ export async function insertPurchaseReturnLine(client, returnId, line) {
     );
 }
 
+// purchase model: findPurchaseReturnById reads and returns records.
 export async function findPurchaseReturnById(id) {
     const r = await pool.query(`SELECT * FROM purchase_returns WHERE id = $1`, [pickId(id)]);
     return mapRow(r.rows[0]);
 }
 
+// purchase model: findPurchaseReturnLines reads and returns records.
 export async function findPurchaseReturnLines(returnId) {
     const r = await pool.query(
         `SELECT prl.*, pbl.description AS bill_line_description, pbl.product_id
@@ -303,6 +323,7 @@ export async function findPurchaseReturnLines(returnId) {
     return mapRows(r.rows);
 }
 
+// purchase model: listPurchaseReturnsForBill reads and returns records.
 export async function listPurchaseReturnsForBill(billId) {
     const r = await pool.query(
         `SELECT * FROM purchase_returns WHERE purchase_bill_id = $1 ORDER BY created_at DESC`,
@@ -311,6 +332,7 @@ export async function listPurchaseReturnsForBill(billId) {
     return mapRows(r.rows);
 }
 
+// purchase model: updatePurchaseReturn updates existing records.
 export async function updatePurchaseReturn(client, id, fields) {
     const allowed = ['status', 'html_body', 'approved_at', 'subtotal_excl_vat', 'vat_amt', 'total_incl_vat', 'reason'];
     const sets = [];
@@ -328,6 +350,7 @@ export async function updatePurchaseReturn(client, id, fields) {
     await client.query(`UPDATE purchase_returns SET ${sets.join(', ')} WHERE id = $${i}`, vals);
 }
 
+// purchase model: sumPendingReturnQtyForBillLine reads and returns records.
 export async function sumPendingReturnQtyForBillLine(client, billLineId) {
     const r = await client.query(
         `SELECT COALESCE(SUM(prl.quantity), 0)::int AS q
@@ -340,6 +363,7 @@ export async function sumPendingReturnQtyForBillLine(client, billLineId) {
     return Number(r.rows[0]?.q || 0);
 }
 
+// purchase model: sumApprovedReturnQtyForBillLine reads and returns records.
 export async function sumApprovedReturnQtyForBillLine(client, billLineId) {
     const r = await client.query(
         `SELECT COALESCE(SUM(prl.quantity), 0)::int AS q
@@ -351,7 +375,9 @@ export async function sumApprovedReturnQtyForBillLine(client, billLineId) {
     return Number(r.rows[0]?.q || 0);
 }
 
+// purchase model: findPurchaseBillLineById reads and returns records.
 export async function findPurchaseBillLineById(id) {
     const r = await pool.query(`SELECT * FROM purchase_bill_lines WHERE id = $1`, [pickId(id)]);
     return mapRow(r.rows[0]);
 }
+

@@ -8,16 +8,19 @@ import { getApiBaseUrl } from '@/lib/http'
 /** Same session as the rest of the admin app */
 export const SHARED_TOKEN_KEY = 'orbit_admin_token'
 
+// URL helper: detects localhost/loopback API bases.
 function isLoopbackApiUrl(url) {
   return /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/i.test(String(url || ''))
 }
 
+// Runtime helper: true when browser is on a non-local/public hostname.
 function isBrowserOnPublicHost() {
   if (typeof window === 'undefined') return false
   const host = window.location.hostname
   return Boolean(host) && host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]'
 }
 
+// Base URL resolver: picks shared API base with safe fallback for public hosts.
 export function getSharedApiBase() {
   const explicit = import.meta.env.VITE_SHARED_API_URL
   const candidate = explicit ? String(explicit).replace(/\/$/, '') : getApiBaseUrl()
@@ -27,6 +30,7 @@ export function getSharedApiBase() {
   return candidate || '/api'
 }
 
+// Shared API request wrapper: handles URL build, auth header, and JSON errors.
 export async function sharedRequest(path, { method = 'GET', body, token } = {}) {
   const base = getSharedApiBase()
   const pathname = `${base}${path.startsWith('/') ? path : `/${path}`}`
@@ -54,6 +58,7 @@ export async function sharedRequest(path, { method = 'GET', body, token } = {}) 
   return data
 }
 
+// Shared backend endpoints used by admin app.
 export const sharedApi = {
   health: () => sharedRequest('/health'),
   login: (email, password) =>

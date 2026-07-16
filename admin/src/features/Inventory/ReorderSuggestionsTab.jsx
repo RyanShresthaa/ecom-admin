@@ -16,19 +16,23 @@ import { createColumnHelper } from '@tanstack/react-table'
 
 const columnHelper = createColumnHelper()
 
+// Badge color variants keyed by reorder urgency level.
 const URGENCY_VARIANTS = {
   critical: 'destructive',
   high: 'warning',
   medium: 'secondary',
 }
 
+// Inventory reorder tab — low-stock suggestions with multi-select to create a purchase order.
 export function ReorderSuggestionsTab({ onCreatePO }) {
   const [urgency, setUrgency] = useState('all')
   const [selected, setSelected] = useState({})
 
+  // Fetch suggestions filtered by urgency level.
   const params = useMemo(() => ({ urgency }), [urgency])
   const { data, isLoading } = useReorderSuggestionsQuery(params)
 
+  // Column definitions with checkboxes for bulk PO creation.
   const columns = useMemo(
     () => [
       columnHelper.display({
@@ -94,6 +98,7 @@ export function ReorderSuggestionsTab({ onCreatePO }) {
     [selected]
   )
 
+  // Full suggestion objects for all checked rows.
   const selectedItems = Object.values(selected)
 
   return (

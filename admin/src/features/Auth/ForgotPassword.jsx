@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useForgotPasswordMutation } from '@/hooks/useAuthApi'
 
+// Forgot password page — request a reset link for the given email address.
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
@@ -15,6 +16,7 @@ export default function ForgotPassword() {
 
   const forgotPassword = useForgotPasswordMutation()
 
+  // Forgot password page — validate email and trigger the reset-link mutation.
   function handleSubmit(e) {
     e.preventDefault()
     if (!email.trim()) {
@@ -29,6 +31,7 @@ export default function ForgotPassword() {
     )
   }
 
+  // Forgot password page — confirmation view after the reset request is accepted.
   if (result) {
     return (
       <AuthLayout
@@ -49,6 +52,7 @@ export default function ForgotPassword() {
           </p>
 
           {result.devResetToken && (
+            // Forgot password page — dev-only shortcut when no email server is configured.
             <div className="mt-2 w-full rounded-md border border-dashed border-border bg-secondary/50 p-3 text-left">
               <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 Demo only — no email server is connected

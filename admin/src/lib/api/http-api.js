@@ -1,5 +1,6 @@
 import { request } from '@/lib/http'
 
+// Raw HTTP API map: thin endpoint-to-request bindings (no shape adaptation).
 export const httpApi = {
   auth: {
     login: (payload) => request('/auth/login', { method: 'POST', body: payload }),

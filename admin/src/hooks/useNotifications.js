@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 
+// Notifications query: fetch notifications list.
 export function useNotificationsQuery() {
   return useQuery({
     queryKey: queryKeys.notifications.all,
@@ -11,6 +12,7 @@ export function useNotificationsQuery() {
   })
 }
 
+// Mutation: mark one notification as read.
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient()
 
@@ -22,6 +24,7 @@ export function useMarkNotificationRead() {
   })
 }
 
+// Mutation: mark all notifications as read.
 export function useMarkAllNotificationsRead() {
   const queryClient = useQueryClient()
 

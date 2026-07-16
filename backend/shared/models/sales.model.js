@@ -1,9 +1,11 @@
+// sales model: handles sales table/entity CRUD and query helpers.
 /**
  * Sales documents: document numbers, quotations, sales invoices (revisioned), credit notes.
  */
 import pool from '../config/connectDB.js';
 import { mapRow, mapRows, pickId } from '../utils/sql.js';
 
+// sales model: nextDocumentNumber runs model logic/query operations.
 export async function nextDocumentNumber(client, docType) {
     const y = new Date().getFullYear();
     const r = await client.query(
@@ -18,6 +20,7 @@ export async function nextDocumentNumber(client, docType) {
 
 /* ---------- Quotations ---------- */
 
+// sales model: insertQuotation creates a new record.
 export async function insertQuotation(client, row) {
     const r = await client.query(
         `INSERT INTO quotations (
@@ -42,6 +45,7 @@ export async function insertQuotation(client, row) {
     return mapRow(r.rows[0]);
 }
 
+// sales model: insertQuotationLine creates a new record.
 export async function insertQuotationLine(client, quotationId, line) {
     await client.query(
         `INSERT INTO quotation_lines (quotation_id, product_id, quantity, unit_price, line_total, product_snapshot)
@@ -57,20 +61,24 @@ export async function insertQuotationLine(client, quotationId, line) {
     );
 }
 
+// sales model: deleteQuotationLines deletes matching records.
 export async function deleteQuotationLines(client, quotationId) {
     await client.query(`DELETE FROM quotation_lines WHERE quotation_id = $1`, [quotationId]);
 }
 
+// sales model: findQuotationById reads and returns records.
 export async function findQuotationById(id) {
     const r = await pool.query(`SELECT * FROM quotations WHERE id = $1`, [pickId(id)]);
     return mapRow(r.rows[0]);
 }
 
+// sales model: findQuotationLines reads and returns records.
 export async function findQuotationLines(quotationId) {
     const r = await pool.query(`SELECT * FROM quotation_lines WHERE quotation_id = $1 ORDER BY id`, [quotationId]);
     return mapRows(r.rows);
 }
 
+// sales model: listQuotations reads and returns records.
 export async function listQuotations({ role, userId, limit = 50, skip = 0 }) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -91,6 +99,7 @@ export async function listQuotations({ role, userId, limit = 50, skip = 0 }) {
     return mapRows(r.rows);
 }
 
+// sales model: updateQuotationFields updates existing records.
 export async function updateQuotationFields(client, id, fields) {
     const allowed = ['status', 'valid_until', 'notes', 'html_preview', 'currency', 'subtotal', 'tax_amt', 'shipping_amt', 'total_amt'];
     const sets = [];
@@ -110,6 +119,7 @@ export async function updateQuotationFields(client, id, fields) {
 
 /* ---------- Sales invoices ---------- */
 
+// sales model: insertSalesInvoice creates a new record.
 export async function insertSalesInvoice(client, row) {
     const r = await client.query(
         `INSERT INTO sales_invoices (
@@ -139,11 +149,13 @@ export async function insertSalesInvoice(client, row) {
     return mapRow(r.rows[0]);
 }
 
+// sales model: findSalesInvoiceById reads and returns records.
 export async function findSalesInvoiceById(id) {
     const r = await pool.query(`SELECT * FROM sales_invoices WHERE id = $1`, [pickId(id)]);
     return mapRow(r.rows[0]);
 }
 
+// sales model: findLatestIssuedInvoiceForOrder reads and returns records.
 export async function findLatestIssuedInvoiceForOrder(orderIdStr) {
     const r = await pool.query(
         `SELECT * FROM sales_invoices WHERE order_id = $1 AND status = 'issued' ORDER BY revision DESC, id DESC LIMIT 1`,
@@ -152,6 +164,7 @@ export async function findLatestIssuedInvoiceForOrder(orderIdStr) {
     return mapRow(r.rows[0]);
 }
 
+// sales model: findDraftInvoiceForOrder reads and returns records.
 export async function findDraftInvoiceForOrder(orderIdStr) {
     const r = await pool.query(
         `SELECT * FROM sales_invoices WHERE order_id = $1 AND status = 'draft' ORDER BY revision DESC, id DESC LIMIT 1`,
@@ -160,12 +173,14 @@ export async function findDraftInvoiceForOrder(orderIdStr) {
     return mapRow(r.rows[0]);
 }
 
+// sales model: maxInvoiceRevision reads and returns records.
 export async function maxInvoiceRevision(orderIdStr, client = null) {
     const q = client || pool;
     const r = await q.query(`SELECT COALESCE(MAX(revision), 0)::int AS m FROM sales_invoices WHERE order_id = $1`, [orderIdStr]);
     return r.rows[0]?.m ?? 0;
 }
 
+// sales model: listSalesInvoices reads and returns records.
 export async function listSalesInvoices({ role, userId, limit = 50, skip = 0 }) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -193,6 +208,7 @@ export async function listSalesInvoices({ role, userId, limit = 50, skip = 0 }) 
     return mapRows(r.rows);
 }
 
+// sales model: updateSalesInvoice updates existing records.
 export async function updateSalesInvoice(client, id, fields) {
     const allowed = ['html_body', 'subtotal', 'tax_amt', 'shipping_amt', 'coupon_discount', 'coupon_code', 'total_amt', 'status', 'issued_at'];
     const sets = [];
@@ -212,6 +228,7 @@ export async function updateSalesInvoice(client, id, fields) {
 
 /* ---------- Credit notes ---------- */
 
+// sales model: insertCreditNote creates a new record.
 export async function insertCreditNote(client, row) {
     const r = await client.query(
         `INSERT INTO credit_notes (
@@ -233,16 +250,19 @@ export async function insertCreditNote(client, row) {
     return mapRow(r.rows[0]);
 }
 
+// sales model: findCreditNoteByReturnId reads and returns records.
 export async function findCreditNoteByReturnId(returnId) {
     const r = await pool.query(`SELECT * FROM credit_notes WHERE order_return_id = $1`, [pickId(returnId)]);
     return mapRow(r.rows[0]);
 }
 
+// sales model: findCreditNoteById reads and returns records.
 export async function findCreditNoteById(id) {
     const r = await pool.query(`SELECT * FROM credit_notes WHERE id = $1`, [pickId(id)]);
     return mapRow(r.rows[0]);
 }
 
+// sales model: listCreditNotes reads and returns records.
 export async function listCreditNotes({ role, userId, limit = 50, skip = 0 }) {
     const params = [];
     let where = 'WHERE 1=1';
@@ -269,3 +289,4 @@ export async function listCreditNotes({ role, userId, limit = 50, skip = 0 }) {
     );
     return mapRows(r.rows);
 }
+

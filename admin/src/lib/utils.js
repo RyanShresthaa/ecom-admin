@@ -38,6 +38,9 @@ export function formatDate(date) {
   }).format(new Date(date))
 }
 
+/**
+ * Format a date string with both date and time.
+ */
 export function formatDateTime(date) {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -60,6 +63,9 @@ export function getInitials(name = '') {
     .join('')
 }
 
+/**
+ * Format a date into relative time, e.g. "3 hours ago".
+ */
 export function formatRelativeTime(date) {
   return formatDistanceToNow(new Date(date), { addSuffix: true })
 }

@@ -4,10 +4,14 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 
+// Alert dialog root for destructive or confirm-before-action flows.
 const AlertDialog = AlertDialogPrimitive.Root
+// Trigger element that opens the alert dialog.
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
+// Portal target for alert dialog overlays and content.
 const AlertDialogPortal = AlertDialogPrimitive.Portal
 
+// Dimmed overlay rendered behind alert dialog content.
 const AlertDialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     ref={ref}
@@ -20,6 +24,7 @@ const AlertDialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
+// Alert dialog content panel centered in the viewport.
 const AlertDialogContent = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
@@ -35,11 +40,13 @@ const AlertDialogContent = React.forwardRef(({ className, ...props }, ref) => (
 ))
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
+// Header wrapper for alert dialog title and text.
 const AlertDialogHeader = ({ className, ...props }) => (
   <div className={cn('flex flex-col gap-1.5 text-left', className)} {...props} />
 )
 AlertDialogHeader.displayName = 'AlertDialogHeader'
 
+// Footer wrapper for primary and secondary alert actions.
 const AlertDialogFooter = ({ className, ...props }) => (
   <div
     className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
@@ -48,6 +55,7 @@ const AlertDialogFooter = ({ className, ...props }) => (
 )
 AlertDialogFooter.displayName = 'AlertDialogFooter'
 
+// Alert dialog title element for the main prompt.
 const AlertDialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Title
     ref={ref}
@@ -57,6 +65,7 @@ const AlertDialogTitle = React.forwardRef(({ className, ...props }, ref) => (
 ))
 AlertDialogTitle.displayName = AlertDialogPrimitive.Title.displayName
 
+// Alert dialog description element for supporting context.
 const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
@@ -66,11 +75,13 @@ const AlertDialogDescription = React.forwardRef(({ className, ...props }, ref) =
 ))
 AlertDialogDescription.displayName = AlertDialogPrimitive.Description.displayName
 
+// Primary alert dialog action styled like a standard button.
 const AlertDialogAction = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Action ref={ref} className={cn(buttonVariants(), className)} {...props} />
 ))
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName
 
+// Secondary alert dialog cancel action with outline style.
 const AlertDialogCancel = React.forwardRef(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Cancel
     ref={ref}

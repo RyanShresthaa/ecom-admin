@@ -4,10 +4,12 @@ import { CUSTOMER_TOKEN_KEY } from '@/lib/http'
 
 const AuthContext = createContext(null)
 
+// Auth provider — restores customer session from localStorage and exposes login/register/logout.
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Session restore: validate stored token via /user/user-details or clear on failure.
   const refresh = useCallback(async () => {
     const token = localStorage.getItem(CUSTOMER_TOKEN_KEY)
     if (!token) {
@@ -26,10 +28,12 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // Bootstrap auth state once on app load.
   useEffect(() => {
     refresh()
   }, [refresh])
 
+  // Login: exchange credentials for access token, persist, then reload profile.
   const login = useCallback(async (email, password) => {
     const res = await api.login(email, password)
     const token = res.data?.accesstoken
@@ -39,11 +43,13 @@ export function AuthProvider({ children }) {
     return res
   }, [refresh])
 
+  // Register then auto-login with the same credentials.
   const register = useCallback(async (payload) => {
     await api.register(payload)
     return login(payload.email, payload.password)
   }, [login])
 
+  // Logout: drop local token and clear in-memory user.
   const logout = useCallback(() => {
     localStorage.removeItem(CUSTOMER_TOKEN_KEY)
     setUser(null)
@@ -57,6 +63,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// Hook for pages/components to read customer auth state and actions.
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')

@@ -10,6 +10,7 @@ function esc(s) {
         .replace(/"/g, '&quot;');
 }
 
+// Render quotation HTML document for pre-order sales communication.
 export function renderQuotationHtml(q, lines) {
     const rows = lines
         .map(
@@ -28,6 +29,7 @@ export function renderQuotationHtml(q, lines) {
 </body></html>`;
 }
 
+// Render finalized sales invoice HTML with line-level pricing details.
 export function renderOrderInvoiceHtml({ invoiceNumber, orderId, customer, address, currency, lines, subtotal, taxAmt, shippingAmt, couponDiscount, couponCode, totalAmt, paymentStatus, issuedAt, revision }) {
     const rows = lines
         .map(
@@ -50,6 +52,7 @@ export function renderOrderInvoiceHtml({ invoiceNumber, orderId, customer, addre
 </body></html>`;
 }
 
+// Render credit note HTML for returned or adjusted sales.
 export function renderCreditNoteHtml({ creditNumber, orderId, invoiceNumber, customer, amount, currency, reason }) {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Credit Note ${esc(creditNumber)}</title></head><body>
 <h1>Credit Note ${esc(creditNumber)}</h1>

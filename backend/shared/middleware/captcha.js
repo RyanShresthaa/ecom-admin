@@ -9,6 +9,7 @@
  * Disabled for now — re-enable by uncommenting the block below and removing the no-op.
  */
 export async function verifyCaptcha(_req, _res, next) {
+    // No-op captcha gate: currently bypasses verification on all routes.
     return next();
 }
 

@@ -33,6 +33,7 @@ import { withCache } from '../../shared/utils/responseCache.js';
 
 const ALLOWED_ROLES = ['User', 'Seller', 'Admin'];
 
+// GET /api/admin/stats - returns cached dashboard KPIs for staff view.
 export const getDashboardStatsController = async (req, res) => {
     try {
         const data = await withCache('admin:stats', 2500, async () => {
@@ -61,6 +62,7 @@ export const getDashboardStatsController = async (req, res) => {
     }
 };
 
+// GET /api/admin/notifications - syncs and lists latest admin notifications.
 export const listNotificationsController = async (_req, res) => {
     try {
         await syncLowStockNotifications();
@@ -71,6 +73,7 @@ export const listNotificationsController = async (_req, res) => {
     }
 };
 
+// PATCH /api/admin/notifications/:id/read - marks one notification as read.
 export const markNotificationReadController = async (req, res) => {
     try {
         const data = await markNotificationRead(req.params.id);
@@ -81,6 +84,7 @@ export const markNotificationReadController = async (req, res) => {
     }
 };
 
+// POST /api/admin/notifications/read-all - marks all notifications as read.
 export const markAllNotificationsReadController = async (_req, res) => {
     try {
         await markAllNotificationsRead();
@@ -93,6 +97,7 @@ export const markAllNotificationsReadController = async (_req, res) => {
 export { createNotification };
 
 /** GET /api/admin/users — optional ?role=User&sellerRequest=true */
+// GET /api/admin/users - lists users with optional seller-request filtering and order stats.
 export const listUsersController = async (req, res) => {
     try {
         const { role, sellerRequest } = req.query;
@@ -120,6 +125,7 @@ export const listUsersController = async (req, res) => {
 };
 
 /** POST /api/admin/users — create customer (User) in DB */
+// POST /api/admin/users - creates a customer account, optional address, and audit log entry.
 export const createCustomerController = async (req, res) => {
     try {
         const {
@@ -171,6 +177,7 @@ export const createCustomerController = async (req, res) => {
         const stateVal = String(state || '').trim();
         const pinVal = String(pincode || zip || '').trim();
         const countryVal = String(country || '').trim();
+        // Build and persist an optional shipping address payload when any address field is present.
         const hasAddress = Boolean(line || cityVal || stateVal || pinVal || countryVal);
         let addresses = [];
         if (hasAddress) {
@@ -221,6 +228,7 @@ export const createCustomerController = async (req, res) => {
 };
 
 /** GET /api/admin/users/:id — profile + addresses + order stats */
+// GET /api/admin/users/:id - returns profile, addresses, and customer order metrics.
 export const getUserDetailController = async (req, res) => {
     try {
         const userId = pickId(req.params.id);
@@ -268,6 +276,7 @@ export const getUserDetailController = async (req, res) => {
 };
 
 /** PUT /api/admin/users/:id/role  body: { role: "Seller" | "User" | "Admin" } */
+// PUT /api/admin/users/:id/role - updates a user's role with self-demotion protection.
 export const setUserRoleController = async (req, res) => {
     try {
         const userId = pickId(req.params.id);
@@ -314,6 +323,7 @@ export const setUserRoleController = async (req, res) => {
 };
 
 /** POST /api/admin/users/:id/approve-seller — shortcut for pending requests */
+// POST /api/admin/users/:id/approve-seller - approves pending seller access for a user.
 export const approveSellerController = async (req, res) => {
     try {
         const userId = pickId(req.params.id);
@@ -343,6 +353,7 @@ export const approveSellerController = async (req, res) => {
 };
 
 /** POST /api/admin/users/:id/reject-seller */
+// POST /api/admin/users/:id/reject-seller - clears a seller request without role elevation.
 export const rejectSellerController = async (req, res) => {
     try {
         const userId = pickId(req.params.id);
@@ -357,6 +368,7 @@ export const rejectSellerController = async (req, res) => {
     }
 };
 
+// GET /api/admin/audit-logs - returns paginated admin audit trail entries.
 export const getAuditLogsController = async (req, res) => {
     try {
         const data = await findAuditLogs({ limit: Number(req.query.limit) || 50, skip: Number(req.query.skip) || 0 });
@@ -366,6 +378,7 @@ export const getAuditLogsController = async (req, res) => {
     }
 };
 
+// GET /api/admin/security-events - returns filtered security event records.
 export const getSecurityEventsController = async (req, res) => {
     try {
         const data = await findSecurityEvents({
@@ -381,6 +394,7 @@ export const getSecurityEventsController = async (req, res) => {
 };
 
 /** GET /api/admin/feedback — optional ?targetType=product|seller|business */
+// GET /api/admin/feedback - lists platform feedback with optional target type filter.
 export const listFeedbackController = async (req, res) => {
     try {
         const { targetType } = req.query;
@@ -396,6 +410,7 @@ export const listFeedbackController = async (req, res) => {
 };
 
 /** PUT /api/admin/users/:id/status — reactivate deactivated accounts or suspend */
+// PUT /api/admin/users/:id/status - toggles account status and records the action in audit logs.
 export const setUserStatusController = async (req, res) => {
     try {
         const userId = pickId(req.params.id);

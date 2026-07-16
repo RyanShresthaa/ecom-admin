@@ -24,6 +24,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
+// Inventory page — tabbed hub for stock levels, movements, reorder suggestions, and purchase orders.
 export default function Inventory() {
   const [search, setSearch] = useState('')
   // When need to add different store
@@ -39,6 +40,7 @@ export default function Inventory() {
   const { can } = usePermissions()
   const canWrite = can(PERMISSIONS.INVENTORY_WRITE)
 
+  // Build API query params from pagination, sorting, search, and stock-level filter.
   const params = useMemo(
     () => ({
       page: pagination.pageIndex,
@@ -56,6 +58,7 @@ export default function Inventory() {
   // When need to add different store
   // const { data: warehouses = [] } = useWarehousesQuery()
 
+  // Reset to page 0 whenever a filter or search value changes.
   function resetPage(setter) {
     return (value) => {
       setter(value)
@@ -63,13 +66,16 @@ export default function Inventory() {
     }
   }
 
+  // Open the create-PO dialog, optionally pre-filled from reorder suggestions.
   function openCreatePO(items = []) {
     setPoPrefill(items)
     setPoOpen(true)
   }
 
+  // Count low-stock items on the current page for the warning badge.
   const lowStockCount = data?.rows?.filter((r) => r.lowStock).length ?? 0
 
+  // Configure stock-level table columns with optional adjust action.
   const columns = useMemo(
     () => getInventoryColumns({ onAdjust: setAdjustingItem, canWrite }),
     [canWrite]

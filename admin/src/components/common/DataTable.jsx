@@ -12,15 +12,7 @@ import {
 import { cn } from '@/lib/utils'
 import { DataTablePagination } from '@/components/common/DataTablePagination'
 
-/**
- * Generic, server-driven data table.
- *
- * - Pagination and sorting are "manual": the parent owns the state and is
- *   responsible for passing already-paginated/sorted `data` (typically via
- *   a TanStack Query hook that forwards `pagination`/`sorting` to the API).
- * - `isFetching` shows a subtle overlay + spinner without unmounting the
- *   existing rows, so refetches feel instant rather than flashing a skeleton.
- */
+// Shared server-driven table used on Customers, Products, Orders, and Inventory list pages.
 export function DataTable({
   columns,
   data,
@@ -41,6 +33,7 @@ export function DataTable({
 }) {
   const sortingEnabled = Boolean(onSortingChange)
 
+  // Parent owns pagination/sorting state; TanStack Table only renders the current page.
   const table = useReactTable({
     data: data ?? [],
     columns,
@@ -62,6 +55,7 @@ export function DataTable({
   return (
     <div className="flex flex-col gap-3">
       <div className="relative rounded-lg border border-border bg-card">
+        {/* Subtle refetch indicator — keeps existing rows visible during background updates. */}
         {isFetching && !isLoading && (
           <div className="absolute right-3 top-2.5 z-10 flex items-center gap-1.5 text-xs text-muted-foreground">
             <SpinnerGap size={14} className="animate-spin" />
@@ -102,6 +96,7 @@ export function DataTable({
           </TableHeader>
           <TableBody>
             {isLoading ? (
+              // Skeleton rows shown on the initial fetch.
               Array.from({ length: pagination?.pageSize ?? 8 }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`}>
                   {columns.map((_, ci) => (

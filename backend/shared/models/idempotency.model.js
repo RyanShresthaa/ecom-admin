@@ -1,8 +1,10 @@
+// idempotency model: handles idempotency table/entity CRUD and query helpers.
 /**
  * PostgreSQL: `checkout_idempotency` — replay same checkout response for `Idempotency-Key`.
  */
 import pool from '../config/connectDB.js';
 
+// idempotency model: findIdempotency reads and returns records.
 export async function findIdempotency(userId, key) {
     const r = await pool.query(
         `SELECT status, response_body, http_status, created_at
@@ -13,6 +15,7 @@ export async function findIdempotency(userId, key) {
     return r.rows[0] || null;
 }
 
+// idempotency model: tryStartIdempotency creates a new record.
 export async function tryStartIdempotency(userId, key) {
     try {
         await pool.query(
@@ -48,6 +51,7 @@ export async function tryStartIdempotency(userId, key) {
     }
 }
 
+// idempotency model: completeIdempotency updates existing records.
 export async function completeIdempotency(userId, key, httpStatus, responseBody) {
     await pool.query(
         `UPDATE checkout_idempotency
@@ -57,9 +61,11 @@ export async function completeIdempotency(userId, key, httpStatus, responseBody)
     );
 }
 
+// idempotency model: failIdempotency updates existing records.
 export async function failIdempotency(userId, key) {
     await pool.query(
         `DELETE FROM checkout_idempotency WHERE user_id = $1 AND idempotency_key = $2 AND status = 'processing'`,
         [userId, key],
     );
 }
+

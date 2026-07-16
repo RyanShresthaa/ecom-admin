@@ -36,6 +36,7 @@ import {
 
 const purchaseRouter = Router();
 
+// Supplier master-data CRUD routes for procurement.
 purchaseRouter.post('/suppliers', auth, staff, validateBody(purchaseSupplierBodySchema), createSupplierController);
 purchaseRouter.get('/suppliers', auth, staff, listSuppliersController);
 purchaseRouter.get('/suppliers/:id', auth, staff, getSupplierController);
@@ -47,6 +48,7 @@ purchaseRouter.put(
     updateSupplierController,
 );
 
+// Purchase bill lifecycle routes from draft to receive/void and payment recording.
 purchaseRouter.post('/bills', auth, staff, validateBody(purchaseBillCreateBodySchema), createPurchaseBillController);
 purchaseRouter.get('/bills', auth, staff, listPurchaseBillsController);
 purchaseRouter.get('/bills/:id', auth, staff, getPurchaseBillController);
@@ -57,6 +59,7 @@ purchaseRouter.post('/bills/:id/void', auth, staff, voidPurchaseBillController);
 purchaseRouter.post('/bills/:id/payments', auth, staff, validateBody(purchasePaymentBodySchema), createPurchasePaymentController);
 purchaseRouter.get('/bills/:id/payments', auth, staff, listPurchasePaymentsController);
 
+// Purchase return routes for creation, review, approval, and void actions.
 purchaseRouter.get('/returns', auth, admin, listPurchaseReturnsController);
 purchaseRouter.get('/returns/:id', auth, admin, getPurchaseReturnController);
 purchaseRouter.post(

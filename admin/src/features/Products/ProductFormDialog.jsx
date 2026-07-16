@@ -42,6 +42,7 @@ const EMPTY_FORM = {
   status: 'active',
 }
 
+// Normalize product names for case-insensitive duplicate detection.
 function normalizeProductName(name) {
   return String(name || '')
     .trim()
@@ -49,6 +50,7 @@ function normalizeProductName(name) {
     .replace(/\s+/g, ' ')
 }
 
+// Products list page — modal to add or edit a product with duplicate-name guard.
 export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSubmitting }) {
   const navigate = useNavigate()
   const nameInputRef = useRef(null)
@@ -57,6 +59,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSub
   const [duplicateProduct, setDuplicateProduct] = useState(null)
   const isEdit = Boolean(product)
 
+  // Load full catalog while open to check for name collisions on submit.
   const { data: catalog } = useProductsQuery(
     {
       page: 0,
@@ -69,6 +72,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSub
     { enabled: open, staleTime: 15_000 }
   )
 
+  // Reset form to empty or existing product values when dialog opens.
   useEffect(() => {
     if (open) {
       setForm(
@@ -88,11 +92,13 @@ export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSub
     }
   }, [open, product])
 
+  // Update a form field and clear its validation error.
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
+  // Look up another catalog entry with the same normalized name.
   function findDuplicateByName(name) {
     const normalized = normalizeProductName(name)
     if (!normalized) return null
@@ -104,6 +110,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSub
     )
   }
 
+  // Validate required fields before allowing submit.
   function validate() {
     const next = {}
     if (!form.name.trim()) next.name = 'Product name is required'
@@ -113,6 +120,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSub
     return Object.keys(next).length === 0
   }
 
+  // Validate, block duplicates, then delegate create/update to parent handler.
   function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
@@ -134,11 +142,13 @@ export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSub
     })
   }
 
+  // Dismiss duplicate alert and refocus the name field for editing.
   function handleChangeName() {
     setDuplicateProduct(null)
     requestAnimationFrame(() => nameInputRef.current?.focus())
   }
 
+  // Close dialog and navigate to the existing product's detail page.
   function handleViewExisting() {
     const existing = duplicateProduct
     setDuplicateProduct(null)

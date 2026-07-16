@@ -9,13 +9,16 @@ import { PaymentStatusBadge, DeliveryStatusBadge } from '@/components/common/Sta
 import { useProductAnalyticsQuery } from '@/hooks/useProducts'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 
+// Placeholder shown inside analytics tabs when a dataset is empty.
 function EmptyState({ message }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{message}</p>
 }
 
+// Product detail page — KPIs and tabbed sales, refunds, and complaint activity.
 export function ProductAnalytics({ productId }) {
   const { data, isLoading } = useProductAnalyticsQuery(productId)
 
+  // Skeleton KPI cards while analytics data is loading.
   if (isLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -28,6 +31,7 @@ export function ProductAnalytics({ productId }) {
 
   if (!data) return null
 
+  // Destructure analytics payload into stats and per-tab datasets.
   const { stats, buyers, orderHistory, refunds, complaints } = data
 
   return (

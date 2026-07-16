@@ -26,6 +26,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 import { CATEGORIES } from '@/lib/constants'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
+// Product detail page — inline editor for catalog item, image, variants, and analytics.
 export default function ProductDetail() {
   const { id } = useParams()
   const { data: product, isLoading } = useProductQuery(id)
@@ -38,6 +39,7 @@ export default function ProductDetail() {
 
   if (isLoading) return <PageLoader />
 
+  // Show not-found state when the product ID does not match any record.
   if (!product) {
     return (
       <div className="flex flex-col items-center gap-4 py-20">
@@ -49,12 +51,15 @@ export default function ProductDetail() {
     )
   }
 
+  // Merge unsaved edits over the fetched product for display and save.
   const current = form || product
 
+  // Update a single form field in local draft state.
   function update(field, value) {
     setForm((prev) => ({ ...(prev || product), [field]: value }))
   }
 
+  // Persist draft changes; aggregate variant stock when variants exist.
   function handleSave() {
     if (!form) return
     updateProduct.mutate({
@@ -74,10 +79,12 @@ export default function ProductDetail() {
     }, { onSuccess: () => setForm(null) })
   }
 
+  // Upload a new product image via base64 data URL.
   function handleImageUpload(imageDataUrl) {
     uploadImage.mutate({ id: product.id, imageDataUrl })
   }
 
+  // Track whether local edits exist so Save only appears when needed.
   const hasChanges = Boolean(form)
 
   return (

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 
+// Global search query: fetch quick matches when user types 2+ chars.
 export function useGlobalSearch(query, { enabled = true } = {}) {
   const trimmed = query.trim()
 

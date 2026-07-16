@@ -11,6 +11,7 @@ const WEAK_SECRETS = new Set([
     'your_secret_here',
 ]);
 
+// Validate critical env vars for database, auth, and production safety.
 export function validateEnv() {
     const errors = [];
     const warnings = [];
@@ -53,8 +54,10 @@ export function validateEnv() {
         errors.push('Production: set CLIENT_URL or CORS_ORIGINS for CORS');
     }
 
+    // Print non-blocking misconfiguration warnings to aid local setup.
     for (const w of warnings) console.warn(`[env] ${w}`);
     if (errors.length) {
+        // Print blocking errors and abort startup for unsafe config.
         errors.forEach((e) => console.error(`[env] ${e}`));
         throw new Error('Invalid environment configuration');
     }

@@ -4,9 +4,11 @@ import { Image, SpinnerGap, X } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+// Product detail page — drag-and-click image picker with preview, replace, and remove.
 export function ImageUpload({ image, onUpload, onRemove, isUploading, className }) {
   const inputRef = useRef(null)
 
+  // Read selected image file as a base64 data URL for upload.
   function handleFileChange(e) {
     const file = e.target.files?.[0]
     if (!file) return

@@ -20,10 +20,12 @@ const SELECTED_BAR_COLOR = '#818CF8'
 const GRID_COLOR = '#E5E7EB'
 const AXIS_COLOR = '#94A3B8'
 
+// Dashboard chart — format x-axis tick labels as short month/day strings.
 function formatAxisDate(value) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(value))
 }
 
+// Dashboard chart — custom tooltip showing revenue, orders, and averages per day.
 function DayTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
 
@@ -55,6 +57,7 @@ function DayTooltip({ active, payload }) {
   )
 }
 
+// Dashboard chart — summary bar for the day selected on the revenue/orders chart.
 function SelectedDaySummary({ point, onClear }) {
   if (!point) return null
 
@@ -93,16 +96,20 @@ function SelectedDaySummary({ point, onClear }) {
   )
 }
 
+// Dashboard page — combined bar/line chart for 14-day revenue and order trends.
 export function SalesChart({ data, isLoading, selectedDate, onSelectedDateChange }) {
+  // Resolve the full data point for the currently selected chart day.
   const selectedPoint = useMemo(
     () => data?.find((entry) => entry.date === selectedDate) ?? null,
     [data, selectedDate]
   )
 
+  // Dashboard chart — loading placeholder while sales series data is fetched.
   if (isLoading) {
     return <Skeleton className="h-[280px] w-full" />
   }
 
+  // Dashboard chart — notify parent when a day is clicked to filter orders below.
   const selectPoint = (point) => {
     if (point?.date) onSelectedDateChange?.(point.date)
   }

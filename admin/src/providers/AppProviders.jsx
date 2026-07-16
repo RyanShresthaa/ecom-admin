@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 
 import { AuthProvider } from '@/context/AuthContext'
 
+// Global query client: shared cache/retry defaults for React Query.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -14,6 +15,7 @@ const queryClient = new QueryClient({
   },
 })
 
+// Provider composition: React Query + Auth context + toast/devtools wiring.
 export function AppProviders({ children }) {
   return (
     <QueryClientProvider client={queryClient}>

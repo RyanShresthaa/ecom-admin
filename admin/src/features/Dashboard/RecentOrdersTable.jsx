@@ -8,6 +8,7 @@ import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
 
 const columnHelper = createColumnHelper()
 
+// Dashboard orders table — column definitions for order list rows.
 const columns = [
   columnHelper.accessor('id', {
     header: 'Order',
@@ -44,13 +45,16 @@ const columns = [
   }),
 ]
 
+// Dashboard page — paginated orders table, optionally filtered by a chart day.
 export function RecentOrdersTable({ selectedDate }) {
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 })
 
+  // Dashboard orders table — reset to page one when the chart day filter changes.
   useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }))
   }, [selectedDate])
 
+  // Dashboard orders table — build query params from pagination, sort, and date filter.
   const params = useMemo(
     () => ({
       page: pagination.pageIndex,

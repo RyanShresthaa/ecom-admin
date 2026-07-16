@@ -2,8 +2,10 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
+// Reusable textarea with shared form styling and controlled-value safety.
 const Textarea = React.forwardRef((props, ref) => {
   const { className, value, ...rest } = props
+  // Keep value stable for controlled textareas when undefined is passed.
   const controlled = Object.prototype.hasOwnProperty.call(props, 'value')
 
   return (

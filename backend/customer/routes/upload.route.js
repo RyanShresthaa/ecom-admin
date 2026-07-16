@@ -12,6 +12,7 @@ import { uploadLimiter } from "../../shared/middleware/rateLimiter.js";
 
 const uploadRouter = Router();
 
+// POST /upload - upload image with rate limiting, auth/staff guard, multer parsing, and multer error handling.
 uploadRouter.post("/upload", uploadLimiter, auth, staff, (req, res, next) => {
     upload.single("image")(req, res, (err) => {
         if (err) return handleMulterError(err, req, res, next);

@@ -20,6 +20,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useGlobalSearch } from '@/hooks/useSearch'
 import { cn, formatCurrency } from '@/lib/utils'
 
+// Renders grouped search hits (orders, products, customers) inside the topbar dropdown or mobile dialog.
 function SearchResults({ results, isFetching, query, onSelect }) {
   const hasQuery = query.trim().length >= 2
   const total =
@@ -97,6 +98,7 @@ function SearchResults({ results, isFetching, query, onSelect }) {
   )
 }
 
+// Single result group with a section label and clickable rows.
 function SearchGroup({ icon: Icon, label, items, onSelect }) {
   return (
     <div className="mb-1">
@@ -121,6 +123,7 @@ function SearchGroup({ icon: Icon, label, items, onSelect }) {
   )
 }
 
+// Reusable search input with magnifying-glass icon, shared by desktop and mobile UIs.
 function SearchField({ query, onQueryChange, inputRef, className, autoFocus, onFocus }) {
   return (
     <div className={cn('relative', className)}>
@@ -141,6 +144,7 @@ function SearchField({ query, onQueryChange, inputRef, className, autoFocus, onF
   )
 }
 
+// Topbar omnisearch — debounced API lookup with ⌘K shortcut and a full-screen dialog on mobile.
 export function GlobalSearch() {
   const navigate = useNavigate()
   const containerRef = useRef(null)
@@ -153,6 +157,7 @@ export function GlobalSearch() {
     enabled: open || mobileOpen,
   })
 
+  // ⌘K / Ctrl+K opens search; Escape closes both desktop and mobile panels.
   useEffect(() => {
     function handleKeyDown(event) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -174,6 +179,7 @@ export function GlobalSearch() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Close the desktop dropdown when the user clicks outside the search container.
   useEffect(() => {
     function handleClickOutside(event) {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -185,6 +191,7 @@ export function GlobalSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Navigate to the selected entity and reset search state.
   function handleSelect(href) {
     navigate(href)
     setQuery('')

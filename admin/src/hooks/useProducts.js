@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 
+// Cache helper: invalidates product-adjacent datasets after mutations.
 function invalidateProductRelatedQueries(queryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
   queryClient.invalidateQueries({ queryKey: ['products', 'options'] })
@@ -13,6 +14,7 @@ function invalidateProductRelatedQueries(queryClient) {
   queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all })
 }
 
+// Products page query: fetch paginated products list.
 export function useProductsQuery(params, options = {}) {
   return useQuery({
     queryKey: queryKeys.products.list(params),
@@ -22,6 +24,7 @@ export function useProductsQuery(params, options = {}) {
   })
 }
 
+// Product picker query: fetch slim active product options.
 export function useProductOptionsQuery(params = { status: 'active' }) {
   return useQuery({
     queryKey: queryKeys.products.options(params),
@@ -30,6 +33,7 @@ export function useProductOptionsQuery(params = { status: 'active' }) {
   })
 }
 
+// Product detail query: fetch one product by id.
 export function useProductQuery(id) {
   return useQuery({
     queryKey: queryKeys.products.detail(id),
@@ -38,6 +42,7 @@ export function useProductQuery(id) {
   })
 }
 
+// Product analytics query: fetch computed stats for product detail page.
 export function useProductAnalyticsQuery(id) {
   return useQuery({
     queryKey: queryKeys.products.analytics(id),
@@ -46,6 +51,7 @@ export function useProductAnalyticsQuery(id) {
   })
 }
 
+// Mutation: creates new product.
 export function useCreateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -58,6 +64,7 @@ export function useCreateProduct() {
   })
 }
 
+// Mutation: updates product details.
 export function useUpdateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -71,6 +78,7 @@ export function useUpdateProduct() {
   })
 }
 
+// Mutation: deletes a product.
 export function useDeleteProduct() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -83,6 +91,7 @@ export function useDeleteProduct() {
   })
 }
 
+// Mutation: uploads product image data URL.
 export function useUploadProductImage() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -96,6 +105,7 @@ export function useUploadProductImage() {
   })
 }
 
+// Mutation: exports full products table to CSV.
 export function useExportProductsCsv() {
   return useMutation({
     mutationFn: () => api.products.exportCsv(),
@@ -113,6 +123,7 @@ export function useExportProductsCsv() {
   })
 }
 
+// Mutation: imports products from CSV payload.
 export function useImportProductsCsv() {
   const queryClient = useQueryClient()
   return useMutation({

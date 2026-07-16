@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 
+// Shop home page — grid of published products from shared catalog API.
 export default function Shop() {
   const [items, setItems] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
+  // Load published products on mount; cancel updates if unmounted.
   useEffect(() => {
     let alive = true
     ;(async () => {

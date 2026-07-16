@@ -3,6 +3,7 @@
  */
 import { renderOrderInvoiceHtml } from './salesDocumentRender.js';
 
+// Aggregate grouped order rows into an invoice-ready sales snapshot.
 export function aggregateOrderGroupForSalesInvoice(rows, { invoiceNumber, revision = 1, issuedAt = null, customer }) {
     if (!rows?.length) {
         const err = new Error('No order lines for this order id');

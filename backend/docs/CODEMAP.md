@@ -6,7 +6,7 @@ Quick reference. For HTTP details use **Swagger** at `/api/docs`.
 
 | File | Role |
 |------|------|
-| `server.js` | Express app, global middleware, mounts routers, `/api/health` |
+| `server.js` | Express app, global middleware, mounts `/api` + `/api/v1`, `/api/health`, `/api/ready` |
 
 ## `config/`
 
@@ -22,6 +22,7 @@ Quick reference. For HTTP details use **Swagger** at `/api/docs`.
 | `monitoring.js` | Sentry init + `captureException` |
 | `swagger.js` | Builds OpenAPI + serves `/api/docs` |
 | `swaggerDefinition.js` | Shared OpenAPI info/tags/schemas |
+| `redis.js` | Optional Redis client (`REDIS_URL`); cache + rate-limit sharing |
 
 ## `routes/` → `controllers/`
 
@@ -35,7 +36,7 @@ Quick reference. For HTTP details use **Swagger** at `/api/docs`.
 | `order.route.js` | `/api/order` | `order.controller.js` |
 | `address.route.js` | `/api/address` | `address.controller.js` |
 | `admin.route.js` | `/api/admin` | `admin.controller.js` |
-| `payment.route.js` | `/api/payment` | `payment.controller.js` |
+| `payment.route.js` | `/api/payment` | `payment.controller.js` + `refund.controller.js` |
 | `upload.route.js` | `/api/upload` | `uploadImage.controller.js` |
 | `coupon.route.js` | `/api/coupon` | `coupon.controller.js` |
 | `review.route.js` | `/api/review` | `review.controller.js` |
@@ -52,7 +53,8 @@ Quick reference. For HTTP details use **Swagger** at `/api/docs`.
 | File | Main entities |
 |------|-----------------|
 | `user.model.js` | `users` |
-| `product.model.js` | `products` + list/search |
+| `product.model.js` | `products` (+ sku/brand/barcode, soft-delete) |
+| `variant.model.js` | `product_variants` |
 | `category.model.js` | `categories` |
 | `subCategory.model.js` | `subcategories` |
 | `cartproduct.model.js` | `cart_items` |
@@ -80,7 +82,8 @@ Quick reference. For HTTP details use **Swagger** at `/api/docs`.
 | `optionalAuth.js` | Sets `req.userId` when a valid access token exists (no 401) |
 | `csrf.js` | Double-submit cookie + header when session exists |
 | `validate.js` | `validateBody(zodSchema)` |
-| `rateLimiter.js` | express-rate-limit + slow-down |
+| `rateLimiter.js` | express-rate-limit + slow-down (Redis-backed when ready) |
+| `redisRateLimitStore.js` | Hybrid memory/Redis store for rate limits |
 | `roles.js` | `admin` / `staff` role gates |
 | `productOwner.js` | Seller can only touch own products |
 | `abuseGuard.js` | Login lockout + failure recording |
@@ -118,6 +121,59 @@ Quick reference. For HTTP details use **Swagger** at `/api/docs`.
 | `verifyEmailTemplate.js` / `forgotPasswordTemplate.js` | Email HTML |
 | `uploadImageCloudinary.js` | Cloudinary upload |
 | `stockAlerts.js` | Low-stock email trigger |
+| `salesCreditFromReturn.js` | Re-exports → `services/payments/creditNote.js` |
+
+## `services/catalog/` (Phase 2 — variants)
+
+| File | Role |
+|------|------|
+| `index.js` | Public exports |
+| `variants.js` | Attach / replace variants + sync parent stock |
+
+## `services/fulfillment/` (Phase 3 — orders / shipping)
+
+| File | Role |
+|------|------|
+| `index.js` | Public exports |
+| `constants.js` | Delivery lifecycle + carriers |
+| `statusTransitions.js` | FSM normalize / validate / timestamps |
+| `shippingRates.js` | Zone-based shipping resolution |
+| `tracking.js` | tracking_number + carrier on order group |
+| `reorder.js` | Buy-again → cart |
+
+## Scale / marketplace services
+
+| Folder | Role |
+|--------|------|
+| `featureFlags/` | Toggle scale features |
+| `mfa/` | TOTP enroll + login challenge |
+| `fx/` | Multi-currency rates + convert |
+| `loyalty/` | Points earn/redeem ledger |
+| `recommendations/` | Related + co-purchase |
+| `reservations/` | Warehouse stock holds |
+| `payouts/` | Seller commission + payouts |
+| `push/` | Device tokens + FCM stub |
+| `cart/` | Guest merge + cart validation (Phase 4) |
+
+## `services/payments/` (Phase 1 — offline refunds)
+
+| File | Role |
+|------|------|
+| `index.js` | Public exports |
+| `constants.js` | Payment / refund enums |
+| `statusPairing.js` | Returned ↔ Refunded pairing |
+| `refundService.js` | Full / partial refund orchestration |
+| `creditNote.js` | CRN for refunds & returns |
+| `providers/manual.js` | Offline refund (active) |
+| `providers/stripe.js` | Stub until Stripe keys exist |
+| `providers/index.js` | Provider resolver |
+
+## `models/` (extra)
+
+| File | Main entities |
+|------|-----------------|
+| `shipping.model.js` | `shipping_zones`, `shipping_rates` |
+| `refund.model.js` | `payment_refunds` ledger |
 
 ## `validation/`
 
@@ -127,14 +183,13 @@ Quick reference. For HTTP details use **Swagger** at `/api/docs`.
 
 ## `db/migrations/`
 
-Numbered SQL — run via `npm run db:migrate`. Includes `008_*` (PIN/feedback), `009_inventory_warehouses.sql`, **`010_sales_documents.sql`** (sales docs + `doc_counters`; fixes `orders.order_id` uniqueness for multi-line carts), **`011_nepal_purchase_vat.sql`** (suppliers, Nepal VAT purchase bills @ 13%, payment-out, purchase returns; `shop_settings` keys for NP / NPR / company PAN).
+Numbered SQL — run via `npm run db:migrate`. Includes … **`017_scale_features.sql`**, **`018_guest_cart_ttl_fts.sql`** (guest cart, TTL, product FTS).
 
 ## `scripts/`
 
 | File | Role |
 |------|------|
 | `migrate.mjs` | Apply all migrations |
-| `backup-db.mjs` | `pg_dump` |
 | `email-worker.mjs` | Drain `email_queue` |
 | `check-smtp.mjs` | SMTP verify |
 | `*.test.mjs` | Node test runner |

@@ -1,51 +1,74 @@
-# Local production-like stack (item 5): API + Postgres + email worker
-# Usage: cp .env.example .env && docker compose up --build
-
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: app
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - '5432:5432'
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  api:
-    build: .
-    ports:
-      - '5000:5000'
-    env_file: .env
-    environment:
-      NODE_ENV: production
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: app
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      TRUST_PROXY_HOPS: 1
-      EMAIL_USE_QUEUE: 'true'
-    depends_on:
-      db:
-        condition: service_healthy
-    command: sh -c "node scripts/migrate.mjs && node server.js"
-
-  email-worker:
-    build: .
-    env_file: .env
-    environment:
-      DB_HOST: db
-      EMAIL_USE_QUEUE: 'true'
-    depends_on:
-      - api
-    command: node scripts/email-worker.mjs
-
-volumes:
-  pgdata:
+# Local stack: API + Postgres + Redis + BullMQ worker
+#
+# Recommended while developing with npm run dev (you already have local Postgres/API):
+#   docker compose up redis -d
+#   # .env: REDIS_URL=redis://localhost:6379, QUEUE_ENABLED=true
+#   npm run queue:worker
+#
+# Full Docker stack (stop local Postgres/API first — ports 5432/5000):
+#   docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - '5000:5000'
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: app
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      REDIS_URL: redis://redis:6379
+      QUEUE_ENABLED: 'true'
+      TRUST_PROXY_HOPS: 1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "node scripts/migrate.mjs && node server.js"
+
+  queue-worker:
+    build: .
+    env_file: .env
+    environment:
+      DB_HOST: db
+      REDIS_URL: redis://redis:6379
+      QUEUE_ENABLED: 'true'
+    depends_on:
+      - api
+      redis:
+        condition: service_healthy
+    command: node scripts/queue-worker.mjs
+
+volumes:
+  pgdata:

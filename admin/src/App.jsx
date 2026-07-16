@@ -23,10 +23,12 @@ const Settings = lazy(() => import('@/features/Settings'))
 const Profile = lazy(() => import('@/features/Profile'))
 const Account = lazy(() => import('@/features/Account'))
 
+// Route wrapper: shows a page loader while lazy route chunks are being fetched.
 function LazyPage({ children }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
 }
 
+// Root router: declares public auth routes and protected dashboard routes.
 export default function App() {
   return (
     <Routes>

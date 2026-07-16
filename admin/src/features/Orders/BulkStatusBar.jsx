@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { useBulkUpdateOrderStatus } from '@/hooks/useOrders'
 
+// Orders list page — toolbar bar for bulk-updating delivery/payment status on selected rows.
 export function BulkStatusBar({ selectedIds, onClear }) {
   const [deliveryStatus, setDeliveryStatus] = useState('')
   const [paymentStatus, setPaymentStatus] = useState('')
@@ -18,6 +19,7 @@ export function BulkStatusBar({ selectedIds, onClear }) {
 
   if (!selectedIds.length) return null
 
+  // Apply chosen statuses to all selected orders and clear selection on success.
   function handleApply() {
     if (!deliveryStatus && !paymentStatus) return
     bulkUpdate.mutate(

@@ -1,25 +1,43 @@
 /**
- * Optional DB-backed email queue (EMAIL_USE_QUEUE); else send SMTP immediately.
+ * Optional email delivery — BullMQ (preferred) → PG queue (legacy) → inline SMTP.
  */
 import { sendEmailDirect } from '../config/sendEmail.js';
 import { enqueueEmail, fetchPendingEmails, markEmailSent, markEmailFailed } from '../models/emailQueue.model.js';
 import { logger } from './logger.js';
 
-export function isEmailQueueEnabled() {
+// Legacy PG email queue flag (used when QUEUE_ENABLED=false).
+export function isPgEmailQueueEnabled() {
     return process.env.EMAIL_USE_QUEUE === 'true';
 }
 
-/** Send now or enqueue based on EMAIL_USE_QUEUE */
+// Prefer BullMQ email queue when QUEUE_ENABLED=true.
+async function isBullEmailQueueEnabled() {
+    try {
+        const { isQueueEnabled } = await import('../queue/connection.js');
+        return isQueueEnabled();
+    } catch {
+        return false;
+    }
+}
+
+/** Send now or enqueue based on QUEUE_ENABLED / EMAIL_USE_QUEUE */
 export async function deliverEmail(opts) {
-    if (isEmailQueueEnabled()) {
+    if (await isBullEmailQueueEnabled()) {
+        const { queueEmail } = await import('../queue/enqueue.js');
+        const result = await queueEmail(opts);
+        return { queued: true, bullmq: true, ...result };
+    }
+
+    if (isPgEmailQueueEnabled()) {
         const id = await enqueueEmail(opts);
         return { queued: true, id };
     }
+
     await sendEmailDirect(opts);
     return { sent: true };
 }
 
-/** Process pending rows (used by scripts/email-worker.mjs) */
+/** Process pending PG rows (legacy scripts/email-worker.mjs) */
 export async function processEmailBatch(limit = 20) {
     const rows = await fetchPendingEmails(limit);
     let sent = 0;

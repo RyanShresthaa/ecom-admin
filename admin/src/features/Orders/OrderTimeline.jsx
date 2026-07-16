@@ -8,6 +8,7 @@ import {
 
 import { formatDateTime } from '@/lib/utils'
 
+// Icon mapping for each timeline event type.
 const TYPE_ICONS = {
   created: PlusCircle,
   delivery: Truck,
@@ -15,6 +16,7 @@ const TYPE_ICONS = {
   note: NotePencil,
 }
 
+// Background color classes per timeline event type.
 const TYPE_COLORS = {
   created: 'bg-primary/10 text-primary',
   delivery: 'bg-blue-500/10 text-blue-600',
@@ -22,11 +24,13 @@ const TYPE_COLORS = {
   note: 'bg-warning/15 text-warning-foreground',
 }
 
+// Order detail page — chronological feed of status changes and notes.
 export function OrderTimeline({ history = [] }) {
   if (!history.length) {
     return <p className="text-sm text-muted-foreground">No timeline events yet.</p>
   }
 
+  // Show newest events first.
   const sorted = [...history].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
 
   return (

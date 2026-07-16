@@ -2,12 +2,15 @@
  * Nepal VAT: standard rate 13% on taxable value (value excluding VAT).
  * @see https://ird.gov.np/ — line VAT = round(net × rate/100, 2); gross = net + VAT.
  */
+// Handle nepalVat utility logic for NEPAL_VAT_STANDARD_RATE.
 export const NEPAL_VAT_STANDARD_RATE = 13;
+// Handle nepalVat utility logic for NEPAL_PURCHASE_CURRENCY_DEFAULT.
 export const NEPAL_PURCHASE_CURRENCY_DEFAULT = 'NPR';
 
 /**
  * @param {{ quantity: number, unitPriceExclVat: number, vatRate?: number }} p
  */
+// Compute VAT-exclusive, VAT amount, and VAT-inclusive totals per purchase line.
 export function purchaseLineAmounts({ quantity, unitPriceExclVat, vatRate = NEPAL_VAT_STANDARD_RATE }) {
     const q = Math.max(1, Math.floor(Number(quantity) || 0));
     const unit = Number(unitPriceExclVat);
@@ -35,6 +38,7 @@ export function purchaseLineAmounts({ quantity, unitPriceExclVat, vatRate = NEPA
     };
 }
 
+// Aggregate purchase lines into subtotal, VAT, and grand total for Nepal VAT.
 export function sumPurchaseLines(lines) {
     return lines.reduce(
         (acc, l) => ({

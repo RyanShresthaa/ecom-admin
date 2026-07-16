@@ -4,6 +4,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 
+// Static topbar titles keyed by top-level route path.
 const TITLES = {
   '/': 'Dashboard',
   '/customers': 'Customers',
@@ -15,6 +16,7 @@ const TITLES = {
   '/account': 'Account settings',
 }
 
+// Resolve the topbar title for list pages and detail sub-routes.
 function getPageTitle(pathname) {
   if (pathname.startsWith('/customers/')) return 'Customer details'
   if (pathname.startsWith('/products/')) return 'Product details'
@@ -22,6 +24,7 @@ function getPageTitle(pathname) {
   return TITLES[pathname] ?? 'Matina Crafts'
 }
 
+// Main authenticated shell — sidebar, topbar, and nested page content via <Outlet />.
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()

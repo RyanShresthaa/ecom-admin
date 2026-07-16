@@ -59,5 +59,6 @@ Same process, same Postgres. Frontends:
 
 | Path | Purpose |
 |------|---------|
-| `/api/health` | Health |
+| `/api/health` | Health (also `/api/v1/health`) |
+| `/api/ready` | Readiness probe (also `/api/v1/ready`) |
 | `/api/docs` | Swagger |

@@ -1,9 +1,11 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
+// Account page — protected profile view for logged-in customers.
 export default function Account() {
   const { user, loading } = useAuth()
   if (loading) return <p className="muted">Loading…</p>
+  // Redirect guests to login before showing profile.
   if (!user) return <Navigate to="/login" replace />
 
   return (

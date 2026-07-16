@@ -6,6 +6,7 @@ const AuthContext = createContext(null)
 
 const TOKEN_STORAGE_KEY = 'orbit_admin_token'
 
+// Storage helper: safely read token from localStorage.
 function readStoredToken() {
   try {
     return localStorage.getItem(TOKEN_STORAGE_KEY)
@@ -14,6 +15,7 @@ function readStoredToken() {
   }
 }
 
+// Storage helper: safely write/remove token in localStorage.
 function writeStoredToken(token) {
   try {
     if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token)
@@ -64,12 +66,14 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // Auth action: persist authenticated session in memory + storage.
   const login = useCallback(({ user: nextUser, token: nextToken }) => {
     setUser(nextUser)
     setToken(nextToken)
     writeStoredToken(nextToken)
   }, [])
 
+  // Auth action: clear local session and best-effort invalidate server token.
   const logout = useCallback(() => {
     const currentToken = token
     setUser(null)
@@ -82,10 +86,12 @@ export function AuthProvider({ children }) {
     }
   }, [token])
 
+  // Profile action: update current user snapshot in context.
   const updateUser = useCallback((nextUser) => {
     setUser(nextUser)
   }, [])
 
+  // Context payload: stable auth contract consumed across the app.
   const value = useMemo(
     () => ({
       user,
@@ -104,6 +110,7 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
+  // Context hook: enforces usage under <AuthProvider>.
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
   return ctx

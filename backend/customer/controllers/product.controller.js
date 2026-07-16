@@ -9,10 +9,12 @@ import {
     findProductsByCategoryAndSub,
     updateProduct,
     deleteProduct,
+    restoreProduct,
 } from '../../shared/models/product.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 import { withCache, bustCache } from '../../shared/utils/responseCache.js';
 
+// POST /api/product/create — creates a new product listing.
 export const createProductController = async (request, response) => {
     try {
         const body = request.body;
@@ -29,6 +31,7 @@ export const createProductController = async (request, response) => {
     }
 };
 
+// GET /api/product/get-product — lists/searches product catalog entries.
 export const getProductController = async (request, response) => {
     try {
         const src = { ...request.query, ...request.body };
@@ -73,6 +76,7 @@ export const getProductController = async (request, response) => {
     }
 };
 
+// GET /api/product/get-product/:id — fetches single product by id.
 export const getProductByIdController = async (request, response) => {
     try {
         const product = await findProductById(request.params.id);
@@ -85,6 +89,7 @@ export const getProductByIdController = async (request, response) => {
     }
 };
 
+// POST /api/product/get-product-by-category — lists products by category.
 export const getProductByCategory = async (request, response) => {
     try {
         const { id } = request.body;
@@ -98,6 +103,7 @@ export const getProductByCategory = async (request, response) => {
     }
 };
 
+// POST /api/product/get-pruduct-by-category-and-subcategory — lists products by category and subcategory.
 export const getProductByCategoryAndSubCategory = async (request, response) => {
     try {
         const { categoryId, subCategoryId, page = 1, limit = 10 } = request.body;
@@ -120,6 +126,7 @@ export const getProductByCategoryAndSubCategory = async (request, response) => {
     }
 };
 
+// POST /api/product/get-product-details — fetches detailed product payload.
 export const getProductDetails = async (request, response) => {
     try {
         const product = await findProductById(pickId(request.body.productId));
@@ -129,6 +136,7 @@ export const getProductDetails = async (request, response) => {
     }
 };
 
+// PUT /api/product/update-product — updates existing product details.
 export const updateProductDetails = async (request, response) => {
     try {
         const id = pickId(request.body._id);
@@ -143,6 +151,7 @@ export const updateProductDetails = async (request, response) => {
     }
 };
 
+// DELETE /api/product/delete-product — soft-deletes a product listing.
 export const deleteProductDetails = async (request, response) => {
     try {
         const id = pickId(request.body._id);
@@ -153,8 +162,39 @@ export const deleteProductDetails = async (request, response) => {
         bustCache('products:')
         return response.json({ message: 'Delete successfully', error: false, success: true });
     } catch (error) {
+        // Postgres FK violation when record is referenced elsewhere.
+        // Even though product deletion is soft-delete, some DB configs/triggers may still throw FK errors.
+        const code = error?.code;
+        if (code === '23503' || String(error?.message || '').toLowerCase().includes('foreign key')) {
+            return response.status(400).json({
+                message: 'Cannot delete product because it is referenced by other records (e.g. orders). Please remove related items first.',
+                error: true,
+                success: false,
+            });
+        }
+
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+};
+
+/** Soft-restore a previously deleted product */
+// POST /api/product/restore-product — restores a previously deleted product.
+export const restoreProductController = async (request, response) => {
+    try {
+        const id = pickId(request.body._id || request.params.id);
+        if (!id) {
+            return response.status(400).json({ message: 'provide _id', error: true, success: false });
+        }
+        const data = await restoreProduct(id);
+        if (!data) {
+            return response.status(404).json({ message: 'Product not found or not deleted', error: true, success: false });
+        }
+        bustCache('products:');
+        return response.json({ message: 'Product restored', data, error: false, success: true });
+    } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false });
     }
 };
 
 export const searchProduct = getProductController;
+

@@ -13,9 +13,13 @@ import {
 } from "../controllers/subcategory.controller.js";
 
 const subCategoryRouter = Router();
+// POST /add-subcategory - create subcategory (requires auth + staff).
 subCategoryRouter.post("/add-subcategory", auth, staff, AddSubCategoryController);
+// GET /get-subcategory - list subcategories (public).
 subCategoryRouter.get("/get-subcategory", getSubCategoryController);
+// PUT /update-subcategory - update subcategory (requires auth + staff).
 subCategoryRouter.put("/update-subcategory", auth, staff, updateSubCategoryController);
+// DELETE /delete-subcategory - delete subcategory (requires auth + staff).
 subCategoryRouter.delete("/delete-subcategory", auth, staff, deleteSubCategoryController);
 
 export default subCategoryRouter;

@@ -6,6 +6,7 @@ import { findUserById } from '../models/user.model.js';
 
 export const requireRole = (...roles) => async (req, res, next) => {
     try {
+        // Reload current user role and enforce allowed role list for route.
         const user = await findUserById(req.userId);
         if (!user || !roles.includes(user.role)) {
             return res.status(403).json({

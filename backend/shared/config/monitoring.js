@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 
 let Sentry = null;
 
+// Initialize Sentry monitoring for API errors and trace sampling.
 export async function initMonitoring() {
     const dsn = process.env.SENTRY_DSN?.trim();
     if (!dsn) {
@@ -25,6 +26,7 @@ export async function initMonitoring() {
     }
 }
 
+// Capture backend exceptions to logs and Sentry with route context.
 export function captureException(err, context = {}) {
     logger.error(err?.message || err, context);
     if (Sentry) {
@@ -35,6 +37,7 @@ export function captureException(err, context = {}) {
     }
 }
 
+// Attach Sentry Express error middleware when monitoring is enabled.
 export function setupExpressErrorHandler(app) {
     if (Sentry?.setupExpressErrorHandler) {
         Sentry.setupExpressErrorHandler(app);
