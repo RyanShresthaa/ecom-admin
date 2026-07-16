@@ -1,6 +1,4 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { CalendarBlank, Plus } from '@phosphor-icons/react'
 
@@ -26,7 +24,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PERMISSIONS } from '@/lib/permissions'
 
 export default function Orders() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [deliveryStatus, setDeliveryStatus] = useState('all')
   const [paymentStatus, setPaymentStatus] = useState('all')
@@ -69,12 +67,12 @@ export default function Orders() {
   const columns = useMemo(
     () =>
       getOrderColumns({
-        onView: (order) => router.push(`/orders/${order.id}`),
+        onView: (order) => navigate(`/orders/${order.id}`),
         enableSelection: canWrite,
         rowSelection,
         onRowSelectionChange: setRowSelection,
       }),
-    [canWrite, rowSelection, router]
+    [canWrite, rowSelection, navigate]
   )
 
   return (

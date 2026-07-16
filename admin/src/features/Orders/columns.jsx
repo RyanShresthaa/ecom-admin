@@ -1,6 +1,4 @@
-'use client'
-
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Eye } from '@phosphor-icons/react'
 
@@ -60,7 +58,7 @@ export function getOrderColumns({ onView, enableSelection = false, rowSelection,
     columnHelper.accessor('id', {
       header: 'Order ID',
       cell: (info) => (
-        <Link href={`/orders/${info.getValue()}`} className="font-mono text-xs font-medium text-primary hover:underline">
+        <Link to={`/orders/${info.getValue()}`} className="font-mono text-xs font-medium text-primary hover:underline">
           {info.getValue()}
         </Link>
       ),
@@ -76,7 +74,7 @@ export function getOrderColumns({ onView, enableSelection = false, rowSelection,
             </div>
             <div className="flex flex-col">
               <Link
-                href={`/customers/${order.customerId}`}
+                to={`/customers/${order.customerId}`}
                 className="text-sm font-medium text-foreground hover:text-primary"
               >
                 {order.customerName}
@@ -111,7 +109,7 @@ export function getOrderColumns({ onView, enableSelection = false, rowSelection,
       cell: (info) => (
         <div className="flex justify-end">
           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
-            <Link href={`/orders/${info.row.original.id}`} onClick={() => onView?.(info.row.original)}>
+            <Link to={`/orders/${info.row.original.id}`} onClick={() => onView?.(info.row.original)}>
               <Eye size={14} />
               View
             </Link>

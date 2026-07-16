@@ -2,12 +2,13 @@
   "name": "@matina/admin",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack -p 5173",
+    "dev": "vite",
     "dev:demo-api": "node server/index.js",
-    "build": "next build",
-    "start": "next start -p 5173",
-    "lint": "next lint"
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -31,21 +32,27 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
-    "next": "^15.3.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.1",
     "recharts": "^2.15.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^15.3.3",
+    "eslint-plugin-react": "^7.37.3",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
     "postcss": "^8.5.1",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.7"
   }
 }

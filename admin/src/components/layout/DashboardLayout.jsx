@@ -1,7 +1,5 @@
-'use client'
-
 import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { Outlet, useLocation } from 'react-router-dom'
 
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
@@ -12,7 +10,6 @@ const TITLES = {
   '/products': 'Products',
   '/orders': 'Orders',
   '/inventory': 'Inventory',
-  '/live-store': 'Live store',
   '/settings': 'Settings',
   '/profile': 'Profile',
   '/account': 'Account settings',
@@ -25,10 +22,10 @@ function getPageTitle(pathname) {
   return TITLES[pathname] ?? 'Matina Crafts'
 }
 
-export function DashboardLayout({ children }) {
+export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const pathname = usePathname()
-  const title = getPageTitle(pathname)
+  const location = useLocation()
+  const title = getPageTitle(location.pathname)
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,7 +35,7 @@ export function DashboardLayout({ children }) {
         <Topbar onMenuClick={() => setSidebarOpen(true)} title={title} />
         <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6">
           <div className="mx-auto w-full max-w-[1400px] animate-fade-in">
-            {children}
+            <Outlet />
           </div>
         </main>
       </div>

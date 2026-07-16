@@ -1,6 +1,4 @@
-'use client'
-
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { createColumnHelper } from '@tanstack/react-table'
 import { DotsThree, PencilSimple, Trash, Package, Eye } from '@phosphor-icons/react'
 
@@ -33,7 +31,7 @@ export function getProductColumns({ onEdit, onDelete, canWrite = true }) {
               </div>
             )}
             <div className="flex flex-col">
-              <Link href={`/products/${product.id}`} className="text-sm font-medium text-foreground hover:text-primary">
+              <Link to={`/products/${product.id}`} className="text-sm font-medium text-foreground hover:text-primary">
                 {product.name}
               </Link>
               <span className="font-mono text-[11px] text-muted-foreground">{product.sku}</span>
@@ -122,7 +120,7 @@ export function getProductColumns({ onEdit, onDelete, canWrite = true }) {
         return (
           <div className="flex justify-end gap-1">
             <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-              <Link href={`/products/${product.id}`}>
+              <Link to={`/products/${product.id}`}>
                 <Eye size={16} />
               </Link>
             </Button>

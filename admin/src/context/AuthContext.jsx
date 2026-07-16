@@ -1,118 +1,83 @@
-'use client'
-
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 
 import { api } from '@/lib/api'
-import {
-  clearStoredTokens,
-  getStoredRefreshToken,
-  getStoredToken,
-  refreshAccessToken,
-  setStoredTokens,
-} from '@/lib/http'
 
 const AuthContext = createContext(null)
+
+const TOKEN_STORAGE_KEY = 'orbit_admin_token'
+
+function readStoredToken() {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeStoredToken(token) {
+  try {
+    if (token) localStorage.setItem(TOKEN_STORAGE_KEY, token)
+    else localStorage.removeItem(TOKEN_STORAGE_KEY)
+  } catch {
+    // localStorage can throw in private-browsing / disabled-storage contexts.
+    // Session simply won't persist across reloads in that case.
+  }
+}
 
 /**
  * Owns the authenticated session for the whole app: who's logged in, what
  * role they have, and whether we're still restoring a session from a
- * previously-stored token.
+ * previously-stored token. All auth calls go through src/lib/api.js — point
+ * VITE_API_URL at your backend when ready.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
   const [isRestoring, setIsRestoring] = useState(true)
-  const router = useRouter()
 
-  // On first load, restore session (refresh access token if needed).
+  // On first load, try to restore a session from a previously-stored token.
   useEffect(() => {
-    let cancelled = false
-
-    async function restore() {
-      let access = getStoredToken()
-      const refresh = getStoredRefreshToken()
-      if (!access && !refresh) {
-        if (!cancelled) setIsRestoring(false)
-        return
-      }
-
-      try {
-        // Prefer validating current access; on failure try refresh once.
-        let restoredUser = null
-        if (access) {
-          try {
-            const session = await api.auth.session(access)
-            restoredUser = session.user
-          } catch {
-            access = null
-          }
-        }
-        if (!restoredUser && refresh) {
-          access = await refreshAccessToken()
-          if (access) {
-            const session = await api.auth.session(access)
-            restoredUser = session.user
-          }
-        }
-        if (cancelled) return
-        if (restoredUser && access) {
-          setUser(restoredUser)
-          setToken(access)
-        } else {
-          clearStoredTokens()
-          setUser(null)
-          setToken(null)
-        }
-      } catch {
-        if (!cancelled) {
-          clearStoredTokens()
-          setUser(null)
-          setToken(null)
-        }
-      } finally {
-        if (!cancelled) setIsRestoring(false)
-      }
+    const storedToken = readStoredToken()
+    if (!storedToken) {
+      setIsRestoring(false)
+      return
     }
 
-    restore()
+    let cancelled = false
+    api.auth
+      .session(storedToken)
+      .then(({ user: restoredUser }) => {
+        if (cancelled) return
+        setUser(restoredUser)
+        setToken(storedToken)
+      })
+      .catch(() => {
+        if (cancelled) return
+        writeStoredToken(null)
+      })
+      .finally(() => {
+        if (!cancelled) setIsRestoring(false)
+      })
+
     return () => {
       cancelled = true
     }
   }, [])
 
-  // Keep React state in sync when http.js refreshes / clears tokens.
-  useEffect(() => {
-    function onToken(e) {
-      const next = e.detail?.token
-      if (next) setToken(next)
-    }
-    function onLogout() {
-      setUser(null)
-      setToken(null)
-      clearStoredTokens()
-      router.replace('/login')
-    }
-    window.addEventListener('orbit:auth-token', onToken)
-    window.addEventListener('orbit:auth-logout', onLogout)
-    return () => {
-      window.removeEventListener('orbit:auth-token', onToken)
-      window.removeEventListener('orbit:auth-logout', onLogout)
-    }
-  }, [router])
-
-  const login = useCallback(({ user: nextUser, token: nextToken, refreshToken }) => {
+  const login = useCallback(({ user: nextUser, token: nextToken }) => {
     setUser(nextUser)
     setToken(nextToken)
-    setStoredTokens({ accessToken: nextToken, refreshToken: refreshToken || null })
+    writeStoredToken(nextToken)
   }, [])
 
   const logout = useCallback(() => {
-    const currentToken = token || getStoredToken()
+    const currentToken = token
     setUser(null)
     setToken(null)
-    clearStoredTokens()
+    writeStoredToken(null)
     if (currentToken) {
+      // Fire-and-forget — the user is logged out locally regardless of
+      // whether this network call succeeds.
       api.auth.logout(currentToken).catch(() => {})
     }
   }, [token])

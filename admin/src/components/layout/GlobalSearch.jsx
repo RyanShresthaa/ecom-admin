@@ -1,6 +1,4 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import {
   MagnifyingGlass,
@@ -144,7 +142,7 @@ function SearchField({ query, onQueryChange, inputRef, className, autoFocus, onF
 }
 
 export function GlobalSearch() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const containerRef = useRef(null)
   const inputRef = useRef(null)
   const [query, setQuery] = useState('')
@@ -188,7 +186,7 @@ export function GlobalSearch() {
   }, [])
 
   function handleSelect(href) {
-    router.push(href)
+    navigate(href)
     setQuery('')
     setOpen(false)
     setMobileOpen(false)

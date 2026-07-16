@@ -1,6 +1,4 @@
-'use client'
-
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { ChartBar, Package, ShoppingCartSimple, WarningCircle, ArrowCounterClockwise } from '@phosphor-icons/react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -73,7 +71,7 @@ export function ProductAnalytics({ productId }) {
                       {buyers.map((buyer) => (
                         <tr key={buyer.customerId} className="border-b border-border last:border-0">
                           <td className="px-3 py-3">
-                            <Link href={`/customers/${buyer.customerId}`} className="font-medium text-foreground hover:text-primary">
+                            <Link to={`/customers/${buyer.customerId}`} className="font-medium text-foreground hover:text-primary">
                               {buyer.customerName}
                             </Link>
                             <p className="text-xs text-muted-foreground">{buyer.customerEmail}</p>
@@ -81,9 +79,7 @@ export function ProductAnalytics({ productId }) {
                           <td className="px-3 py-3 font-mono tabular-nums">{buyer.soldQty ?? 0}</td>
                           <td className="px-3 py-3 font-mono tabular-nums text-muted-foreground">{buyer.refundedQty ?? 0}</td>
                           <td className="px-3 py-3 font-mono tabular-nums">{buyer.orderCount}</td>
-                          <td className="px-3 py-3 text-muted-foreground">
-                            {formatDate(buyer.lastOrderDate ?? buyer.lastPurchase)}
-                          </td>
+                          <td className="px-3 py-3 text-muted-foreground">{formatDate(buyer.lastOrderDate)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -112,19 +108,17 @@ export function ProductAnalytics({ productId }) {
                       {orderHistory.map((entry) => (
                         <tr key={`${entry.orderId}-${entry.date}`} className="border-b border-border last:border-0">
                           <td className="px-3 py-3">
-                            <Link href={`/orders/${entry.orderId}`} className="font-mono text-xs font-medium hover:text-primary">
+                            <Link to={`/orders/${entry.orderId}`} className="font-mono text-xs font-medium hover:text-primary">
                               {entry.orderId}
                             </Link>
                           </td>
                           <td className="px-3 py-3">
-                            <Link href={`/customers/${entry.customerId}`} className="hover:text-primary">
+                            <Link to={`/customers/${entry.customerId}`} className="hover:text-primary">
                               {entry.customerName}
                             </Link>
                           </td>
                           <td className="px-3 py-3 font-mono tabular-nums">{entry.qty}</td>
-                          <td className="px-3 py-3 font-mono tabular-nums">
-                            {formatCurrency(entry.total ?? entry.amount)}
-                          </td>
+                          <td className="px-3 py-3 font-mono tabular-nums">{formatCurrency(entry.total)}</td>
                           <td className="px-3 py-3 text-muted-foreground">{formatDate(entry.date)}</td>
                           <td className="px-3 py-3">
                             <div className="flex flex-wrap gap-1.5">
@@ -162,15 +156,13 @@ export function ProductAnalytics({ productId }) {
                       {refunds.map((entry) => (
                         <tr key={`refund-${entry.orderId}`} className="border-b border-border last:border-0">
                           <td className="px-3 py-3">
-                            <Link href={`/orders/${entry.orderId}`} className="font-mono text-xs font-medium hover:text-primary">
+                            <Link to={`/orders/${entry.orderId}`} className="font-mono text-xs font-medium hover:text-primary">
                               {entry.orderId}
                             </Link>
                           </td>
                           <td className="px-3 py-3">{entry.customerName}</td>
                           <td className="px-3 py-3 font-mono tabular-nums">{entry.qty}</td>
-                          <td className="px-3 py-3 font-mono tabular-nums">
-                            {formatCurrency(entry.total ?? entry.amount)}
-                          </td>
+                          <td className="px-3 py-3 font-mono tabular-nums">{formatCurrency(entry.total)}</td>
                           <td className="px-3 py-3 text-muted-foreground">{formatDate(entry.date)}</td>
                         </tr>
                       ))}
@@ -189,13 +181,13 @@ export function ProductAnalytics({ productId }) {
                     <div key={entry.id} className="rounded-lg border border-border p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <Link href={`/customers/${entry.customerId}`} className="text-sm font-medium hover:text-primary">
+                          <Link to={`/customers/${entry.customerId}`} className="text-sm font-medium hover:text-primary">
                             {entry.customerName}
                           </Link>
                           <p className="text-xs text-muted-foreground">{entry.customerEmail}</p>
                         </div>
                         <div className="text-right text-xs text-muted-foreground">
-                          <Link href={`/orders/${entry.orderId}`} className="font-mono hover:text-primary">
+                          <Link to={`/orders/${entry.orderId}`} className="font-mono hover:text-primary">
                             {entry.orderId}
                           </Link>
                           <p>{formatDateTime(entry.date)}</p>

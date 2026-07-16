@@ -1,6 +1,4 @@
-'use client'
-
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FloppyDisk, Key, SpinnerGap } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -67,7 +65,7 @@ export default function Account() {
         description="Update your sign-in details and password."
         actions={
           <Button variant="outline" asChild>
-            <Link href="/profile">View profile</Link>
+            <Link to="/profile">View profile</Link>
           </Button>
         }
       />

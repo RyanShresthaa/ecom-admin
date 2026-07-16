@@ -6,7 +6,7 @@
 export const SHARED_TOKEN_KEY = 'orbit_admin_token'
 
 export function getSharedApiBase() {
-  return String(process.env.NEXT_PUBLIC_SHARED_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
+  return String(import.meta.env.VITE_SHARED_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
 }
 
 export async function sharedRequest(path, { method = 'GET', body, token } = {}) {

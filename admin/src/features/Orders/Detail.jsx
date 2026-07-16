@@ -1,7 +1,4 @@
-'use client'
-
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, EnvelopeSimple, MapPin, Receipt } from '@phosphor-icons/react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +30,7 @@ export default function OrderDetail() {
       <div className="flex flex-col items-center gap-4 py-20">
         <p className="text-muted-foreground">Order not found.</p>
         <Button variant="outline" asChild>
-          <Link href="/orders">Back to orders</Link>
+          <Link to="/orders">Back to orders</Link>
         </Button>
       </div>
     )
@@ -48,7 +45,7 @@ export default function OrderDetail() {
           <div className="flex items-center gap-2">
             <OrderInvoice order={order} />
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link href="/orders">
+              <Link to="/orders">
                 <ArrowLeft size={14} />
                 Back
               </Link>
@@ -67,7 +64,7 @@ export default function OrderDetail() {
                 </div>
                 <div>
                   <Link
-                    href={`/customers/${order.customerId}`}
+                    to={`/customers/${order.customerId}`}
                     className="text-sm font-medium text-primary hover:underline"
                   >
                     {order.customerName}

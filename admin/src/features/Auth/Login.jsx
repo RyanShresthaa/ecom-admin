@@ -1,7 +1,4 @@
-'use client'
-
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { Envelope, Lock, SignIn, SpinnerGap } from '@phosphor-icons/react'
 
@@ -26,11 +23,10 @@ export default function Login() {
 
   const { login } = useAuth()
   const loginMutation = useLoginMutation()
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  const from = searchParams.get('from')
-  const redirectTo = from && from.startsWith('/') && !from.startsWith('//') ? from : '/'
+  const redirectTo = location.state?.from?.pathname ?? '/'
 
   function validate() {
     const next = {}
@@ -49,7 +45,7 @@ export default function Login() {
       {
         onSuccess: (data) => {
           login(data)
-          router.replace(redirectTo)
+          navigate(redirectTo, { replace: true })
         },
         onError: (err) => setErrors({ form: err.message }),
       }
@@ -68,7 +64,10 @@ export default function Login() {
       description="Sign in to manage your store."
       footer={
         <>
-          Forgot password? <Link href="/forgot-password" className="font-medium text-primary hover:underline">Reset it</Link>
+          Forgot password?{' '}
+          <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+            Reset it
+          </Link>
         </>
       }
     >

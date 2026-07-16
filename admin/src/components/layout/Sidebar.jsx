@@ -1,7 +1,4 @@
-'use client'
-
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { NavLink } from 'react-router-dom'
 import {
   SquaresFour,
   Package,
@@ -28,14 +25,8 @@ const NAV_ITEMS = [
   { to: '/settings', label: 'Settings', icon: GearSix, permission: PERMISSIONS.SETTINGS_VIEW },
 ]
 
-function isNavActive(pathname, to, end) {
-  if (end) return pathname === to
-  return pathname === to || pathname.startsWith(`${to}/`)
-}
-
 export function Sidebar({ open, onClose }) {
   const { can } = usePermissions()
-  const pathname = usePathname()
   const visibleItems = NAV_ITEMS.filter((item) => can(item.permission))
 
   return (
@@ -74,31 +65,35 @@ export function Sidebar({ open, onClose }) {
           <p className="px-2.5 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
             Workspace
           </p>
-          {visibleItems.map((item) => {
-            const isActive = isNavActive(pathname, item.to, item.end)
-            return (
-              <Link
-                key={item.to}
-                href={item.to}
-                onClick={onClose}
-                className={cn(
+          {visibleItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              onClick={onClose}
+              className={({ isActive }) =>
+                cn(
                   'group relative flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors',
                   isActive
                     ? 'bg-sidebar-accent text-white'
                     : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-white'
-                )}
-              >
-                <span
-                  className={cn(
-                    'absolute left-0 h-5 w-0.5 rounded-r-full bg-primary opacity-0 transition-opacity',
-                    isActive && 'opacity-100'
-                  )}
-                />
-                <item.icon size={18} weight={isActive ? 'fill' : 'regular'} />
-                {item.label}
-              </Link>
-            )
-          })}
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={cn(
+                      'absolute left-0 h-5 w-0.5 rounded-r-full bg-primary opacity-0 transition-opacity',
+                      isActive && 'opacity-100'
+                    )}
+                  />
+                  <item.icon size={18} weight={isActive ? 'fill' : 'regular'} />
+                  {item.label}
+                </>
+              )}
+            </NavLink>
+          ))}
         </nav>
 
         <div className="mx-3 mb-3 shrink-0 rounded-lg bg-sidebar-accent/60 p-3.5">

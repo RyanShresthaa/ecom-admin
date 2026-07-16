@@ -2,26 +2,15 @@
 
 ```
 matina-ecom/
-├── admin/                         # Staff frontend (Next.js App Router)
-│   ├── app/                       # Routes only (thin page shells)
-│   │   ├── (auth)/                # login, forgot-password, reset-password
-│   │   └── (dashboard)/           # protected workspace routes
+├── admin/                     # Staff frontend only
 │   ├── src/
-│   │   ├── auth/                  # Protect gate
-│   │   ├── components/            # layout, common, ui
-│   │   ├── context/               # AuthProvider
-│   │   ├── features/              # Page UI modules (Dashboard, Products, …)
-│   │   ├── hooks/
-│   │   ├── lib/                   # api, http, permissions, utils
-│   │   └── providers/             # Query + auth + toaster
-│   ├── public/
-│   └── server/                    # LEGACY demo API — prefer backend/
-├── customer/                      # Buyer frontend only
+│   └── server/                # LEGACY demo API — prefer backend/
+├── customer/                  # Buyer frontend only
 │   └── src/
-└── backend/                       # Shared API (one DB)
-    ├── customer/
-    ├── admin/
-    ├── shared/
+└── backend/                   # Shared API (one DB)
+    ├── customer/              # storefront routes + controllers
+    ├── admin/                 # staff routes + controllers
+    ├── shared/                # config, models, middleware, utils
     └── server.js
 ```
 

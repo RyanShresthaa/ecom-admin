@@ -1,6 +1,6 @@
 # Backend API contract
 
-The admin dashboard talks to a REST API at `NEXT_PUBLIC_API_URL` (default: `/api`).
+The admin dashboard talks to a REST API at `VITE_API_URL` (default: `/api`).
 
 ## Running locally
 

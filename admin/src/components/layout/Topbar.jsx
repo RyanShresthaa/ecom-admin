@@ -1,6 +1,4 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import { List, CaretDown, SignOut, UserCircle, GearSix } from '@phosphor-icons/react'
 
 import { Button } from '@/components/ui/button'
@@ -20,11 +18,11 @@ import { NotificationsPanel } from '@/components/layout/NotificationsPanel'
 
 export function Topbar({ onMenuClick, title }) {
   const { user, logout } = useAuth()
-  const router = useRouter()
+  const navigate = useNavigate()
 
   function handleLogout() {
     logout()
-    router.replace('/login')
+    navigate('/login', { replace: true })
   }
 
   return (
@@ -64,10 +62,10 @@ export function Topbar({ onMenuClick, title }) {
               <p className="text-xs font-normal text-muted-foreground">{user?.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/profile')}>
+            <DropdownMenuItem onClick={() => navigate('/profile')}>
               <UserCircle size={16} /> Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/account')}>
+            <DropdownMenuItem onClick={() => navigate('/account')}>
               <GearSix size={16} /> Account settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />

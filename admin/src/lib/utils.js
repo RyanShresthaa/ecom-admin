@@ -27,35 +27,25 @@ export function formatNumber(value) {
   return new Intl.NumberFormat('en-US').format(value)
 }
 
-function toValidDate(value) {
-  if (value == null || value === '') return null
-  const d = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d
-}
-
 /**
  * Format a date string into a short, readable form.
  */
 export function formatDate(date) {
-  const d = toValidDate(date)
-  if (!d) return '—'
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(d)
+  }).format(new Date(date))
 }
 
 export function formatDateTime(date) {
-  const d = toValidDate(date)
-  if (!d) return '—'
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-  }).format(d)
+  }).format(new Date(date))
 }
 
 /**
@@ -71,7 +61,5 @@ export function getInitials(name = '') {
 }
 
 export function formatRelativeTime(date) {
-  const d = toValidDate(date)
-  if (!d) return '—'
-  return formatDistanceToNow(d, { addSuffix: true })
+  return formatDistanceToNow(new Date(date), { addSuffix: true })
 }

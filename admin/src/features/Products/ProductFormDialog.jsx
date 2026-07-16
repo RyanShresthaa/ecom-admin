@@ -1,6 +1,4 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { FloppyDisk, SpinnerGap, WarningCircle } from '@phosphor-icons/react'
 
@@ -52,7 +50,7 @@ function normalizeProductName(name) {
 }
 
 export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSubmitting }) {
-  const router = useRouter()
+  const navigate = useNavigate()
   const nameInputRef = useRef(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
@@ -145,7 +143,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSubmit, isSub
     const existing = duplicateProduct
     setDuplicateProduct(null)
     onOpenChange(false)
-    if (existing?.id) router.push(`/products/${existing.id}`)
+    if (existing?.id) navigate(`/products/${existing.id}`)
   }
 
   return (

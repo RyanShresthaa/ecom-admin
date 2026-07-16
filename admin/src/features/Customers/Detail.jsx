@@ -1,7 +1,4 @@
-'use client'
-
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { Link, useParams } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import {
   ArrowLeft,
@@ -31,7 +28,7 @@ function getOrderHistoryColumns() {
     orderColumnHelper.accessor('id', {
       header: 'Order',
       cell: (info) => (
-        <Link href={`/orders/${info.getValue()}`} className="font-mono text-xs font-medium text-primary hover:underline">
+        <Link to={`/orders/${info.getValue()}`} className="font-mono text-xs font-medium text-primary hover:underline">
           {info.getValue()}
         </Link>
       ),
@@ -81,7 +78,7 @@ export default function CustomerDetail() {
       <div className="flex flex-col items-center gap-4 py-20">
         <p className="text-muted-foreground">Customer not found.</p>
         <Button variant="outline" asChild>
-          <Link href="/customers">Back to customers</Link>
+          <Link to="/customers">Back to customers</Link>
         </Button>
       </div>
     )
@@ -105,7 +102,7 @@ export default function CustomerDetail() {
         description={`Customer since ${formatDate(customer.createdAt)}`}
         actions={
           <Button variant="outline" size="sm" className="gap-1.5" asChild>
-            <Link href="/customers">
+            <Link to="/customers">
               <ArrowLeft size={14} />
               Back
             </Link>

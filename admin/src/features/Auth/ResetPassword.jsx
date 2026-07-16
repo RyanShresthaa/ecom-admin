@@ -1,7 +1,4 @@
-'use client'
-
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import { CheckCircle, Lock, SpinnerGap, WarningCircle } from '@phosphor-icons/react'
 
@@ -12,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { useResetPasswordMutation } from '@/hooks/useAuthApi'
 
 export default function ResetPassword() {
-  const searchParams = useSearchParams()
+  const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
 
   const [password, setPassword] = useState('')
@@ -21,7 +18,7 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false)
 
   const resetPassword = useResetPasswordMutation()
-  const router = useRouter()
+  const navigate = useNavigate()
 
   if (!token) {
     return (
@@ -34,7 +31,7 @@ export default function ResetPassword() {
             This password reset link is missing or malformed. Request a new one to continue.
           </p>
           <Button asChild className="mt-1">
-            <Link href="/forgot-password">Request a new link</Link>
+            <Link to="/forgot-password">Request a new link</Link>
           </Button>
         </div>
       </AuthLayout>
@@ -51,7 +48,7 @@ export default function ResetPassword() {
           <p className="text-sm text-muted-foreground">
             Your password has been reset. You can now sign in with your new password.
           </p>
-          <Button onClick={() => router.push('/login')} className="mt-1">
+          <Button onClick={() => navigate('/login')} className="mt-1">
             Continue to sign in
           </Button>
         </div>

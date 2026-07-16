@@ -1,6 +1,4 @@
-'use client'
-
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { ArrowLeft, CheckCircle, Envelope, PaperPlaneTilt, SpinnerGap } from '@phosphor-icons/react'
 
@@ -36,7 +34,7 @@ export default function ForgotPassword() {
       <AuthLayout
         title="Check your email"
         footer={
-          <Link href="/login" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+          <Link to="/login" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
             <ArrowLeft size={13} /> Back to sign in
           </Link>
         }
@@ -56,7 +54,7 @@ export default function ForgotPassword() {
                 Demo only — no email server is connected
               </p>
               <Link
-                href={`/reset-password?token=${result.devResetToken}`}
+                to={`/reset-password?token=${result.devResetToken}`}
                 className="text-sm font-medium text-primary hover:underline"
               >
                 Open the reset link →
@@ -73,7 +71,7 @@ export default function ForgotPassword() {
       title="Forgot your password?"
       description="Enter your email and we'll send you a reset link."
       footer={
-        <Link href="/login" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+        <Link to="/login" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
           <ArrowLeft size={13} /> Back to sign in
         </Link>
       }

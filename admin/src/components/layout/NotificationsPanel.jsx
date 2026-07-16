@@ -1,6 +1,4 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
+import { useNavigate } from 'react-router-dom'
 import {
   Bell,
   Package,
@@ -30,7 +28,7 @@ const TYPE_ICONS = {
 }
 
 export function NotificationsPanel() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const { data: notifications = [], isLoading } = useNotificationsQuery()
   const markRead = useMarkNotificationRead()
   const markAllRead = useMarkAllNotificationsRead()
@@ -40,7 +38,7 @@ export function NotificationsPanel() {
     if (!notification.read) {
       markRead.mutate(notification.id)
     }
-    router.push(notification.href)
+    navigate(notification.href)
   }
 
   return (

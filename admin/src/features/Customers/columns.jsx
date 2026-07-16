@@ -1,6 +1,4 @@
-'use client'
-
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Eye } from '@phosphor-icons/react'
 
@@ -23,7 +21,7 @@ export function getCustomerColumns({ onView }) {
             </div>
             <div className="flex min-w-0 flex-col">
               <Link
-                href={`/customers/${customer.id}`}
+                to={`/customers/${customer.id}`}
                 className="truncate text-sm font-medium text-foreground hover:text-primary"
               >
                 {customer.name}
@@ -63,7 +61,7 @@ export function getCustomerColumns({ onView }) {
         <div className="flex justify-end">
           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" asChild>
             <Link
-              href={`/customers/${info.row.original.id}`}
+              to={`/customers/${info.row.original.id}`}
               onClick={() => onView?.(info.row.original)}
             >
               <Eye size={14} />

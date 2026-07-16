@@ -1,7 +1,4 @@
-'use client'
-
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { Link, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { ArrowLeft, FloppyDisk, Package, SpinnerGap, Star } from '@phosphor-icons/react'
 
@@ -46,7 +43,7 @@ export default function ProductDetail() {
       <div className="flex flex-col items-center gap-4 py-20">
         <p className="text-muted-foreground">Product not found.</p>
         <Button variant="outline" asChild>
-          <Link href="/products">Back to products</Link>
+          <Link to="/products">Back to products</Link>
         </Button>
       </div>
     )
@@ -91,7 +88,7 @@ export default function ProductDetail() {
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link href="/products">
+              <Link to="/products">
                 <ArrowLeft size={14} />
                 Back
               </Link>

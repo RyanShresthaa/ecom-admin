@@ -1,6 +1,4 @@
-'use client'
-
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { EnvelopeSimple, IdentificationCard, ShieldCheck, CalendarBlank } from '@phosphor-icons/react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,7 +19,7 @@ export default function Profile() {
       <div className="flex flex-col items-center gap-4 py-20">
         <p className="text-muted-foreground">Profile not found.</p>
         <Button variant="outline" asChild>
-          <Link href="/">Back to dashboard</Link>
+          <Link to="/">Back to dashboard</Link>
         </Button>
       </div>
     )
@@ -34,7 +32,7 @@ export default function Profile() {
         description="Your admin account details and role in the workspace."
         actions={
           <Button variant="outline" asChild>
-            <Link href="/account">Account settings</Link>
+            <Link to="/account">Account settings</Link>
           </Button>
         }
       />
