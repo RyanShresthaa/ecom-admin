@@ -1,9 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
-  "buildCommand": "cd admin && npm install && npm run build",
+  "framework": null,
+  "buildCommand": "npm run build --prefix admin",
   "outputDirectory": "admin/dist",
-  "installCommand": "cd admin && npm install",
+  "installCommand": "npm install --prefix admin",
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]

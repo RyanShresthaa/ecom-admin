@@ -1,1 +1,1 @@
-export { default } from './[...path].js'
+module.exports = require('./proxy.js')

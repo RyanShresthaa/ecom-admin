@@ -1,1 +1,1 @@
-export { default } from '../admin/server/vercel-handler.js'
+module.exports = require('./proxy.js')
