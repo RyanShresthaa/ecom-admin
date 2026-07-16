@@ -25,6 +25,13 @@ export const adminCreateCustomerBodySchema = z.object({
     password: z.string().min(8).max(128),
     phone: z.string().trim().max(40).optional().nullable(),
     mobile: z.string().trim().max(40).optional().nullable(),
+    addressLine: z.string().trim().max(500).optional().nullable(),
+    address_line: z.string().trim().max(500).optional().nullable(),
+    city: z.string().trim().max(120).optional().nullable(),
+    state: z.string().trim().max(120).optional().nullable(),
+    pincode: z.string().trim().max(32).optional().nullable(),
+    zip: z.string().trim().max(32).optional().nullable(),
+    country: z.string().trim().max(120).optional().nullable(),
 });
 
 /** POST /api/user/login */

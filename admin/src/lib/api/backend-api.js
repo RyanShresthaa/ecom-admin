@@ -530,6 +530,12 @@ export const backendApi = {
           password: payload.password,
           phone: payload.phone || payload.mobile || '',
           mobile: payload.phone || payload.mobile || '',
+          addressLine: payload.addressLine || payload.address_line || '',
+          city: payload.city || '',
+          state: payload.state || '',
+          pincode: payload.pincode || payload.zip || '',
+          zip: payload.pincode || payload.zip || '',
+          country: payload.country || '',
         },
       })
       usersMapCache = { at: 0, map: null }
@@ -539,7 +545,7 @@ export const backendApi = {
         orderCount: 0,
         lifetimeValue: 0,
         avgOrderValue: 0,
-        addresses: [],
+        addresses: u.addresses || [],
         tags: [],
       }
     },

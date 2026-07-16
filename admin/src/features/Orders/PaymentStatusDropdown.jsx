@@ -19,13 +19,20 @@ const OPTIONS = [
   { value: 'Refunded', icon: ArrowCounterClockwise },
 ]
 
+function normalizePaymentStatus(status) {
+  const raw = String(status || '').trim()
+  const match = OPTIONS.find((opt) => opt.value.toLowerCase() === raw.toLowerCase())
+  return match?.value || raw
+}
+
 export function PaymentStatusDropdown({ order }) {
   const updateStatus = useUpdateOrderStatus()
   const { can } = usePermissions()
   const canWrite = can(PERMISSIONS.ORDERS_WRITE)
+  const current = normalizePaymentStatus(order.paymentStatus)
 
   if (!canWrite) {
-    return <PaymentStatusBadge status={order.paymentStatus} />
+    return <PaymentStatusBadge status={current} />
   }
 
   return (
@@ -34,7 +41,7 @@ export function PaymentStatusDropdown({ order }) {
         className="inline-flex items-center gap-1 rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
         disabled={updateStatus.isPending}
       >
-        <PaymentStatusBadge status={order.paymentStatus} />
+        <PaymentStatusBadge status={current} />
         <CaretDown size={11} className="text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-44">
@@ -43,14 +50,14 @@ export function PaymentStatusDropdown({ order }) {
         {OPTIONS.map((opt) => (
           <DropdownMenuItem
             key={opt.value}
-            disabled={opt.value === order.paymentStatus}
+            disabled={opt.value === current}
             onClick={() =>
               updateStatus.mutate({ id: order.id, payload: { paymentStatus: opt.value } })
             }
           >
             <opt.icon size={14} />
             {opt.value}
-            {opt.value === order.paymentStatus && (
+            {opt.value === current && (
               <CheckCircle size={14} weight="fill" className="ml-auto text-primary" />
             )}
           </DropdownMenuItem>

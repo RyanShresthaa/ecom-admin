@@ -8,7 +8,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
-import { PaymentStatusBadge } from '@/components/common/StatusBadge'
+import { PaymentStatusDropdown } from '@/features/Orders/PaymentStatusDropdown'
 import { OrderStatusDropdown } from '@/features/Orders/OrderStatusDropdown'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
 
@@ -41,7 +41,7 @@ export function OrderDetailsDrawer({ order, open, onOpenChange }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-border p-3">
               <p className="mb-1.5 text-xs text-muted-foreground">Payment status</p>
-              <PaymentStatusBadge status={order.paymentStatus} />
+              <PaymentStatusDropdown order={order} />
             </div>
             <div className="rounded-lg border border-border p-3">
               <p className="mb-1.5 text-xs text-muted-foreground">Delivery status</p>

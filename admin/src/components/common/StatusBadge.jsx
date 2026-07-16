@@ -19,6 +19,9 @@ const PAYMENT_STATUS_MAP = {
   Paid: { variant: 'success', icon: CheckCircle, label: 'Paid' },
   Unpaid: { variant: 'warning', icon: Clock, label: 'Unpaid' },
   Refunded: { variant: 'destructive', icon: ArrowUUpLeft, label: 'Refunded' },
+  paid: { variant: 'success', icon: CheckCircle, label: 'Paid' },
+  unpaid: { variant: 'warning', icon: Clock, label: 'Unpaid' },
+  refunded: { variant: 'destructive', icon: ArrowUUpLeft, label: 'Refunded' },
 }
 
 const DELIVERY_STATUS_MAP = {

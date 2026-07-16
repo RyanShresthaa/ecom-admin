@@ -3,7 +3,7 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { Eye } from '@phosphor-icons/react'
 
 import { Button } from '@/components/ui/button'
-import { PaymentStatusBadge } from '@/components/common/StatusBadge'
+import { PaymentStatusDropdown } from '@/features/Orders/PaymentStatusDropdown'
 import { OrderStatusDropdown } from '@/features/Orders/OrderStatusDropdown'
 import { formatCurrency, formatDate, getInitials } from '@/lib/utils'
 
@@ -97,7 +97,7 @@ export function getOrderColumns({ onView, enableSelection = false, rowSelection,
     }),
     columnHelper.accessor('paymentStatus', {
       header: 'Payment',
-      cell: (info) => <PaymentStatusBadge status={info.getValue()} />,
+      cell: (info) => <PaymentStatusDropdown order={info.row.original} />,
     }),
     columnHelper.accessor('deliveryStatus', {
       header: 'Delivery',

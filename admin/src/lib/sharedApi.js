@@ -1,17 +1,25 @@
 /**
  * Calls the shared ecom backend (same DB as customer).
- * Separate token from demo admin auth (`orbit_admin_token`).
+ * Uses the same base URL as the rest of the admin app — never hardcode localhost
+ * (browsers block public sites from reaching loopback / Private Network Access).
  */
+import { getApiBaseUrl } from '@/lib/http'
+
 /** Same session as the rest of the admin app */
 export const SHARED_TOKEN_KEY = 'orbit_admin_token'
 
 export function getSharedApiBase() {
-  return String(import.meta.env.VITE_SHARED_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
+  const explicit = import.meta.env.VITE_SHARED_API_URL
+  if (explicit) return String(explicit).replace(/\/$/, '')
+  return getApiBaseUrl()
 }
 
 export async function sharedRequest(path, { method = 'GET', body, token } = {}) {
   const base = getSharedApiBase()
-  const url = `${base}${path.startsWith('/') ? path : `/${path}`}`
+  const pathname = `${base}${path.startsWith('/') ? path : `/${path}`}`
+  const url = /^https?:\/\//i.test(base)
+    ? pathname
+    : new URL(pathname, typeof window !== 'undefined' ? window.location.origin : 'http://localhost').toString()
   const auth = token ?? localStorage.getItem(SHARED_TOKEN_KEY)
 
   const res = await fetch(url, {

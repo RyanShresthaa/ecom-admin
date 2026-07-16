@@ -13,7 +13,7 @@ import {
     findUserPublicById,
     countUsers,
 } from '../../shared/models/user.model.js';
-import { findAddressesByUser } from '../../shared/models/address.model.js';
+import { findAddressesByUser, createAddress } from '../../shared/models/address.model.js';
 import { listFeedback } from '../../shared/models/feedback.model.js';
 import { pickId } from '../../shared/utils/sql.js';
 import { logAudit } from '../../shared/models/audit.model.js';
@@ -122,7 +122,20 @@ export const listUsersController = async (req, res) => {
 /** POST /api/admin/users — create customer (User) in DB */
 export const createCustomerController = async (req, res) => {
     try {
-        const { name, email, password, phone, mobile } = req.body || {};
+        const {
+            name,
+            email,
+            password,
+            phone,
+            mobile,
+            addressLine,
+            address_line,
+            city,
+            state,
+            pincode,
+            zip,
+            country,
+        } = req.body || {};
         if (!name || !email || !password) {
             return res.status(400).json({
                 message: 'name, email, and password are required',
@@ -152,19 +165,53 @@ export const createCustomerController = async (req, res) => {
             status: 'Active',
             ...(phoneVal ? { mobile: phoneVal } : {}),
         });
+
+        const line = String(addressLine || address_line || '').trim();
+        const cityVal = String(city || '').trim();
+        const stateVal = String(state || '').trim();
+        const pinVal = String(pincode || zip || '').trim();
+        const countryVal = String(country || '').trim();
+        const hasAddress = Boolean(line || cityVal || stateVal || pinVal || countryVal);
+        let addresses = [];
+        if (hasAddress) {
+            const createdAddress = await createAddress({
+                userId,
+                address_line: line || '—',
+                city: cityVal,
+                state: stateVal,
+                pincode: pinVal || null,
+                country: countryVal || 'Nepal',
+                mobile: phoneVal || null,
+            });
+            addresses = [
+                {
+                    id: String(createdAddress.id ?? createdAddress._id ?? ''),
+                    label: 'Shipping',
+                    line1: createdAddress.address_line || line,
+                    line2: '',
+                    city: createdAddress.city || cityVal,
+                    state: createdAddress.state || stateVal,
+                    zip: createdAddress.pincode || pinVal,
+                    country: createdAddress.country || countryVal,
+                    isDefault: true,
+                    phone: createdAddress.mobile || phoneVal,
+                },
+            ];
+        }
+
         await logAudit({
             adminId: req.userId,
             action: 'user.create_customer',
             entityType: 'user',
             entityId: userId,
-            details: { email: String(email).trim().toLowerCase() },
+            details: { email: String(email).trim().toLowerCase(), hasAddress },
             ip: getClientIp(req),
             userAgent: getUserAgent(req),
         });
         const data = await findUserPublicById(userId);
         return res.status(201).json({
             message: 'Customer created',
-            data: { ...data, orderCount: 0, lifetimeValue: 0, addresses: [], tags: [] },
+            data: { ...data, orderCount: 0, lifetimeValue: 0, addresses, tags: [] },
             error: false,
             success: true,
         });
