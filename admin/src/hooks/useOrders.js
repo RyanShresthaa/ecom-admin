@@ -53,6 +53,24 @@ export function useUpdateOrderStatus() {
   })
 }
 
+// Mutation: set/clear expected delivery datetime after order is Confirmed.
+export function useSetExpectedDelivery() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, expectedDeliveryAt }) =>
+      api.orders.setExpectedDelivery(id, expectedDeliveryAt),
+    onSuccess: (_data, variables) => {
+      invalidateOrderRelatedQueries(queryClient, variables.id)
+      toast.success(
+        variables.expectedDeliveryAt
+          ? 'Expected delivery saved'
+          : 'Expected delivery cleared'
+      )
+    },
+    onError: (err) => toast.error(err.message || 'Failed to set expected delivery'),
+  })
+}
+
 // Mutation: applies bulk order status update.
 export function useBulkUpdateOrderStatus() {
   const queryClient = useQueryClient()

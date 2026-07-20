@@ -83,10 +83,10 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#4F46E5]" /> Revenue
+              <span className="h-2 w-2 rounded-full bg-[#C7D2FE]" /> Revenue
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#C7D2FE]" /> Orders
+              <span className="h-2 w-2 rounded-full bg-[#10B981]" /> Orders
             </span>
           </div>
         </CardHeader>

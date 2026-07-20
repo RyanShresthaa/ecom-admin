@@ -48,4 +48,9 @@ export const queryKeys = {
   account: {
     detail: ['account'],
   },
+  blog: {
+    all: ['blog'],
+    list: (params) => ['blog', 'list', params],
+    detail: (id) => ['blog', 'detail', id],
+  },
 }

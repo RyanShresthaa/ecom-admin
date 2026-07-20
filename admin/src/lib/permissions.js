@@ -40,6 +40,9 @@ export const PERMISSIONS = {
 
   SETTINGS_VIEW: 'settings:view',
   SETTINGS_WRITE: 'settings:write',
+
+  BLOG_VIEW: 'blog:view',
+  BLOG_WRITE: 'blog:write',
 }
 
 const ROLE_PERMISSIONS = {
@@ -54,6 +57,8 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.ORDERS_WRITE,
     PERMISSIONS.INVENTORY_VIEW,
     PERMISSIONS.INVENTORY_WRITE,
+    PERMISSIONS.BLOG_VIEW,
+    PERMISSIONS.BLOG_WRITE,
   ],
   [ROLES.VIEWER]: [
     PERMISSIONS.DASHBOARD_VIEW,
@@ -61,6 +66,7 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.PRODUCTS_VIEW,
     PERMISSIONS.ORDERS_VIEW,
     PERMISSIONS.INVENTORY_VIEW,
+    PERMISSIONS.BLOG_VIEW,
   ],
 }
 
@@ -83,5 +89,6 @@ export function getAccessibleSections(role) {
     orders: hasPermission(role, PERMISSIONS.ORDERS_VIEW),
     inventory: hasPermission(role, PERMISSIONS.INVENTORY_VIEW),
     settings: hasPermission(role, PERMISSIONS.SETTINGS_VIEW),
+    blog: hasPermission(role, PERMISSIONS.BLOG_VIEW),
   }
 }

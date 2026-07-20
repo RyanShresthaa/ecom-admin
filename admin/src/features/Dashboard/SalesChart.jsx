@@ -15,17 +15,29 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency, formatDate, formatNumber } from '@/lib/utils'
 
 const REVENUE_COLOR = '#4F46E5'
-const ORDERS_COLOR = '#C7D2FE'
+const REVENUE_BAR_COLOR = '#C7D2FE'
+const ORDERS_COLOR = '#10B981'
 const SELECTED_BAR_COLOR = '#818CF8'
 const GRID_COLOR = '#E5E7EB'
 const AXIS_COLOR = '#94A3B8'
 
-// Dashboard chart — format x-axis tick labels as short month/day strings.
 function formatAxisDate(value) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(value))
 }
 
-// Dashboard chart — custom tooltip showing revenue, orders, and averages per day.
+function formatRevenueAxis(value) {
+  const v = Number(value) || 0
+  if (v >= 1000) return `$${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k`
+  return `$${Math.round(v)}`
+}
+
+function chartMax(values) {
+  const max = Math.max(0, ...values.map((v) => Number(v) || 0))
+  if (max <= 0) return 1
+  const magnitude = 10 ** Math.floor(Math.log10(max))
+  return Math.ceil(max / magnitude) * magnitude
+}
+
 function DayTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
 
@@ -35,8 +47,8 @@ function DayTooltip({ active, payload }) {
   const rows = [
     { label: 'Revenue', value: formatCurrency(point.revenue), color: REVENUE_COLOR },
     { label: 'Orders', value: formatNumber(point.orders), color: ORDERS_COLOR },
-    { label: 'Items sold', value: formatNumber(point.itemsSold ?? 0), color: '#10B981' },
-    { label: 'Avg. order', value: formatCurrency(point.avgOrderValue ?? 0), color: '#F59E0B' },
+    { label: 'Items sold', value: formatNumber(point.itemsSold ?? 0), color: '#F59E0B' },
+    { label: 'Avg. order', value: formatCurrency(point.avgOrderValue ?? 0), color: '#6366F1' },
   ]
 
   return (
@@ -57,7 +69,6 @@ function DayTooltip({ active, payload }) {
   )
 }
 
-// Dashboard chart — summary bar for the day selected on the revenue/orders chart.
 function SelectedDaySummary({ point, onClear }) {
   if (!point) return null
 
@@ -96,20 +107,29 @@ function SelectedDaySummary({ point, onClear }) {
   )
 }
 
-// Dashboard page — combined bar/line chart for 14-day revenue and order trends.
 export function SalesChart({ data, isLoading, selectedDate, onSelectedDateChange }) {
-  // Resolve the full data point for the currently selected chart day.
-  const selectedPoint = useMemo(
-    () => data?.find((entry) => entry.date === selectedDate) ?? null,
-    [data, selectedDate]
+  const chartData = useMemo(
+    () =>
+      (data || []).map((entry) => ({
+        ...entry,
+        revenue: Number(entry.revenue) || 0,
+        orders: Number(entry.orders) || 0,
+      })),
+    [data]
   )
 
-  // Dashboard chart — loading placeholder while sales series data is fetched.
+  const revenueMax = useMemo(() => chartMax(chartData.map((d) => d.revenue)), [chartData])
+  const ordersMax = useMemo(() => chartMax(chartData.map((d) => d.orders)), [chartData])
+
+  const selectedPoint = useMemo(
+    () => chartData.find((entry) => entry.date === selectedDate) ?? null,
+    [chartData, selectedDate]
+  )
+
   if (isLoading) {
     return <Skeleton className="h-[280px] w-full" />
   }
 
-  // Dashboard chart — notify parent when a day is clicked to filter orders below.
   const selectPoint = (point) => {
     if (point?.date) onSelectedDateChange?.(point.date)
   }
@@ -118,11 +138,11 @@ export function SalesChart({ data, isLoading, selectedDate, onSelectedDateChange
     <div>
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart
-          data={data}
-          margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
+          data={chartData}
+          margin={{ top: 4, right: 8, bottom: 0, left: -8 }}
           onClick={(state) => {
             const index = state?.activeTooltipIndex
-            if (index != null && data?.[index]) selectPoint(data[index])
+            if (index != null && chartData[index]) selectPoint(chartData[index])
           }}
         >
           <CartesianGrid stroke={GRID_COLOR} vertical={false} />
@@ -139,10 +159,17 @@ export function SalesChart({ data, isLoading, selectedDate, onSelectedDateChange
             tick={{ fontSize: 11, fill: AXIS_COLOR }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v) => `$${v / 1000}k`}
-            width={48}
+            tickFormatter={formatRevenueAxis}
+            domain={[0, revenueMax]}
+            width={52}
           />
-          <YAxis yAxisId="orders" orientation="right" hide />
+          <YAxis
+            yAxisId="orders"
+            orientation="right"
+            hide
+            domain={[0, ordersMax]}
+            allowDecimals={false}
+          />
           <Tooltip
             content={<DayTooltip />}
             cursor={{ fill: 'rgba(79,70,229,0.06)' }}
@@ -150,33 +177,33 @@ export function SalesChart({ data, isLoading, selectedDate, onSelectedDateChange
             trigger="axis"
           />
           <Bar
-            yAxisId="orders"
-            dataKey="orders"
-            fill={ORDERS_COLOR}
+            yAxisId="revenue"
+            dataKey="revenue"
+            fill={REVENUE_BAR_COLOR}
             radius={[4, 4, 0, 0]}
-            maxBarSize={22}
+            maxBarSize={28}
             className="cursor-pointer"
             onClick={selectPoint}
           >
-            {data?.map((entry) => (
+            {chartData.map((entry) => (
               <Cell
                 key={entry.date}
-                fill={entry.date === selectedDate ? SELECTED_BAR_COLOR : ORDERS_COLOR}
+                fill={entry.date === selectedDate ? SELECTED_BAR_COLOR : REVENUE_BAR_COLOR}
               />
             ))}
           </Bar>
           <Line
-            yAxisId="revenue"
+            yAxisId="orders"
             type="monotone"
-            dataKey="revenue"
-            stroke={REVENUE_COLOR}
-            strokeWidth={2.5}
-            dot={false}
+            dataKey="orders"
+            stroke={ORDERS_COLOR}
+            strokeWidth={2}
+            dot={{ r: 3, fill: ORDERS_COLOR, strokeWidth: 0 }}
             activeDot={{
               r: 5,
               strokeWidth: 2,
               stroke: '#fff',
-              fill: REVENUE_COLOR,
+              fill: ORDERS_COLOR,
               onClick: selectPoint,
               cursor: 'pointer',
             }}
@@ -188,7 +215,7 @@ export function SalesChart({ data, isLoading, selectedDate, onSelectedDateChange
 
       {!selectedPoint && (
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          Hover a day for details · Click a day to filter orders below
+          Taller bars = more revenue · Green line = order count · Click a day to filter orders below
         </p>
       )}
     </div>

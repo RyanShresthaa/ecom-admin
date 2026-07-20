@@ -9,6 +9,7 @@ import {
   X,
   Users,
   Storefront,
+  Article,
 } from '@phosphor-icons/react'
 
 import { cn } from '@/lib/utils'
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { to: '/customers', label: 'Customers', icon: Users, permission: PERMISSIONS.CUSTOMERS_VIEW },
   { to: '/products', label: 'Products', icon: Package, permission: PERMISSIONS.PRODUCTS_VIEW },
   { to: '/live-store', label: 'Live store', icon: Storefront, permission: PERMISSIONS.PRODUCTS_VIEW },
+  { to: '/blog', label: 'Blog', icon: Article, permission: PERMISSIONS.BLOG_VIEW },
   { to: '/orders', label: 'Orders', icon: ShoppingCartSimple, permission: PERMISSIONS.ORDERS_VIEW },
   { to: '/inventory', label: 'Inventory', icon: Stack, permission: PERMISSIONS.INVENTORY_VIEW },
   { to: '/settings', label: 'Settings', icon: GearSix, permission: PERMISSIONS.SETTINGS_VIEW },

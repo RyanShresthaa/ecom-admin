@@ -45,6 +45,7 @@ import {
     fulfillmentTimestamps,
     listAllowedTransitions,
     applyTracking,
+    applyExpectedDelivery,
     reorderToCart,
     DELIVERY_STATUS_LIST,
     CARRIERS,
@@ -616,6 +617,40 @@ export async function updateTrackingController(req, res) {
             userAgent: getUserAgent(req),
         });
         return res.json({ message: 'Tracking updated', data: updated, error: false, success: true });
+    } catch (error) {
+        const status = error.status || 500;
+        return res.status(status).json({ message: error.message, error: true, success: false });
+    }
+}
+
+/** PUT /api/order/expected-delivery — admin sets ETA after Confirmed */
+export async function updateExpectedDeliveryController(req, res) {
+    try {
+        const body = req.body || {};
+        const expectedDeliveryAt =
+            body.expectedDeliveryAt ?? body.expected_delivery_at ?? null;
+        const updated = await applyExpectedDelivery({
+            orderGroupId: body.orderGroupId || body.orderId,
+            orderRowId: body.orderRowId || body._id,
+            expectedDeliveryAt,
+        });
+        await logAudit({
+            adminId: req.userId,
+            action: 'order.expected_delivery_update',
+            entityType: 'order',
+            entityId: updated[0]?.orderId || updated[0]?.id,
+            details: { expectedDeliveryAt },
+            ip: getClientIp(req),
+            userAgent: getUserAgent(req),
+        });
+        return res.json({
+            message: expectedDeliveryAt
+                ? 'Expected delivery updated'
+                : 'Expected delivery cleared',
+            data: updated,
+            error: false,
+            success: true,
+        });
     } catch (error) {
         const status = error.status || 500;
         return res.status(status).json({ message: error.message, error: true, success: false });

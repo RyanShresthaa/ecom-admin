@@ -83,12 +83,22 @@ export function createBackendApiHelpers({ request }) {
 
     const search = String(params.search || '').trim().toLowerCase()
     if (search) {
-      list = list.filter(
-        (r) =>
-          String(r.name || '').toLowerCase().includes(search) ||
-          String(r.email || '').toLowerCase().includes(search) ||
-          String(r.sku || '').toLowerCase().includes(search) ||
-          String(r.id || '').toLowerCase().includes(search)
+      const searchFields = [
+        'name',
+        'productName',
+        'email',
+        'sku',
+        'id',
+        'inventoryId',
+        'productId',
+        'supplier',
+        'author',
+        'reasonLabel',
+      ]
+      list = list.filter((r) =>
+        searchFields.some((field) =>
+          String(r[field] ?? '').toLowerCase().includes(search)
+        )
       )
     }
     if (params.category && params.category !== 'all') {
@@ -143,6 +153,7 @@ export function createBackendApiHelpers({ request }) {
           paymentStatus,
           paymentId,
           paymentMethod: derivePaymentMethod(paymentId, paymentStatus),
+          expectedDeliveryAt: null,
           totalAmount: Number(line.totalAmt || line.total_amt || 0),
           date: line.created_at || line.createdAt,
           items: [],
@@ -165,6 +176,9 @@ export function createBackendApiHelpers({ request }) {
       g.paymentStatus = line.payment_status || g.paymentStatus
       g.paymentId = line.paymentId || line.payment_id || g.paymentId
       g.paymentMethod = derivePaymentMethod(g.paymentId, g.paymentStatus)
+      const expected =
+        line.expectedDeliveryAt || line.expected_delivery_at || null
+      if (expected) g.expectedDeliveryAt = expected
     }
     return [...groups.values()]
       .map((g) => {
@@ -175,6 +189,7 @@ export function createBackendApiHelpers({ request }) {
           g.deliveryStatus = 'Returned'
         }
         g.paymentMethod = derivePaymentMethod(g.paymentId, g.paymentStatus)
+        if (!g.expectedDeliveryAt) g.expectedDeliveryAt = null
         return g
       })
       .sort((a, b) => String(b.date).localeCompare(String(a.date)))
@@ -282,7 +297,9 @@ export function createBackendApiHelpers({ request }) {
     const page = Number(params.page) || 0
     const pageSize = Number(params.pageSize) || 10
     const search = params.search || ''
-    const key = `${page}:${pageSize}:${search}:${params.status || ''}:${params.category || ''}`
+    const stockLevel = params.stockLevel && params.stockLevel !== 'all' ? params.stockLevel : ''
+    const includeMetrics = params.metrics !== false
+    const key = `${page}:${pageSize}:${search}:${params.status || ''}:${params.category || ''}:${stockLevel}:${includeMetrics}:${params.sort || ''}`
     if (productsPageCache.key === key && Date.now() - productsPageCache.at < 2000) {
       return {
         rows: productsPageCache.rows,
@@ -293,6 +310,9 @@ export function createBackendApiHelpers({ request }) {
       page: String(page + 1),
       limit: String(pageSize),
       ...(search ? { search } : {}),
+      ...(stockLevel ? { stockLevel } : {}),
+      ...(includeMetrics ? {} : { metrics: 'false' }),
+      ...(params.sort ? { sort: params.sort } : {}),
     })
     const res = await request(`/product/get-product?${q}`)
     let rows = (res.data || []).map(mapProduct)
@@ -309,6 +329,28 @@ export function createBackendApiHelpers({ request }) {
       totalCount: Number(res.totalCount || rows.length),
     }
     return { rows, totalCount: productsPageCache.totalCount }
+  }
+
+  // Low-stock catalog fetch: walks pages with stockLevel=low — for reorder suggestions.
+  async function fetchLowStockProducts(params = {}) {
+    const pageSize = 100
+    let page = 0
+    let all = []
+    let total = Infinity
+    while (all.length < total && page < 30) {
+      const { rows, totalCount } = await fetchProductPage({
+        page,
+        pageSize,
+        metrics: false,
+        stockLevel: 'low',
+        search: params.search || '',
+      })
+      total = totalCount
+      all = all.concat(rows)
+      if (rows.length < pageSize) break
+      page += 1
+    }
+    return all
   }
 
   // Full catalog fetch: walks pages until complete — used by order/inventory pickers.
@@ -329,6 +371,7 @@ export function createBackendApiHelpers({ request }) {
       const q = new URLSearchParams({
         page: String(page),
         limit: String(pageSize),
+        metrics: 'false',
         ...(search ? { search } : {}),
       })
       const res = await request(`/product/get-product?${q}`)
@@ -414,6 +457,7 @@ export function createBackendApiHelpers({ request }) {
     resolveThreshold,
     fetchProductPage,
     fetchAllProducts,
+    fetchLowStockProducts,
     fetchUsersMap,
     mapPurchaseBill,
   }

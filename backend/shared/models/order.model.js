@@ -31,6 +31,7 @@ export function mapOrder(row) {
     o.carrier = row.carrier || null;
     o.shippedAt = row.shipped_at || null;
     o.deliveredAt = row.delivered_at || null;
+    o.expectedDeliveryAt = row.expected_delivery_at || null;
     return o;
 }
 
@@ -176,6 +177,7 @@ export async function findAdminOrderGroups({
           (ARRAY_AGG(delivery_status ORDER BY id DESC))[1] AS delivery_status,
           (ARRAY_AGG(payment_status ORDER BY id DESC))[1] AS payment_status,
           (ARRAY_AGG(payment_id ORDER BY id DESC))[1] AS payment_id,
+          (ARRAY_AGG(expected_delivery_at ORDER BY id DESC))[1] AS expected_delivery_at,
           MAX(total_amt)::float AS total_amt,
           MAX(created_at) AS created_at,
           ARRAY_AGG(id ORDER BY id) AS line_ids,
@@ -208,6 +210,7 @@ export async function findAdminOrderGroups({
         g.delivery_status,
         g.payment_status,
         g.payment_id,
+        g.expected_delivery_at,
         g.total_amt,
         g.created_at,
         g.line_ids,
@@ -235,6 +238,7 @@ export async function findAdminOrderGroups({
         deliveryStatus: row.delivery_status || 'Pending',
         paymentStatus: row.payment_status || '',
         paymentId: row.payment_id || '',
+        expectedDeliveryAt: row.expected_delivery_at || null,
         totalAmount: Number(row.total_amt || 0),
         date: row.created_at,
         items: Array.isArray(row.items) ? row.items.map((it) => ({
@@ -286,6 +290,27 @@ export async function findUserOrderStats() {
     }));
 }
 
+/** Order stats for a subset of users (paginated customer list). */
+export async function findUserOrderStatsForIds(userIds) {
+    const ids = (Array.isArray(userIds) ? userIds : []).map((id) => Number(id)).filter(Boolean);
+    if (!ids.length) return [];
+    const r = await pool.query(
+        `SELECT
+           user_id,
+           COUNT(DISTINCT ${ORDER_GROUP_KEY})::int AS order_count,
+           COALESCE(SUM(CASE WHEN NOT ${REVENUE_EXCLUDE_SQL} THEN line_total ELSE 0 END), 0)::float AS lifetime_value
+         FROM orders
+         WHERE user_id = ANY($1::int[])
+         GROUP BY user_id`,
+        [ids],
+    );
+    return r.rows.map((row) => ({
+        userId: row.user_id,
+        orderCount: Number(row.order_count || 0),
+        lifetimeValue: Number(row.lifetime_value || 0),
+    }));
+}
+
 /** Last N days of revenue (by line_total) for dashboard chart. */
 // order model: findSalesSeries reads and returns records.
 export async function findSalesSeries(days = 14) {
@@ -301,11 +326,32 @@ export async function findSalesSeries(days = 14) {
          ORDER BY day ASC`,
         [safeDays],
     );
-    return r.rows.map((row) => ({
-        date: String(row.day).slice(0, 10),
-        revenue: Number(row.revenue || 0),
-        orders: Number(row.orders || 0),
-    }));
+    const byDay = new Map(
+        r.rows.map((row) => [
+            String(row.day).slice(0, 10),
+            {
+                revenue: Number(row.revenue || 0),
+                orders: Number(row.orders || 0),
+            },
+        ]),
+    );
+    const series = [];
+    for (let i = safeDays - 1; i >= 0; i -= 1) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        const point = byDay.get(key) || { revenue: 0, orders: 0 };
+        const { revenue, orders } = point;
+        series.push({
+            date: key,
+            revenue,
+            orders,
+            itemsSold: 0,
+            avgOrderValue: orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0,
+        });
+    }
+    return series;
 }
 
 // order model: findOrderById reads and returns records.
@@ -342,8 +388,12 @@ export async function updateOrder(id, data) {
             carrier = CASE WHEN $6::boolean THEN $7 ELSE carrier END,
             shipped_at = COALESCE($8::timestamptz, shipped_at),
             delivered_at = COALESCE($9::timestamptz, delivered_at),
+            expected_delivery_at = CASE
+              WHEN $10::boolean THEN $11::timestamptz
+              ELSE expected_delivery_at
+            END,
             updated_at = NOW()
-         WHERE id = $10 RETURNING *`,
+         WHERE id = $12 RETURNING *`,
         [
             data.delivery_status ?? null,
             data.payment_status ?? null,
@@ -354,6 +404,8 @@ export async function updateOrder(id, data) {
             data.carrier !== undefined ? data.carrier : null,
             data.shipped_at ?? null,
             data.delivered_at ?? null,
+            data.expected_delivery_at !== undefined,
+            data.expected_delivery_at !== undefined ? data.expected_delivery_at : null,
             id,
         ],
     );
@@ -368,6 +420,7 @@ export async function updateOrderFulfillment(id, data) {
         carrier: data.carrier,
         shipped_at: data.shipped_at,
         delivered_at: data.delivered_at,
+        expected_delivery_at: data.expected_delivery_at,
         delivery_status: data.delivery_status,
         payment_status: data.payment_status,
         stock_restored: data.stock_restored,

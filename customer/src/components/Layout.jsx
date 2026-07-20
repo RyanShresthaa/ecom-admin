@@ -1,7 +1,8 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { CartNavLink, CartToast } from '@/components/CartBits'
 
-// Shared storefront shell — top nav with auth-aware links and page outlet.
+// Shared storefront shell — top nav with cart badge and auth links.
 export function Layout() {
   const { user, logout } = useAuth()
 
@@ -13,6 +14,8 @@ export function Layout() {
         </Link>
         <nav className="nav-links">
           <Link to="/">Shop</Link>
+          <Link to="/blog">Blog</Link>
+          <CartNavLink />
           {user ? (
             <>
               <Link to="/account">Hi, {user.name || user.email}</Link>
@@ -33,6 +36,7 @@ export function Layout() {
         </nav>
       </header>
       <Outlet />
+      <CartToast />
       <p className="muted" style={{ marginTop: '2rem', fontSize: '0.85rem' }}>
         Customer portal only. Staff use the admin app (port 5173) — separate login.
       </p>

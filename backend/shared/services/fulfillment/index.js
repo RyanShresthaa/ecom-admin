@@ -6,6 +6,7 @@
  *   statusTransitions.js  FSM normalize / validate / timestamps
  *   shippingRates.js      zone-based shipping resolution
  *   tracking.js           tracking_number + carrier on order group
+ *   expectedDelivery.js   admin expected delivery datetime after Confirmed
  *   reorder.js            buy-again → cart
  */
 // Export shared delivery status constants and carrier list.
@@ -22,5 +23,7 @@ export {
 export { resolveShippingRate, matchShippingRate } from './shippingRates.js';
 // Export shipment tracking assignment helper.
 export { applyTracking } from './tracking.js';
+// Export admin expected-delivery scheduling helper.
+export { applyExpectedDelivery } from './expectedDelivery.js';
 // Export reorder helper to copy past order lines to cart.
 export { reorderToCart } from './reorder.js';

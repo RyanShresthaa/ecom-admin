@@ -22,9 +22,74 @@ const {
   resolveThreshold,
   fetchProductPage,
   fetchAllProducts,
+  fetchLowStockProducts,
   fetchUsersMap,
   mapPurchaseBill,
 } = createBackendApiHelpers({ request })
+
+function toNumber(value, fallback = 0) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function normalizeDateKey(value) {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+function normalizeSalesRow(row) {
+  const revenue = toNumber(
+    row.revenue ?? row.totalRevenue ?? row.total_revenue ?? row.amount ?? row.sales,
+    0
+  )
+  const orders = toNumber(
+    row.orders ?? row.orderCount ?? row.ordersCount ?? row.order_count ?? row.count,
+    0
+  )
+  const itemsSold = toNumber(
+    row.itemsSold ?? row.items_sold ?? row.quantity ?? row.totalItems ?? row.total_items,
+    0
+  )
+  return {
+    date: normalizeDateKey(row.date ?? row.day ?? row.createdAt ?? row.created_at),
+    revenue,
+    orders,
+    itemsSold,
+    avgOrderValue:
+      toNumber(row.avgOrderValue ?? row.avg_order_value, NaN) ||
+      (orders > 0 ? Math.round((revenue / orders) * 100) / 100 : 0),
+  }
+}
+
+function buildSalesSeriesFromOrders(rows = [], days = 14) {
+  const byDay = new Map()
+  for (const order of rows) {
+    const date = normalizeDateKey(order.date ?? order.createdAt ?? order.created_at)
+    if (!date) continue
+    const revenue = toNumber(order.totalAmount ?? order.total_amt ?? order.totalAmt, 0)
+    const prev = byDay.get(date) || { revenue: 0, orders: 0, itemsSold: 0 }
+    prev.revenue += revenue
+    prev.orders += 1
+    byDay.set(date, prev)
+  }
+
+  const series = []
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    const point = byDay.get(key) || { revenue: 0, orders: 0, itemsSold: 0 }
+    series.push({
+      date: key,
+      revenue: Math.round(point.revenue * 100) / 100,
+      orders: point.orders,
+      itemsSold: point.itemsSold,
+      avgOrderValue: point.orders > 0 ? Math.round((point.revenue / point.orders) * 100) / 100 : 0,
+    })
+  }
+  return series
+}
 
 // Backend adapter: maps shared backend responses into admin UI-friendly shapes.
 export const backendApi = {
@@ -97,12 +162,33 @@ export const backendApi = {
       }
     },
     async salesSeries() {
-      const res = await request('/order/sales-series?days=14')
-      return (res.data || []).map((row) => ({
-        date: String(row.date || '').slice(0, 10),
-        revenue: Number(row.revenue || 0),
-        orders: Number(row.orders || 0),
-      }))
+      const DAYS = 14
+      const [seriesResponse, fallbackDashboardSeries] = await Promise.all([
+        request(`/order/sales-series?days=${DAYS}`).catch(() => ({ data: [] })),
+        request('/dashboard/sales-series').catch(() => []),
+      ])
+
+      const primaryRows = Array.isArray(seriesResponse?.data)
+        ? seriesResponse.data
+        : Array.isArray(seriesResponse)
+          ? seriesResponse
+          : []
+      const secondaryRows = Array.isArray(fallbackDashboardSeries?.data)
+        ? fallbackDashboardSeries.data
+        : Array.isArray(fallbackDashboardSeries)
+          ? fallbackDashboardSeries
+          : []
+
+      const normalized = (primaryRows.length ? primaryRows : secondaryRows)
+        .map(normalizeSalesRow)
+        .filter((row) => row.date)
+
+      const hasMeaningfulData = normalized.some((row) => row.revenue > 0 || row.orders > 0)
+      if (hasMeaningfulData) return normalized
+
+      const ordersList = await request('/order/admin-list?page=1&limit=500').catch(() => ({ data: [] }))
+      const rows = Array.isArray(ordersList?.data) ? ordersList.data : []
+      return buildSalesSeriesFromOrders(rows, DAYS)
     },
     async recentOrders(params = {}) {
       const page = (Number(params.page) || 0) + 1
@@ -127,6 +213,41 @@ export const backendApi = {
 
   customers: {
     async list(params) {
+      const page = Number(params.page) || 0
+      const pageSize = Number(params.pageSize) || 10
+      const sorting = Array.isArray(params.sorting) ? params.sorting : []
+      const canUseServerPage =
+        (!params.tag || params.tag === 'all') &&
+        (sorting.length === 0 ||
+          (sorting.length === 1 && sorting[0].id === 'createdAt' && sorting[0].desc === true))
+
+      if (canUseServerPage) {
+        const res = await request('/admin/users', {
+          params: {
+            role: 'User',
+            page,
+            limit: pageSize,
+            ...(params.search ? { search: params.search } : {}),
+          },
+        })
+        const rows = (res.data || []).map((u) => {
+          const m = mapUser(u)
+          return {
+            ...m,
+            orderCount: Number(u.orderCount || u.ordersCount || 0),
+            lifetimeValue: Number(u.lifetimeValue || u.totalSpent || 0),
+            ordersCount: Number(u.orderCount || u.ordersCount || 0),
+            totalSpent: Number(u.lifetimeValue || u.totalSpent || 0),
+          }
+        })
+        const totalCount = Number(res.totalCount || rows.length)
+        return {
+          rows,
+          pageCount: Math.max(1, Math.ceil(totalCount / pageSize) || 1),
+          rowCount: totalCount,
+        }
+      }
+
       const res = await request('/admin/users', { params: { role: 'User' } })
       const rows = (res.data || []).map((u) => {
         const m = mapUser(u)
@@ -297,11 +418,12 @@ export const backendApi = {
 
   products: {
     async list(params) {
-      // Server-side page when only paging/search (avoids downloading full catalog)
+      const sorting = Array.isArray(params.sorting) ? params.sorting : []
       const canUseServerPage =
         (!params.category || params.category === 'all') &&
         (!params.status || params.status === 'all') &&
-        (!params.sorting || params.sorting.length === 0)
+        (sorting.length === 0 ||
+          (sorting.length === 1 && sorting[0].id === 'createdAt' && sorting[0].desc === true))
       if (canUseServerPage) {
         const { rows, totalCount } = await fetchProductPage(params)
         const pageSize = Number(params.pageSize) || 10
@@ -634,6 +756,16 @@ export const backendApi = {
       }
       return backendApi.orders.getById(id)
     },
+    async setExpectedDelivery(id, expectedDeliveryAt) {
+      await request('/order/expected-delivery', {
+        method: 'PUT',
+        body: {
+          orderGroupId: id,
+          expectedDeliveryAt: expectedDeliveryAt || null,
+        },
+      })
+      return backendApi.orders.getById(id)
+    },
     async bulkUpdateStatus({ ids = [], ...payload }) {
       for (const id of ids) {
         await backendApi.orders.updateStatus(id, payload)
@@ -695,14 +827,25 @@ export const backendApi = {
 
   inventory: {
     async list(params) {
-      const [products, warehouses, settings] = await Promise.all([
-        fetchAllProducts(params.search ? { search: params.search } : {}),
+      const page = Number(params.page) || 0
+      const pageSize = Number(params.pageSize) || 10
+      const stockLevel =
+        params.stockLevel && params.stockLevel !== 'all' ? params.stockLevel : undefined
+
+      const [productPage, warehouses, settings] = await Promise.all([
+        fetchProductPage({
+          page,
+          pageSize,
+          search: params.search || '',
+          stockLevel,
+          metrics: false,
+        }),
         fetchWarehousesCached(),
         fetchSettingsCached(),
       ])
       const defaultWh = warehouses[0]?.name || 'Main Warehouse'
       const settingsThr = settings.lowStockThreshold
-      let rows = products.map((p) => {
+      const rows = productPage.rows.map((p) => {
         const thr = resolveThreshold(p, settingsThr)
         const stockQuantity = Number(p.stock || 0)
         const lowStock = stockQuantity <= thr
@@ -723,14 +866,19 @@ export const backendApi = {
           status: lowStock ? 'low' : 'ok',
         }
       })
-      if (params.stockLevel === 'low') rows = rows.filter((r) => r.lowStock)
-      else if (params.stockLevel === 'ok' || params.stockLevel === 'in_stock') {
-        rows = rows.filter((r) => !r.lowStock)
-      }
       if (params.warehouse && params.warehouse !== 'all') {
-        rows = rows.filter((r) => r.warehouse === params.warehouse)
+        const filtered = rows.filter((r) => r.warehouse === params.warehouse)
+        return {
+          rows: filtered,
+          pageCount: Math.max(1, Math.ceil(productPage.totalCount / pageSize) || 1),
+          rowCount: productPage.totalCount,
+        }
       }
-      return paginate(rows, params)
+      return {
+        rows,
+        pageCount: Math.max(1, Math.ceil(productPage.totalCount / pageSize) || 1),
+        rowCount: productPage.totalCount,
+      }
     },
     warehouses: () => fetchWarehousesCached(),
     adjustmentReasons: async () => ADJUSTMENT_REASONS,
@@ -801,7 +949,7 @@ export const backendApi = {
     },
     async reorderSuggestions(params) {
       const [products, settings] = await Promise.all([
-        fetchAllProducts(),
+        fetchLowStockProducts(),
         fetchSettingsCached(),
       ])
       let rows = products
@@ -943,13 +1091,13 @@ export const backendApi = {
   async search({ query, limit = 8 }) {
     const q = String(query || '').trim()
     if (!q) return { products: [], customers: [], orders: [] }
-    const [products, customersPage, ordersPage] = await Promise.all([
-      fetchAllProducts({ search: q }),
+    const [productPage, customersPage, ordersPage] = await Promise.all([
+      fetchProductPage({ page: 0, pageSize: limit, search: q, metrics: false }),
       backendApi.customers.list({ search: q, page: 0, pageSize: limit }),
       backendApi.orders.list({ search: q, page: 0, pageSize: limit }),
     ])
     return {
-      products: products.slice(0, limit),
+      products: productPage.rows.slice(0, limit),
       customers: customersPage.rows.slice(0, limit),
       orders: ordersPage.rows.slice(0, limit),
     }
@@ -983,6 +1131,55 @@ export const backendApi = {
     },
     async markAllRead() {
       await request('/admin/notifications/read-all', { method: 'POST' })
+      return { success: true }
+    },
+  },
+
+  blog: {
+    mapPost(p) {
+      if (!p) return null
+      return {
+        id: String(p.id ?? p._id),
+        title: p.title || '',
+        slug: p.slug || '',
+        excerpt: p.excerpt || '',
+        coverImage: p.coverImage || p.cover_image || '',
+        body: p.body || '',
+        published: Boolean(p.published),
+        publishedAt: p.publishedAt || p.published_at || null,
+        createdAt: p.createdAt || p.created_at,
+        updatedAt: p.updatedAt || p.updated_at,
+      }
+    },
+    async list(params = {}) {
+      const q = new URLSearchParams()
+      if (params.search) q.set('search', params.search)
+      q.set('page', String((params.page ?? 0) + 1))
+      q.set('limit', String(params.pageSize ?? 20))
+      const res = await request(`/blog/admin-list?${q}`)
+      const rows = (res.data || []).map((p) => backendApi.blog.mapPost(p))
+      const total = res.totalCount ?? rows.length
+      const pageSize = params.pageSize ?? 20
+      return {
+        rows,
+        pageCount: Math.max(1, Math.ceil(total / pageSize) || 1),
+        rowCount: total,
+      }
+    },
+    async getById(id) {
+      const res = await request(`/blog/post/${id}`)
+      return backendApi.blog.mapPost(res.data)
+    },
+    async create(payload) {
+      const res = await request('/blog', { method: 'POST', body: payload })
+      return backendApi.blog.mapPost(res.data)
+    },
+    async update(id, payload) {
+      const res = await request(`/blog/${id}`, { method: 'PUT', body: payload })
+      return backendApi.blog.mapPost(res.data)
+    },
+    async remove(id) {
+      await request(`/blog/${id}`, { method: 'DELETE' })
       return { success: true }
     },
   },

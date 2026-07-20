@@ -82,7 +82,10 @@ export const getProductController = async (request, response) => {
         if (request.user?.role === 'Seller' && src.mine === 'true') {
             sellerId = request.userId;
         }
-        const cacheKey = `products:${page}:${limit}:${search}:${published}:${sellerId}:${src.categoryId}:${src.sort}:${Boolean(request.userId)}:${isStaff(request.user)}`;
+        const stockLevel = src.stockLevel || src.stock_level || '';
+        const includeMetrics =
+            src.metrics !== 'false' && src.includeMetrics !== 'false' && src.include_metrics !== 'false';
+        const cacheKey = `products:${page}:${limit}:${search}:${published}:${sellerId}:${src.categoryId}:${src.sort}:${stockLevel}:${includeMetrics}:${Boolean(request.userId)}:${isStaff(request.user)}`;
         const { data, totalCount } = await withCache(cacheKey, 2500, async () => {
             const result = await findProducts({
                 search,
@@ -94,8 +97,9 @@ export const getProductController = async (request, response) => {
                 sellerId,
                 categoryId: src.categoryId,
                 sort: src.sort,
+                stockLevel: stockLevel || undefined,
             });
-            if (isStaff(request.user)) {
+            if (isStaff(request.user) && includeMetrics) {
                 result.data = await attachProductMetrics(result.data);
             }
             return result;

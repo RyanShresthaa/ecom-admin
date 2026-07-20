@@ -24,6 +24,7 @@ import {
   addOrderNoteController,
   listDeliveryStatusesController,
   updateTrackingController,
+  updateExpectedDeliveryController,
   reorderController,
 } from '../controllers/order.controller.js'
 import { validateBody } from '../../shared/middleware/validate.js'
@@ -33,6 +34,7 @@ import {
   placeOrderBodySchema,
   confirmStripeBodySchema,
   updateTrackingBodySchema,
+  updateExpectedDeliveryBodySchema,
   reorderBodySchema,
 } from '../../shared/validation/schemas.js'
 
@@ -60,6 +62,14 @@ orderRouter.post('/reorder', auth, validateBody(reorderBodySchema), reorderContr
 orderRouter.get('/delivery-statuses', auth, staff, listDeliveryStatusesController)
 // PUT /tracking - update shipment tracking (requires auth + staff + schema validation).
 orderRouter.put('/tracking', auth, staff, validateBody(updateTrackingBodySchema), updateTrackingController)
+// PUT /expected-delivery - set admin ETA after order is Confirmed.
+orderRouter.put(
+  '/expected-delivery',
+  auth,
+  staff,
+  validateBody(updateExpectedDeliveryBodySchema),
+  updateExpectedDeliveryController,
+)
 
 // Staff/admin order management and analytics endpoints (requires auth + staff role).
 orderRouter.get('/all', auth, staff, getAllOrdersController)

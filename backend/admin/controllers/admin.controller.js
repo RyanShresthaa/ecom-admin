@@ -1,7 +1,7 @@
 /**
  * Admin dashboard, user list/role, seller approve/reject, audit & security event reads.
  */
-import { countOrders, sumRevenue, findUserOrderStats } from '../../shared/models/order.model.js';
+import { countOrders, sumRevenue, findUserOrderStats, findUserOrderStatsForIds } from '../../shared/models/order.model.js';
 import { countProducts } from '../../shared/models/product.model.js';
 import { findCategories } from '../../shared/models/category.model.js';
 import {
@@ -26,7 +26,6 @@ import {
     listNotifications,
     markNotificationRead,
     markAllNotificationsRead,
-    syncLowStockNotifications,
     createNotification,
 } from '../../shared/models/notification.model.js';
 import { withCache } from '../../shared/utils/responseCache.js';
@@ -65,7 +64,6 @@ export const getDashboardStatsController = async (req, res) => {
 // GET /api/admin/notifications - syncs and lists latest admin notifications.
 export const listNotificationsController = async (_req, res) => {
     try {
-        await syncLowStockNotifications();
         const data = await listNotifications({ limit: 80 });
         return res.json({ data, error: false, success: true });
     } catch (error) {
@@ -100,14 +98,25 @@ export { createNotification };
 // GET /api/admin/users - lists users with optional seller-request filtering and order stats.
 export const listUsersController = async (req, res) => {
     try {
-        const { role, sellerRequest } = req.query;
-        const [users, stats] = await Promise.all([
-            findUsers({
-                role: role || undefined,
-                sellerRequest: sellerRequest === 'true',
-            }),
-            findUserOrderStats().catch(() => []),
-        ]);
+        const { role, sellerRequest, search, page, limit } = req.query;
+        const pageNum = Number(page) || 0;
+        const pageSize = Number(limit) || 0;
+        const usePagination = pageSize > 0;
+
+        const { data: users, totalCount } = await findUsers({
+            role: role || undefined,
+            sellerRequest: sellerRequest === 'true',
+            search: search || undefined,
+            ...(usePagination
+                ? { skip: pageNum * pageSize, limit: pageSize }
+                : {}),
+        });
+
+        const userIds = users.map((u) => u.id ?? u._id);
+        const stats = usePagination
+            ? await findUserOrderStatsForIds(userIds).catch(() => [])
+            : await findUserOrderStats().catch(() => []);
+
         const byUser = new Map(stats.map((s) => [String(s.userId), s]));
         const data = users.map((u) => {
             const id = String(u.id ?? u._id);
@@ -118,7 +127,13 @@ export const listUsersController = async (req, res) => {
                 lifetimeValue: s.lifetimeValue || 0,
             };
         });
-        return res.json({ message: 'users', data, error: false, success: true });
+        return res.json({
+            message: 'users',
+            data,
+            totalCount: usePagination ? totalCount : data.length,
+            error: false,
+            success: true,
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message || error, error: true, success: false });
     }

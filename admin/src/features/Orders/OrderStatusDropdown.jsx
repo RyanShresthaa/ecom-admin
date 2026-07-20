@@ -16,6 +16,7 @@ import { PERMISSIONS } from '@/lib/permissions'
 // Delivery status options shown in the dropdown menu.
 const OPTIONS = [
   { value: 'Pending', icon: Clock },
+  { value: 'Confirmed', icon: CheckCircle },
   { value: 'Shipped', icon: Truck },
   { value: 'Delivered', icon: PackageIcon },
   { value: 'Returned', icon: ArrowUUpLeft },

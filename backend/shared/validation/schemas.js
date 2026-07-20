@@ -226,6 +226,26 @@ export const updateTrackingBodySchema = z
         message: 'orderGroupId or orderRowId required',
     });
 
+/** PUT /api/order/expected-delivery — admin ETA after Confirmed */
+export const updateExpectedDeliveryBodySchema = z
+    .object({
+        orderGroupId: z.string().trim().min(1).max(100).optional(),
+        orderId: z.string().trim().min(1).max(100).optional(),
+        orderRowId: z.union([z.string(), z.number()]).optional(),
+        _id: z.union([z.string(), z.number()]).optional(),
+        expectedDeliveryAt: z.union([z.string().min(1).max(64), z.null()]).optional(),
+        expected_delivery_at: z.union([z.string().min(1).max(64), z.null()]).optional(),
+    })
+    .refine((b) => b.orderGroupId || b.orderId || b.orderRowId || b._id, {
+        message: 'orderGroupId or orderRowId required',
+    })
+    .refine(
+        (b) =>
+            b.expectedDeliveryAt !== undefined ||
+            b.expected_delivery_at !== undefined,
+        { message: 'expectedDeliveryAt is required (use null to clear)' },
+    );
+
 /** POST /api/order/reorder */
 export const reorderBodySchema = z
     .object({

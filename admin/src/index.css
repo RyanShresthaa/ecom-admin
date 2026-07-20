@@ -77,4 +77,31 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* TipTap / blog rich text */
+  .ProseMirror {
+    outline: none;
+  }
+  .ProseMirror p.is-editor-empty:first-child::before {
+    color: hsl(var(--muted-foreground));
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+  .blog-rich ul,
+  .blog-rich ol {
+    margin: 0.5rem 0 0.75rem;
+    padding-left: 1.25rem;
+  }
+  .blog-rich blockquote {
+    margin: 0.75rem 0;
+    padding-left: 0.75rem;
+    border-left: 3px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+  }
+  .blog-rich a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+  }
 }

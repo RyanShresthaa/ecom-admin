@@ -19,6 +19,8 @@ const Orders = lazy(() => import('@/features/Orders'))
 const OrderDetail = lazy(() => import('@/features/Orders/Detail'))
 const Inventory = lazy(() => import('@/features/Inventory'))
 const LiveStore = lazy(() => import('@/features/LiveStore'))
+const Blog = lazy(() => import('@/features/Blog'))
+const BlogEditor = lazy(() => import('@/features/Blog/Editor'))
 const Settings = lazy(() => import('@/features/Settings'))
 const Profile = lazy(() => import('@/features/Profile'))
 const Account = lazy(() => import('@/features/Account'))
@@ -131,6 +133,34 @@ export default function App() {
               </LazyPage>
             }
           />
+          <Route element={<ProtectedRoute permission={PERMISSIONS.BLOG_VIEW} />}>
+            <Route
+              path="blog"
+              element={
+                <LazyPage>
+                  <Blog />
+                </LazyPage>
+              }
+            />
+            <Route element={<ProtectedRoute permission={PERMISSIONS.BLOG_WRITE} />}>
+              <Route
+                path="blog/new"
+                element={
+                  <LazyPage>
+                    <BlogEditor />
+                  </LazyPage>
+                }
+              />
+            </Route>
+            <Route
+              path="blog/:id/edit"
+              element={
+                <LazyPage>
+                  <BlogEditor />
+                </LazyPage>
+              }
+            />
+          </Route>
           <Route element={<ProtectedRoute permission={PERMISSIONS.SETTINGS_VIEW} />}>
             <Route
               path="settings"

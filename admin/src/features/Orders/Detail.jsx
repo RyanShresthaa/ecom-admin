@@ -9,6 +9,7 @@ import { PageLoader } from '@/components/common/PageLoader'
 import { PaymentStatusBadge } from '@/components/common/StatusBadge'
 import { OrderStatusDropdown } from '@/features/Orders/OrderStatusDropdown'
 import { PaymentStatusDropdown } from '@/features/Orders/PaymentStatusDropdown'
+import { ExpectedDeliveryCard } from '@/features/Orders/ExpectedDeliveryCard'
 import { OrderTimeline } from '@/features/Orders/OrderTimeline'
 import { OrderNotes } from '@/features/Orders/OrderNotes'
 import { OrderInvoice } from '@/features/Orders/OrderInvoice'
@@ -104,6 +105,7 @@ export default function OrderDetail() {
                   <span className="text-sm">{order.deliveryStatus}</span>
                 )}
               </div>
+              <ExpectedDeliveryCard order={order} canWrite={canWrite} />
             </CardContent>
           </Card>
 

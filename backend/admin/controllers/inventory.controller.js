@@ -17,6 +17,7 @@ import {
     transferStockInTransaction,
 } from '../../shared/utils/inventoryStock.js';
 import { queueLowStockCheck } from '../../shared/queue/enqueue.js';
+import { syncLowStockNotifications } from '../../shared/models/notification.model.js';
 
 async function assertInventoryAccess(req, productId) {
     const pid = pickId(productId);
@@ -118,6 +119,11 @@ export async function addStockController(req, res) {
             });
             await client.query('COMMIT');
             queueLowStockCheck([pid]).catch(() => {});
+            syncLowStockNotifications().catch(() => {});
+            // Notify waitlisted customers when stock returns after being out.
+            import('../../shared/services/stockWaitlist/index.js')
+                .then(({ notifyBackInStock }) => notifyBackInStock(pid))
+                .catch(() => {});
             return res.status(201).json({ message: 'Stock added', data: result, error: false, success: true });
         } catch (e) {
             await client.query('ROLLBACK');
@@ -149,6 +155,7 @@ export async function removeStockController(req, res) {
             });
             await client.query('COMMIT');
             queueLowStockCheck([pid]).catch(() => {});
+            syncLowStockNotifications().catch(() => {});
             return res.json({ message: 'Stock removed', data: result, error: false, success: true });
         } catch (e) {
             await client.query('ROLLBACK');

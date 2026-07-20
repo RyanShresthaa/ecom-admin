@@ -28,6 +28,7 @@ const EXEMPT_PATHS = new Set([
     '/api/ready',
     '/api/feedback/submit',
     '/api/payment/webhook',
+    '/api/stock-alerts/subscribe',
 ]);
 
 /** Map /api/v1/... → /api/... so versioned alias shares the same CSRF exemptions */

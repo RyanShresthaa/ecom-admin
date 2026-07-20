@@ -129,6 +129,7 @@ export async function findProducts({
     sellerId,
     categoryId,
     sort,
+    stockLevel,
     includeDeleted = false,
 }) {
     const params = [];
@@ -161,6 +162,11 @@ export async function findProducts({
     if (categoryId != null) {
         params.push(pickId(categoryId));
         where += ` AND category_id = $${params.length}`;
+    }
+    if (stockLevel === 'low') {
+        where += ' AND stock <= COALESCE(low_stock_threshold, 5)';
+    } else if (stockLevel === 'ok' || stockLevel === 'in_stock') {
+        where += ' AND stock > COALESCE(low_stock_threshold, 5)';
     }
     const searchParamIndex = search ? 1 : null;
     const orderBy =

@@ -86,7 +86,7 @@ export async function countUsers({ role } = {}) {
 }
 
 // user model: findUsers reads and returns records.
-export async function findUsers({ role, sellerRequest } = {}) {
+export async function findUsers({ role, sellerRequest, search, skip, limit } = {}) {
     const params = [];
     let where = 'WHERE 1=1';
     if (role) {
@@ -96,11 +96,20 @@ export async function findUsers({ role, sellerRequest } = {}) {
     if (sellerRequest === true) {
         where += ' AND seller_request = true';
     }
-    const r = await pool.query(
-        `SELECT ${PUBLIC_FIELDS} FROM users ${where} ORDER BY created_at DESC`,
-        params,
-    );
-    return r.rows.map(mapRow);
+    if (search) {
+        params.push(`%${String(search).trim()}%`);
+        where += ` AND (name ILIKE $${params.length} OR email ILIKE $${params.length} OR mobile ILIKE $${params.length})`;
+    }
+    const countR = await pool.query(`SELECT COUNT(*)::int AS c FROM users ${where}`, params);
+    const totalCount = countR.rows[0]?.c ?? 0;
+    let query = `SELECT ${PUBLIC_FIELDS} FROM users ${where} ORDER BY created_at DESC`;
+    const listParams = [...params];
+    if (limit != null) {
+        listParams.push(Number(limit), Number(skip) || 0);
+        query += ` LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`;
+    }
+    const r = await pool.query(query, listParams);
+    return { data: r.rows.map(mapRow), totalCount };
 }
 
 // user model: deleteUserAccount deletes matching records.

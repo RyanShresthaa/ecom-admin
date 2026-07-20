@@ -17,6 +17,8 @@ import wishlistRouter from './routes/wishlist.route.js'
 import returnRouter from './routes/return.route.js'
 import shopRouter from './routes/shop.route.js'
 import feedbackRouter from './routes/feedback.route.js'
+import stockAlertRouter from './routes/stockAlert.route.js'
+import blogRouter from './routes/blog.route.js'
 import {
   flagsRouter,
   mfaRouter,
@@ -60,6 +62,10 @@ customerRouter.use('/return', returnRouter)
 customerRouter.use('/shop', shopRouter)
 // Mount customer feedback submission endpoints.
 customerRouter.use('/feedback', feedbackRouter)
+// Mount back-in-stock waitlist subscription endpoints.
+customerRouter.use('/stock-alerts', stockAlertRouter)
+// Mount blog CMS + public read endpoints.
+customerRouter.use('/blog', blogRouter)
 
 // Scale / marketplace foundations (feature-flag gated)
 // Mount feature flag and runtime toggle endpoints.
