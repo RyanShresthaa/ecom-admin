@@ -12,6 +12,35 @@
  *     responses:
  *       200: { description: Counts and revenue }
  *
+ * /api/admin/notifications:
+ *   get:
+ *     tags: [Admin]
+ *     summary: List staff notifications
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: Notifications }
+ *
+ * /api/admin/notifications/{id}/read:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Mark one notification read
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Updated }
+ *
+ * /api/admin/notifications/read-all:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Mark all notifications read
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Updated }
+ *
  * /api/admin/users:
  *   get:
  *     tags: [Admin]
@@ -26,6 +55,36 @@
  *         schema: { type: string, enum: ['true'] }
  *     responses:
  *       200: { description: Users }
+ *   post:
+ *     tags: [Admin]
+ *     summary: Create customer account (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email]
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string, format: email }
+ *               password: { type: string }
+ *     responses:
+ *       201: { description: Created }
+ *
+ * /api/admin/users/{id}:
+ *   get:
+ *     tags: [Admin]
+ *     summary: User detail (staff)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: User profile + order summary }
+ *       404: { description: Not found }
  *
  * /api/admin/seller-requests:
  *   get:

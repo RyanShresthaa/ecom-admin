@@ -35,14 +35,14 @@ docker compose up --build   # API + Postgres + email worker
 | Feature | Detail |
 |---------|--------|
 | **X-Request-Id** | Every response echoes a request ID (send your own header or server generates UUID). Included on 404/500 JSON when available. |
-| **Zod bodies** | `POST /api/user/register`, `/login`, `/order/preview-checkout`, `/place`, `/place-cod`, `/place-online`, **`/api/payment/refund`**, **`/api/sales/*`**, **`/api/purchases/*`** mutations — malformed input returns **400** before controllers. |
+| **Zod bodies** | `POST /api/user/register`, `/login`, `/order/preview-checkout`, `/place`, `/confirm-stripe`, **`/api/chat/sessions/*/messages`**, **`/api/payment/refund`**, **`/api/sales/*`**, **`/api/purchases/*`** mutations — malformed input returns **400** before controllers. |
 | **Schemas** | `validation/schemas.js` — extend sparingly. |
 
 ---
 
 ## Idempotent checkout
 
-Send header on `POST /api/order/place-cod`, `POST /api/order/place` (cash), and mock `place-online` / stripe confirm:
+Send header on `POST /api/order/place` and Stripe confirm flows:
 
 ```http
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
@@ -342,16 +342,60 @@ VAT formula: **line net (excl. VAT)** = qty × unit price excl. VAT; **VAT** = n
 | Method | Path | Notes |
 |--------|------|-------|
 | POST | `/preview-checkout` | `{ addressId, useCart?, couponCode?, list_items? }` |
-| POST | `/place` | `{ paymentMethod: "cash"\|"stripe", addressId, … }` — cash places order; stripe returns Checkout `url` |
-| POST | `/place-cod` | Alias of cash |
+| POST | `/place` | `{ paymentMethod: "stripe", addressId, … }` — returns Stripe Checkout `url` |
+| POST | `/place-cod` | **Disabled** — returns 400 |
 | POST | `/place-online` | Alias of stripe |
 | POST | `/confirm-stripe` | `{ sessionId }` after Stripe redirect — creates paid order |
 | POST | `/reorder` | `{ orderGroupId }` — copy past order into cart |
 | GET | `/delivery-statuses` | Staff: FSM statuses + carriers |
 | PUT | `/tracking` | Staff: `{ orderGroupId, tracking_number, carrier }` |
+| PUT | `/expected-delivery` | Staff: set ETA after Confirmed |
 | PUT | `/update-status` | Staff: FSM delivery + payment; optional tracking |
 | GET | `/my-orders` | |
 | GET | `/invoice/:id` | |
+| GET | `/admin-list` | Staff paginated list |
+| GET | `/group/:orderId` | Staff group detail |
+| GET | `/sales-series` | Staff dashboard chart data (`?days=`) |
+| GET | `/by-product/:productId` | Staff orders for SKU |
+| POST | `/admin-create` | Staff manual order |
+| GET/POST | `/notes`, `/notes/:orderGroupId` | Staff internal notes |
+
+### Chat — `/api/chat`
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/status` | No | Provider status (stub/openai) |
+| POST | `/sessions` | Optional | Returns `guestToken` for anonymous users |
+| GET | `/sessions` | Yes | List my sessions |
+| GET | `/sessions/:id` | Owner/guest | Header `X-Chat-Guest-Token` for guests |
+| GET/POST | `/sessions/:id/messages` | Owner/guest | POST sends user msg, returns assistant reply |
+| POST | `/sessions/:id/close` | Owner/guest | End session |
+
+Staff review: `GET /api/admin/chat/sessions`, `GET /api/admin/chat/sessions/:id/messages`.
+
+Env: `CHAT_PROVIDER=stub` (default), `CHAT_MAX_HISTORY`, `OPENAI_API_KEY` when wiring LLM.
+
+### Blog — `/api/blog`
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | `/` | No | Published posts (`?page`, `?limit`, `?search`) |
+| GET | `/post/:slugOrId` | Optional | Drafts visible to staff |
+| GET | `/admin-list` | Staff | All posts including drafts |
+| POST | `/` | Staff | Create |
+| PUT/DELETE | `/:id` | Staff | Update / delete |
+
+### Stock alerts — `/api/stock-alerts`
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/subscribe` | `{ productId, email }` — back-in-stock waitlist |
+
+### Shop payments — `/api/shop/payments`
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/status` | Staff — Stripe live/test/mock/disabled (no secrets) |
 
 ### Shipping — `/api/shop/shipping`
 
@@ -425,7 +469,12 @@ Run migration `014_payment_refunds.sql` before using refunds.
 | Method | Path |
 |--------|------|
 | GET | `/stats` |
+| GET | `/notifications` | Staff inbox |
+| PATCH | `/notifications/:id/read` | |
+| POST | `/notifications/read-all` | |
 | GET | `/users` |
+| POST | `/users` | Create customer (staff) |
+| GET | `/users/:id` | User detail |
 | GET | `/seller-requests` |
 | POST | `/users/:id/approve-seller` |
 | POST | `/users/:id/reject-seller` |
@@ -556,7 +605,7 @@ Run migration `014_payment_refunds.sql` before using refunds.
 | Admin revenue | `SUM(line_total)`; order count uses distinct `order_id` |
 | Tests | `npm test` (security + VAT math + DB purchase flows), `npm run test:api` (server smoke) |
 | CI/CD | GitHub Actions `.github/workflows/backend-ci.yml` |
-| Idempotent checkout | Header `Idempotency-Key` on `place-cod` / mock `place-online` |
+| Idempotent checkout | Header `Idempotency-Key` on Stripe `place` / confirm |
 | Background jobs | `QUEUE_ENABLED=true` + `REDIS_URL` + `npm run queue:worker` |
 | Email (legacy PG) | `EMAIL_USE_QUEUE=true` + `npm run email:worker` (when BullMQ off) |
 
@@ -571,6 +620,7 @@ See `.env.example` for the full list. Critical:
 - `CLIENT_URL` / `CORS_ORIGINS` — frontend origin(s)
 - `SMTP_*` — transactional email
 - Optional: `RECAPTCHA_SECRET_KEY`, `SENTRY_DSN`, `STRIPE_SECRET_KEY`, Cloudinary
+- Chatbot: `CHAT_PROVIDER=stub`, `CHAT_MAX_HISTORY`, `OPENAI_API_KEY` (when LLM wired)
 - `ALLOW_MOCK_PAYMENT=true` — only if you need mock online pay in production (dev: automatic)
 
 ---
@@ -584,9 +634,10 @@ See `.env.example` for the full list. Critical:
 - CSRF (session-aware), rate limits, Helmet, input sanitization
 - **Inventory:** multi-warehouse rows + movement log; **add / remove / transfer** APIs; checkout decrements **default warehouse first** then others; returns restore to **default** DC
 - Cart, addresses, server-side checkout (tax, shipping, coupons)
-- Orders: COD, mock online, invoices, status emails, stock decrement/restore
-- Reviews, wishlist, returns, shop settings
-- Admin: users, seller approval, dashboard, audit logs, security events
+- Orders: **Stripe Checkout only**, invoices, status emails, stock decrement/restore
+- Reviews, wishlist, returns, shop settings, **Stripe payment status** for admin
+- **Blog CMS**, **chatbot** (stub provider), back-in-stock waitlist
+- Admin: users, seller approval, dashboard, audit logs, security events, notifications
 - Account export / delete / **deactivate**
 - **Not included:** production payment gateway wiring, frontend app
 

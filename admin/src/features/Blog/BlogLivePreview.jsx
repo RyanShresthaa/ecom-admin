@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
+
 import { cn } from '@/lib/utils'
 import { isHtmlContent } from '@/lib/blogContent'
+import { normalizeImageUrl } from '@/lib/imageUrl'
 
 const SECTION_LABELS = {
   title: 'Headline',
@@ -47,7 +50,7 @@ function formatBody(text) {
   if (isHtmlContent(text)) {
     return (
       <div
-        className="blog-rich prose prose-sm max-w-none text-slate-600"
+        className="blog-rich prose prose-sm max-w-none text-slate-600 [&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-md"
         dangerouslySetInnerHTML={{ __html: text }}
       />
     )
@@ -67,8 +70,14 @@ function formatBody(text) {
 export function BlogLivePreview({ form, activeSection }) {
   const title = form.title?.trim() || 'Your post title'
   const excerpt = form.excerpt?.trim() || 'A short teaser shown on the blog list page.'
-  const cover = form.coverImage?.trim()
+  const rawCover = form.coverImage?.trim()
+  const cover = normalizeImageUrl(rawCover) || ''
   const body = form.body?.trim()
+  const [coverBroken, setCoverBroken] = useState(false)
+
+  useEffect(() => {
+    setCoverBroken(false)
+  }, [cover])
 
   return (
     <Block className="space-y-3">
@@ -77,11 +86,18 @@ export function BlogLivePreview({ form, activeSection }) {
       </p>
       <article className="overflow-hidden rounded-xl border bg-slate-50/80 shadow-sm">
         <PreviewBlock section="cover" activeSection={activeSection} label={SECTION_LABELS.cover}>
-          {cover ? (
-            <img src={cover} alt="" className="h-40 w-full rounded-md object-cover" />
+          {cover && !coverBroken ? (
+            <img
+              src={cover}
+              alt=""
+              className="h-40 w-full rounded-md object-cover"
+              onError={() => setCoverBroken(true)}
+            />
           ) : (
-            <Block className="flex h-40 items-center justify-center rounded-md bg-slate-200/60 text-xs text-slate-500">
-              Cover image area
+            <Block className="flex h-40 items-center justify-center rounded-md bg-slate-200/60 px-4 text-center text-xs text-slate-500">
+              {coverBroken
+                ? 'Image link failed to load — use Upload or a direct image URL'
+                : 'Cover image area'}
             </Block>
           )}
         </PreviewBlock>

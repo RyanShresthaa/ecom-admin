@@ -110,10 +110,11 @@ function checkoutErrorStatus(error) {
 // POST /api/order/place-cod — places a cash-on-delivery order.
 export async function CashOnDeliveryOrderController(request, response) {
     try {
-        const { status, body } = await withCheckoutIdempotency(request, () =>
-            runCheckout(request, { paymentId: 'CASH', payment_status: 'CASH ON DELIVERY' }),
-        );
-        return response.status(status).json(body);
+        return response.status(400).json({
+            message: 'Cash/COD is disabled. Use Stripe.',
+            error: true,
+            success: false,
+        });
     } catch (error) {
         const status = checkoutErrorStatus(error);
         return response.status(status).json({ message: error.message || error, error: true, success: false });
@@ -230,17 +231,14 @@ export async function paymentController(request, response) {
 // POST /api/order/place — places order using unified payment method payload.
 export async function placeOrderController(request, response) {
     const method = String(request.body?.paymentMethod || '').toLowerCase();
-    if (method === 'cash') {
-        return CashOnDeliveryOrderController(request, response);
+    if (method !== 'stripe') {
+        return response.status(400).json({
+            message: 'Only Stripe payments are enabled.',
+            error: true,
+            success: false,
+        });
     }
-    if (method === 'stripe') {
-        return paymentController(request, response);
-    }
-    return response.status(400).json({
-        message: 'paymentMethod must be "cash" or "stripe"',
-        error: true,
-        success: false,
-    });
+    return paymentController(request, response);
 }
 
 /**

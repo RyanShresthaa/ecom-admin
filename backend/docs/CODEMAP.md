@@ -197,3 +197,18 @@ Numbered SQL — run via `npm run db:migrate`. Includes … **`017_scale_feature
 ## `docs/openapi/`
 
 OpenAPI path fragments merged into Swagger (see `config/swagger.js`).
+
+| File | Area |
+|------|------|
+| `health.paths.js` | Health probes |
+| `user.paths.js` | Auth |
+| `catalog.paths.js` | Products, categories |
+| `commerce.paths.js` | Cart, orders, shop, stock alerts |
+| `admin.paths.js` | Admin, payment, upload |
+| `inventory.paths.js` | Warehouses |
+| `feedback.paths.js` | Feedback |
+| `blog.paths.js` | Blog CMS |
+| `chat.paths.js` | Chatbot + staff review |
+| `sales.paths.js` | Quotations, invoices |
+| `purchases.paths.js` | Nepal VAT procurement |
+| `scale.paths.js` | Feature flags, MFA, FX, loyalty, push |

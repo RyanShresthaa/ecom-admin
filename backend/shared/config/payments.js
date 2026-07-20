@@ -15,4 +15,4 @@ export function isMockPaymentAllowed() {
 
 // User-facing fallback message when online payment provider is disabled.
 export const MOCK_PAYMENT_DISABLED_MSG =
-    'Online payment is not configured. Use cash/COD, or configure STRIPE_SECRET_KEY later.';
+    'Stripe is not configured. Set STRIPE_SECRET_KEY in backend/.env and restart the API.';

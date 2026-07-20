@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react'
-import { FloppyDisk, Plus, Trash, Percent, SpinnerGap } from '@phosphor-icons/react'
+import {
+  FloppyDisk,
+  Plus,
+  Trash,
+  Percent,
+  SpinnerGap,
+  CheckCircle,
+  WarningCircle,
+  ArrowSquareOut,
+  CreditCard,
+} from '@phosphor-icons/react'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -15,7 +26,8 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/common/PageHeader'
-import { useSettingsQuery, useSaveSettings } from '@/hooks/useSettings'
+import { useSettingsQuery, useSaveSettings, usePaymentStatusQuery } from '@/hooks/useSettings'
+import { cn } from '@/lib/utils'
 
 // Settings page — supported default currencies for store pricing and reporting.
 const CURRENCIES = [
@@ -51,6 +63,187 @@ const TIMEZONES = [
 ]
 
 let nextTaxId = 1000
+
+const STATUS_META = {
+  live: { label: 'Live — connected', variant: 'success' },
+  test: { label: 'Test mode — connected', variant: 'warning' },
+  mock: { label: 'Mock mode (dev only)', variant: 'secondary' },
+  disabled: { label: 'Not configured', variant: 'destructive' },
+}
+
+function StripePaymentsPanel() {
+  const { data, isLoading, isError, refetch, isFetching } = usePaymentStatusQuery()
+
+  if (isLoading) {
+    return <Skeleton className="h-72 w-full" />
+  }
+
+  if (isError || !data) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-sm text-muted-foreground">Could not load payment status.</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const meta = STATUS_META[data.status] || STATUS_META.disabled
+  const setupSteps = [
+    {
+      done: data.envVars?.find((v) => v.name === 'STRIPE_SECRET_KEY')?.configured,
+      title: 'Add STRIPE_SECRET_KEY to backend/.env',
+      detail: 'Get your secret key from the Stripe Dashboard → Developers → API keys.',
+    },
+    {
+      done: data.webhookConfigured,
+      title: 'Add STRIPE_WEBHOOK_SECRET (recommended)',
+      detail: 'Create a webhook endpoint in Stripe for payment confirmations.',
+    },
+    {
+      done: Boolean(data.currency),
+      title: 'Set checkout currency',
+      detail: `Checkout uses ${String(data.currency || 'usd').toUpperCase()} (from STRIPE_CURRENCY or store currency).`,
+    },
+    {
+      done: data.stripeConfigured,
+      title: 'Restart the API after updating .env',
+      detail: 'The backend loads Stripe keys on startup.',
+    },
+  ]
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader className="flex-row items-start justify-between space-y-0">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <CreditCard size={18} className="text-primary" />
+              <CardTitle>Stripe payments</CardTitle>
+            </div>
+            <CardDescription>
+              Customers pay through Stripe Checkout. Funds go to your Stripe account — not bank details
+              stored here.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={meta.variant}>{meta.label}</Badge>
+            <Button variant="outline" size="sm" disabled={isFetching} onClick={() => refetch()}>
+              {isFetching ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatusTile label="Provider" value="Stripe Checkout" />
+            <StatusTile label="Checkout currency" value={String(data.currency || 'usd').toUpperCase()} />
+            <StatusTile
+              label="Secret key"
+              value={data.secretKeyHint || (data.mockAllowed ? 'Mock (no key)' : 'Not set')}
+            />
+            <StatusTile label="Webhook" value={data.webhookConfigured ? 'Configured' : 'Not set'} />
+          </div>
+
+          {data.status === 'mock' && (
+            <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground">
+              <strong>Development mock mode.</strong> Orders can be placed without real Stripe keys in
+              non-production. Set <code className="text-xs">STRIPE_SECRET_KEY</code> before going live.
+            </div>
+          )}
+
+          {data.status === 'disabled' && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+              <strong className="text-destructive">Stripe is not configured.</strong> Checkout will fail
+              until you add API keys to <code className="text-xs">backend/.env</code>.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Setup checklist</CardTitle>
+          <CardDescription>Configure Stripe on the server — keys are never stored in this admin UI.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {setupSteps.map((step) => (
+            <div
+              key={step.title}
+              className={cn(
+                'flex gap-3 rounded-lg border px-4 py-3',
+                step.done ? 'border-success/30 bg-success/5' : 'border-border'
+              )}
+            >
+              {step.done ? (
+                <CheckCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-success" />
+              ) : (
+                <WarningCircle size={20} className="mt-0.5 shrink-0 text-muted-foreground" />
+              )}
+              <div>
+                <p className="text-sm font-medium">{step.title}</p>
+                <p className="text-xs text-muted-foreground">{step.detail}</p>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Stripe Dashboard</CardTitle>
+          <CardDescription>Manage API keys, payouts, and webhooks in Stripe.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <StripeLink href={data.links?.dashboard}>Open Stripe Dashboard</StripeLink>
+          <StripeLink href={data.links?.apiKeys}>API keys</StripeLink>
+          <StripeLink href={data.links?.webhooks}>Webhooks</StripeLink>
+          <StripeLink href={data.links?.docs}>Checkout docs</StripeLink>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Environment variables</CardTitle>
+          <CardDescription>Add these to <code className="text-xs">backend/.env</code> on your server.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="overflow-x-auto rounded-lg bg-muted px-4 py-3 text-xs leading-relaxed">
+{`STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_CURRENCY=usd`}
+          </pre>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Payout bank details are configured in Stripe Dashboard → Settings → Payouts, not in this app.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function StatusTile({ label, value }) {
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-sm font-medium">{value}</p>
+    </div>
+  )
+}
+
+function StripeLink({ href, children }) {
+  if (!href) return null
+  return (
+    <Button variant="outline" size="sm" className="gap-1.5" asChild>
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+        <ArrowSquareOut size={14} />
+      </a>
+    </Button>
+  )
+}
 
 // Settings page — manage store name, currency, region, timezone, and tax rules.
 export default function Settings() {
@@ -130,6 +323,7 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="tax">Tax rules</TabsTrigger>
+          <TabsTrigger value="payments">Payments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -288,6 +482,10 @@ export default function Settings() {
               ))}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="payments">
+          <StripePaymentsPanel />
         </TabsContent>
       </Tabs>
     </div>

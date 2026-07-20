@@ -1,5 +1,6 @@
 /**
  * /api/blog — customer read + staff CMS.
+ * @see controllers/blog.controller.js · OpenAPI: docs/openapi/blog.paths.js
  */
 import { Router } from 'express'
 import optionalAuth from '../../shared/middleware/optionalAuth.js'

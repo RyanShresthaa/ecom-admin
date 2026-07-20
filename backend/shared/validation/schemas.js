@@ -189,7 +189,7 @@ export const checkoutWithAddressBodySchema = z.object({
 
 /** POST /api/order/place — customer chooses cash or stripe */
 export const placeOrderBodySchema = checkoutWithAddressBodySchema.extend({
-    paymentMethod: z.enum(['cash', 'stripe']),
+    paymentMethod: z.enum(['stripe']),
 });
 
 /** POST /api/order/confirm-stripe — after Stripe Checkout redirect */
@@ -395,4 +395,16 @@ export const purchaseReturnLineSchema = z.object({
 export const purchaseReturnCreateBodySchema = z.object({
     reason: z.string().max(5000).optional(),
     lines: z.array(purchaseReturnLineSchema).min(1).max(200),
+});
+
+/** POST /api/chat/sessions */
+export const chatSessionCreateBodySchema = z.object({
+    title: z.string().trim().max(200).optional(),
+    guestToken: z.string().trim().max(64).optional(),
+});
+
+/** POST /api/chat/sessions/:id/messages */
+export const chatMessageBodySchema = z.object({
+    content: z.string().trim().min(1).max(8000),
+    guestToken: z.string().trim().max(64).optional(),
 });

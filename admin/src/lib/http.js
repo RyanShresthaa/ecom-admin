@@ -127,3 +127,38 @@ export async function request(path, { method = 'GET', body, params, token, heade
 
   return data
 }
+
+/** Multipart upload (e.g. images). Do not set Content-Type — browser adds boundary. */
+export async function uploadFormData(path, formData, { token, method = 'POST' } = {}) {
+  const base = getApiBaseUrl()
+  if (!base) throw new ApiNotConfiguredError()
+
+  const pathname = `${base}${path.startsWith('/') ? path : `/${path}`}`
+  const url = /^https?:\/\//i.test(base)
+    ? new URL(pathname)
+    : new URL(pathname, window.location.origin)
+
+  const authToken = getStoredToken(token)
+  const res = await fetch(url.toString(), {
+    method,
+    credentials: 'omit',
+    headers: {
+      Accept: 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: formData,
+  })
+
+  const contentType = res.headers.get('content-type') || ''
+  const data = contentType.includes('application/json') ? await res.json() : await res.text()
+
+  if (!res.ok) {
+    const message =
+      (typeof data === 'object' && data?.message) ||
+      (typeof data === 'string' && data) ||
+      `Upload failed (${res.status})`
+    throw new ApiError(message, { status: res.status, body: data })
+  }
+
+  return data
+}

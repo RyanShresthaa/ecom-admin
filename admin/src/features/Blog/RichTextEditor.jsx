@@ -5,6 +5,7 @@ import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
+import Image from '@tiptap/extension-image'
 import {
   TextB,
   TextItalic,
@@ -24,10 +25,12 @@ import {
   Minus,
   ArrowCounterClockwise,
   ArrowClockwise,
+  Image as ImageIcon,
 } from '@phosphor-icons/react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useUploadImage } from '@/hooks/useUpload'
 
 function ToolbarButton({ active, disabled, onClick, title, children }) {
   return (
@@ -52,6 +55,8 @@ function ToolbarDivider() {
 
 export function RichTextEditor({ value, onChange, onFocus, disabled }) {
   const lastExternalValue = useRef(value)
+  const imageInputRef = useRef(null)
+  const uploadImage = useUploadImage()
 
   const editor = useEditor({
     extensions: [
@@ -62,6 +67,11 @@ export function RichTextEditor({ value, onChange, onFocus, disabled }) {
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: { class: 'blog-inline-image' },
       }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder: 'Write your article…' }),
@@ -78,7 +88,7 @@ export function RichTextEditor({ value, onChange, onFocus, disabled }) {
     editorProps: {
       attributes: {
         class:
-          'prose prose-sm max-w-none min-h-[220px] px-3 py-3 focus:outline-none [&_p]:my-2 [&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_ul]:my-2 [&_ol]:my-2',
+          'prose prose-sm max-w-none min-h-[220px] px-3 py-3 focus:outline-none [&_p]:my-2 [&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_ul]:my-2 [&_ol]:my-2 [&_img]:my-3 [&_img]:max-w-full [&_img]:rounded-md',
       },
     },
   })
@@ -109,6 +119,19 @@ export function RichTextEditor({ value, onChange, onFocus, disabled }) {
       return
     }
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+  }
+
+  async function handleImageFile(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !editor) return
+    if (!file.type.startsWith('image/')) return
+    try {
+      const url = await uploadImage.mutateAsync(file)
+      editor.chain().focus().setImage({ src: url }).run()
+    } catch {
+      // toast handled by mutation
+    }
   }
 
   return (
@@ -256,6 +279,23 @@ export function RichTextEditor({ value, onChange, onFocus, disabled }) {
           >
             <LinkSimple size={16} />
           </ToolbarButton>
+
+          <ToolbarDivider />
+
+          <ToolbarButton
+            title="Insert image"
+            disabled={uploadImage.isPending}
+            onClick={() => imageInputRef.current?.click()}
+          >
+            <ImageIcon size={16} />
+          </ToolbarButton>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageFile}
+          />
         </div>
       )}
 

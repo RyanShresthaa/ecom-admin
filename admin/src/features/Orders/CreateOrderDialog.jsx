@@ -39,7 +39,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
   const [customerMenuOpen, setCustomerMenuOpen] = useState(false)
   const [items, setItems] = useState([{ ...EMPTY_ITEM }])
   const [paymentStatus, setPaymentStatus] = useState('Paid')
-  const [paymentMethod, setPaymentMethod] = useState('CASH')
+  const [paymentMethod, setPaymentMethod] = useState('CARD')
   const [deliveryStatus, setDeliveryStatus] = useState('Pending')
   const [note, setNote] = useState('')
   const customerBoxRef = useRef(null)
@@ -66,7 +66,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
       setCustomerMenuOpen(false)
       setItems([{ ...EMPTY_ITEM }])
       setPaymentStatus('Paid')
-      setPaymentMethod('CASH')
+      setPaymentMethod('CARD')
       setDeliveryStatus('Pending')
       setNote('')
     }
@@ -290,7 +290,7 @@ export function CreateOrderDialog({ open, onOpenChange }) {
               <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
+                  {PAYMENT_METHODS.filter((m) => m.value === 'CARD').map((m) => (
                     <SelectItem key={m.value} value={m.value}>
                       {m.label}
                     </SelectItem>

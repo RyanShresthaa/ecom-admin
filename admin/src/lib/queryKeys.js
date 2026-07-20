@@ -40,6 +40,7 @@ export const queryKeys = {
   },
   settings: {
     detail: ['settings'],
+    payments: ['settings', 'payments'],
   },
   search: (query) => ['search', query],
   notifications: {

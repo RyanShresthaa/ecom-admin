@@ -19,6 +19,7 @@ import shopRouter from './routes/shop.route.js'
 import feedbackRouter from './routes/feedback.route.js'
 import stockAlertRouter from './routes/stockAlert.route.js'
 import blogRouter from './routes/blog.route.js'
+import chatRouter from './routes/chat.route.js'
 import {
   flagsRouter,
   mfaRouter,
@@ -66,6 +67,8 @@ customerRouter.use('/feedback', feedbackRouter)
 customerRouter.use('/stock-alerts', stockAlertRouter)
 // Mount blog CMS + public read endpoints.
 customerRouter.use('/blog', blogRouter)
+// Mount storefront chatbot endpoints.
+customerRouter.use('/chat', chatRouter)
 
 // Scale / marketplace foundations (feature-flag gated)
 // Mount feature flag and runtime toggle endpoints.

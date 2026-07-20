@@ -31,24 +31,28 @@ export function formatNumber(value) {
  * Format a date string into a short, readable form.
  */
 export function formatDate(date) {
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return '—'
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(new Date(date))
+  }).format(parsed)
 }
 
 /**
  * Format a date string with both date and time.
  */
 export function formatDateTime(date) {
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return '—'
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-  }).format(new Date(date))
+  }).format(parsed)
 }
 
 /**
@@ -67,5 +71,7 @@ export function getInitials(name = '') {
  * Format a date into relative time, e.g. "3 hours ago".
  */
 export function formatRelativeTime(date) {
-  return formatDistanceToNow(new Date(date), { addSuffix: true })
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return '—'
+  return formatDistanceToNow(parsed, { addSuffix: true })
 }

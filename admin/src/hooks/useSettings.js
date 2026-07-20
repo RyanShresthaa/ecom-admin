@@ -12,6 +12,15 @@ export function useSettingsQuery() {
   })
 }
 
+// Settings page query: fetch Stripe connection status (no secrets).
+export function usePaymentStatusQuery() {
+  return useQuery({
+    queryKey: queryKeys.settings.payments,
+    queryFn: () => api.settings.paymentStatus(),
+    staleTime: 30_000,
+  })
+}
+
 // Settings page mutation: persist settings changes.
 export function useSaveSettings() {
   const queryClient = useQueryClient()

@@ -1,5 +1,6 @@
 /**
  * /api/stock-alerts — customer back-in-stock waitlist.
+ * @see controllers/stockAlert.controller.js · OpenAPI: docs/openapi/commerce.paths.js
  */
 import { Router } from 'express'
 import optionalAuth from '../../shared/middleware/optionalAuth.js'

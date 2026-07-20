@@ -2,7 +2,7 @@
  * Admin UI → shared backend (`backend/`) adapter.
  * Keeps the dashboard's expected shapes while calling Postgres API routes.
  */
-import { request } from '@/lib/http'
+import { request, uploadFormData } from '@/lib/http'
 import { createBackendApiHelpers } from '@/lib/api/backend-api.helpers'
 
 // Main Admin API adapter used by the app.
@@ -1067,6 +1067,10 @@ export const backendApi = {
     async get() {
       return fetchSettingsCached()
     },
+    async paymentStatus() {
+      const res = await request('/shop/payments/status')
+      return res.data || {}
+    },
     async save(payload) {
       const settings = {
         currency: payload.currency,
@@ -1132,6 +1136,17 @@ export const backendApi = {
     async markAllRead() {
       await request('/admin/notifications/read-all', { method: 'POST' })
       return { success: true }
+    },
+  },
+
+  upload: {
+    async image(file) {
+      const formData = new FormData()
+      formData.append('image', file)
+      const res = await uploadFormData('/upload/upload', formData)
+      const url = typeof res.data === 'string' ? res.data : res.data?.url || res.data?.secure_url
+      if (!url) throw new Error('Upload succeeded but no image URL was returned')
+      return url
     },
   },
 

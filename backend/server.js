@@ -10,7 +10,9 @@ import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import hpp from 'hpp'
 import os from 'os'
+import path from 'path'
 import morgan from 'morgan'
+import { fileURLToPath } from 'url'
 
 import pool from './shared/config/connectDB.js'
 import { validateEnv } from './shared/config/validateEnv.js'
@@ -73,6 +75,10 @@ app.use(cookieParser())
 app.use(sanitizeInput)
 app.use(securityRequestLogger)
 app.use(speedLimiter)
+
+// Local image uploads (dev fallback when Cloudinary is not configured)
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
 /** Mount the same API under /api and /api/v1 */
 function mountApi(basePath) {

@@ -59,7 +59,7 @@
  * /api/order/place:
  *   post:
  *     tags: [Orders]
- *     summary: Place order with paymentMethod cash or stripe
+ *     summary: Place order via Stripe Checkout (paymentMethod must be stripe)
  *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
  *     parameters:
  *       - $ref: '#/components/parameters/IdempotencyKeyHeader'
@@ -74,26 +74,23 @@
  *                 properties:
  *                   paymentMethod:
  *                     type: string
- *                     enum: [cash, stripe]
+ *                     enum: [stripe]
  *     responses:
- *       200: { description: Order placed (cash) or Stripe session (stripe) }
+ *       200: { description: Stripe Checkout session URL }
  *       409: { description: Idempotency conflict }
  *       503: { description: Stripe not configured (production) }
  *
  * /api/order/place-cod:
  *   post:
  *     tags: [Orders]
- *     summary: Place cash / COD order (alias of paymentMethod=cash)
+ *     summary: Cash/COD checkout (disabled — returns 400)
  *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
- *     parameters:
- *       - $ref: '#/components/parameters/IdempotencyKeyHeader'
  *     requestBody:
  *       content:
  *         application/json:
  *           schema: { $ref: '#/components/schemas/CheckoutBody' }
  *     responses:
- *       200: { description: Order placed }
- *       409: { description: Idempotency conflict }
+ *       400: { description: Cash/COD is disabled. Use Stripe. }
  *
  * /api/order/place-online:
  *   post:
@@ -189,6 +186,107 @@
  *     responses:
  *       200: { description: Cart updated }
  *
+ * /api/order/admin-list:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Paginated admin order list (staff)
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: Orders with filters }
+ *
+ * /api/order/group/{orderId}:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Order group detail (staff)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Group + line items }
+ *
+ * /api/order/sales-series:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Dashboard sales time series (staff)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema: { type: integer, default: 30 }
+ *     responses:
+ *       200: { description: Daily revenue/count series }
+ *
+ * /api/order/by-product/{productId}:
+ *   get:
+ *     tags: [Orders]
+ *     summary: Orders containing a product (staff)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Order rows }
+ *
+ * /api/order/admin-create:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Manually create order (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       201: { description: Order created }
+ *
+ * /api/order/expected-delivery:
+ *   put:
+ *     tags: [Orders]
+ *     summary: Set expected delivery date (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Updated }
+ *
+ * /api/order/notes/{orderGroupId}:
+ *   get:
+ *     tags: [Orders]
+ *     summary: List internal order notes (staff)
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: orderGroupId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Notes }
+ *
+ * /api/order/notes:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Add internal order note (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       201: { description: Note added }
+ *
+ * /api/stock-alerts/subscribe:
+ *   post:
+ *     tags: [Shop]
+ *     summary: Join back-in-stock waitlist
+ *     description: Optional auth — logged-in users linked by user_id; guests by email.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [productId, email]
+ *             properties:
+ *               productId: { type: string }
+ *               email: { type: string, format: email }
+ *     responses:
+ *       201: { description: Subscribed }
+ *       200: { description: Already subscribed }
+ *
  * /api/shop/shipping/zones:
  *   get:
  *     tags: [Shop]
@@ -196,6 +294,44 @@
  *     security: [{ cookieAuth: [] }]
  *     responses:
  *       200: { description: Zones }
+ *   post:
+ *     tags: [Shop]
+ *     summary: Create shipping zone (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       201: { description: Created }
+ *   put:
+ *     tags: [Shop]
+ *     summary: Update shipping zone (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Updated }
+ *   delete:
+ *     tags: [Shop]
+ *     summary: Delete shipping zone (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Deleted }
+ *
+ * /api/shop/shipping/rates:
+ *   post:
+ *     tags: [Shop]
+ *     summary: Create shipping rate (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       201: { description: Created }
+ *   put:
+ *     tags: [Shop]
+ *     summary: Update shipping rate (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Updated }
+ *   delete:
+ *     tags: [Shop]
+ *     summary: Delete shipping rate (staff)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     responses:
+ *       200: { description: Deleted }
  *
  * /api/shop/shipping/quote:
  *   post:
@@ -390,6 +526,24 @@
  *     security: [{ cookieAuth: [] }]
  *     responses:
  *       200: { description: Settings }
+ *
+ * /api/shop/payments/status:
+ *   get:
+ *     tags: [Shop]
+ *     summary: Stripe connection status for admin (no secrets)
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: live / test / mock / disabled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccess'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/PaymentStatus'
  */
 
 export {};

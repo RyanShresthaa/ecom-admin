@@ -8,6 +8,7 @@ import { validateBody } from '../../shared/middleware/validate.js';
 import { shippingZoneBodySchema, shippingRateBodySchema } from '../../shared/validation/schemas.js';
 import {
     getAdminSettingsController,
+    getPaymentStatusController,
     getPublicSettingsController,
     updateSettingsController,
 } from '../controllers/settings.controller.js';
@@ -29,6 +30,8 @@ shopRouter.get('/settings', getPublicSettingsController);
 shopRouter.get('/settings/admin', auth, staff, getAdminSettingsController);
 // PUT /settings - update admin settings (requires auth + staff).
 shopRouter.put('/settings', auth, staff, updateSettingsController);
+// GET /payments/status - Stripe connection status for admin (requires auth + staff).
+shopRouter.get('/payments/status', auth, staff, getPaymentStatusController);
 
 // Shipping zones / rates
 // GET /shipping/zones - list shipping zones (requires auth + staff).

@@ -42,18 +42,22 @@ Same process, same Postgres. Frontends:
 | `/api/review` | Reviews |
 | `/api/wishlist` | Wishlist |
 | `/api/return` | Returns |
-| `/api/shop` | Shop settings |
+| `/api/shop` | Shop settings, Stripe status, shipping |
 | `/api/feedback` | Feedback |
 | `/api/upload` | Uploads (staff-gated) |
+| `/api/stock-alerts` | Back-in-stock waitlist |
+| `/api/blog` | Blog CMS + public read |
+| `/api/chat` | Storefront chatbot |
 
 ## Admin mounts (`backend/admin`)
 
 | Prefix | Purpose |
 |--------|---------|
-| `/api/admin` | Dashboard, users, sellers |
+| `/api/admin` | Dashboard, users, sellers, notifications |
 | `/api/inventory` | Warehouses / stock |
 | `/api/sales` | Sales docs |
 | `/api/purchases` | Purchase / VAT |
+| `/api/admin/chat` | Staff chat session review |
 
 ## Shared
 

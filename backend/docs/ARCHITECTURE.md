@@ -8,7 +8,7 @@
 | [http://localhost:5000/api/docs.json](http://localhost:5000/api/docs.json) | Raw OpenAPI JSON |
 | `config/swaggerDefinition.js` | Shared schemas, tags, security |
 | `config/swagger.js` | Merges spec via swagger-jsdoc |
-| `docs/openapi/*.paths.js` | Path definitions by domain |
+| `docs/openapi/*.paths.js` | Path definitions by domain (chat, blog, sales, purchases, scale, …) |
 | `routes/*.js` | HTTP wiring; headers link to Swagger tags |
 
 When you add a route:

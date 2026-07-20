@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RichTextEditor } from '@/features/Blog/RichTextEditor'
+import { CoverImageField } from '@/features/Blog/CoverImageField'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent } from '@/components/ui/card'
 import { BlogLivePreview } from '@/features/Blog/BlogLivePreview'
@@ -30,8 +31,8 @@ const EMPTY = {
 const FIELD_HELP = {
   title: 'The main headline customers see at the top of the article.',
   excerpt: 'One or two sentences — shown on the blog list before they click in.',
-  coverImage: 'Paste an image URL (optional). Shows as a banner on the article.',
-  body: 'Use the toolbar for bold, lists, headings, links, and more — like Word.',
+  coverImage: 'Upload from your device (recommended), or paste a direct image URL. Google Images page links will not work — right-click → Copy image address.',
+  body: 'Use the toolbar for bold, lists, headings, links, images, and more — like Word.',
   publish: 'Turn on when you are ready for customers to read it on the store.',
 }
 
@@ -148,11 +149,9 @@ export default function BlogEditorPage() {
             activeSection={activeSection}
             onFocus={setActiveSection}
           >
-            <Input
+            <CoverImageField
               value={form.coverImage}
-              onChange={(e) => setField('coverImage', e.target.value)}
-              placeholder="https://…"
-              type="url"
+              onChange={(url) => setField('coverImage', url)}
               disabled={!canWrite}
             />
           </Field>

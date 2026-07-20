@@ -18,9 +18,10 @@ const ALLOWED_TAGS = [
   'blockquote',
   'hr',
   'a',
+  'img',
 ]
 
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'style']
+const ALLOWED_ATTR = ['href', 'target', 'rel', 'style', 'src', 'alt']
 
 export function isHtmlContent(text) {
   return /<[a-z][\s\S]*>/i.test(String(text || ''))

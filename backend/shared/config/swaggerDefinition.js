@@ -14,7 +14,8 @@ Production-ready e-commerce REST API (PostgreSQL, Express).
 |-------|--------|
 | **Auth** | Cookies \`accessToken\`, \`refreshToken\` |
 | **CSRF** | Header \`X-CSRF-Token\` when session cookies exist |
-| **Checkout** | Optional \`Idempotency-Key\` header |
+| **Checkout** | Stripe only (\`paymentMethod: "stripe"\`); optional \`Idempotency-Key\` header |
+| **Chat (guest)** | Header \`X-Chat-Guest-Token\` after \`POST /api/chat/sessions\` |
 | **Roles** | User, Seller, Admin |
 
 Docs: \`docs/README.md\` · Deploy: \`docs/DEPLOYMENT.md\`
@@ -43,6 +44,11 @@ Docs: \`docs/README.md\` · Deploy: \`docs/DEPLOYMENT.md\`
         { name: 'Upload', description: 'File upload' },
         { name: 'Feedback', description: 'Customer feedback' },
         { name: 'Inventory', description: 'Warehouses and stock movements' },
+        { name: 'Blog', description: 'Blog CMS and public posts' },
+        { name: 'Chat', description: 'Storefront chatbot (stub provider; swap LLM later)' },
+        { name: 'Sales', description: 'Quotations, formal invoices, credit notes' },
+        { name: 'Purchases', description: 'Nepal VAT procurement (suppliers, bills, returns)' },
+        { name: 'Scale', description: 'Feature flags, MFA, FX, loyalty, reservations, push (gated)' },
     ],
     components: {
         securitySchemes: {
@@ -101,6 +107,114 @@ Docs: \`docs/README.md\` · Deploy: \`docs/DEPLOYMENT.md\`
                     },
                 },
             },
+            ChatbotStatus: {
+                type: 'object',
+                properties: {
+                    provider: { type: 'string', enum: ['stub', 'openai'], example: 'stub' },
+                    openaiConfigured: { type: 'boolean' },
+                    maxHistory: { type: 'integer', example: 20 },
+                },
+            },
+            ChatSession: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    userId: { type: 'integer', nullable: true },
+                    title: { type: 'string' },
+                    provider: { type: 'string' },
+                    status: { type: 'string', enum: ['active', 'closed'] },
+                    messageCount: { type: 'integer' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                },
+            },
+            ChatSessionAdmin: {
+                allOf: [
+                    { $ref: '#/components/schemas/ChatSession' },
+                    {
+                        type: 'object',
+                        properties: {
+                            userName: { type: 'string', nullable: true },
+                            userEmail: { type: 'string', format: 'email', nullable: true },
+                        },
+                    },
+                ],
+            },
+            ChatMessage: {
+                type: 'object',
+                properties: {
+                    id: { type: 'integer' },
+                    sessionId: { type: 'string', format: 'uuid' },
+                    role: { type: 'string', enum: ['user', 'assistant', 'system'] },
+                    content: { type: 'string' },
+                    provider: { type: 'string' },
+                    metadata: { type: 'object' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                },
+            },
+            ChatSessionCreateBody: {
+                type: 'object',
+                properties: {
+                    title: { type: 'string', maxLength: 200 },
+                    guestToken: { type: 'string', description: 'Optional body fallback for guest auth' },
+                },
+            },
+            ChatMessageBody: {
+                type: 'object',
+                required: ['content'],
+                properties: {
+                    content: { type: 'string', minLength: 1, maxLength: 8000 },
+                    guestToken: { type: 'string', description: 'Optional body fallback for guest auth' },
+                },
+            },
+            PaymentStatus: {
+                type: 'object',
+                properties: {
+                    provider: { type: 'string', example: 'stripe' },
+                    status: { type: 'string', enum: ['live', 'test', 'mock', 'disabled'] },
+                    stripeConfigured: { type: 'boolean' },
+                    mockAllowed: { type: 'boolean' },
+                    webhookConfigured: { type: 'boolean' },
+                    currency: { type: 'string', example: 'usd' },
+                    secretKeyHint: { type: 'string', nullable: true },
+                    checkoutFlow: { type: 'string', example: 'stripe_checkout' },
+                },
+            },
+            BlogPostSummary: {
+                type: 'object',
+                properties: {
+                    id: { type: 'integer' },
+                    title: { type: 'string' },
+                    slug: { type: 'string' },
+                    excerpt: { type: 'string' },
+                    published: { type: 'boolean' },
+                    publishedAt: { type: 'string', format: 'date-time', nullable: true },
+                },
+            },
+            BlogPost: {
+                allOf: [
+                    { $ref: '#/components/schemas/BlogPostSummary' },
+                    {
+                        type: 'object',
+                        properties: {
+                            content: { type: 'string' },
+                            coverImageUrl: { type: 'string', nullable: true },
+                            authorId: { type: 'integer', nullable: true },
+                        },
+                    },
+                ],
+            },
+            BlogPostBody: {
+                type: 'object',
+                properties: {
+                    title: { type: 'string' },
+                    slug: { type: 'string' },
+                    excerpt: { type: 'string' },
+                    content: { type: 'string' },
+                    coverImageUrl: { type: 'string' },
+                    published: { type: 'boolean' },
+                },
+            },
         },
         parameters: {
             IdempotencyKeyHeader: {
@@ -108,6 +222,13 @@ Docs: \`docs/README.md\` · Deploy: \`docs/DEPLOYMENT.md\`
                 in: 'header',
                 required: false,
                 schema: { $ref: '#/components/schemas/IdempotencyKey' },
+            },
+            ChatGuestTokenHeader: {
+                name: 'X-Chat-Guest-Token',
+                in: 'header',
+                required: false,
+                schema: { type: 'string' },
+                description: 'Guest session token from POST /api/chat/sessions (required for anonymous access)',
             },
         },
     },
