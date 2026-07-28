@@ -1,0 +1,18 @@
+import { lazy } from 'react'
+
+export const Dashboard = lazy(() => import('@/pages/Dashboard/index.jsx'))
+export const Products = lazy(() => import('@/pages/Products/index.jsx'))
+export const Categories = lazy(() => import('@/pages/Categories/index.jsx'))
+export const Orders = lazy(() => import('@/pages/Orders/index.jsx'))
+export const Inventory = lazy(() => import('@/pages/Inventory/index.jsx'))
+export const Coupons = lazy(() => import('@/pages/Coupons/index.jsx'))
+export const Returns = lazy(() => import('@/pages/Returns/index.jsx'))
+export const Feedback = lazy(() => import('@/pages/Feedback/index.jsx'))
+export const GoogleReviews = lazy(() => import('@/pages/GoogleReviews/index.jsx'))
+export const Blog = lazy(() => import('@/pages/Blog/index.jsx'))
+export const Newsletter = lazy(() => import('@/pages/Newsletter/index.jsx'))
+export const AuditLogs = lazy(() => import('@/pages/AuditLogs/index.jsx'))
+export const SecurityEvents = lazy(() => import('@/pages/SecurityEvents/index.jsx'))
+export const Settings = lazy(() => import('@/pages/Settings/index.jsx'))
+export const Profile = lazy(() => import('@/pages/Profile/index.jsx'))
+export const Login = lazy(() => import('@/pages/Login/index.jsx'))

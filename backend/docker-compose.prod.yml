@@ -1,0 +1,130 @@
+# Production-oriented compose using Docker secrets (not plain env for passwords).
+# Usage:
+#   mkdir -p secrets && printf '...' > secrets/db_password.txt
+#   printf '...' > secrets/jwt_access.txt
+#   printf '...' > secrets/jwt_refresh.txt
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Prefer a managed Postgres + secret manager in real prod; this is a hardened VPS pattern.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: app
+    secrets:
+      - db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # No host port — API reaches db on the Docker network only
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build: .
+    ports:
+      - '127.0.0.1:5000:5000'
+    environment:
+      NODE_ENV: production
+      STRICT_PRODUCTION: ${STRICT_PRODUCTION:-false}
+      ENABLE_SWAGGER: 'false'
+      PORT: 5000
+      BCRYPT_COST: '12'
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: app
+      DB_USER: postgres
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      DB_SSL: 'false'
+      DB_POOL_MAX: 20
+      SECRET_KEY_ACCESS_TOKEN_FILE: /run/secrets/jwt_access
+      SECRET_KEY_REFRESH_TOKEN_FILE: /run/secrets/jwt_refresh
+      TRUST_PROXY_HOPS: 1
+      UV_THREADPOOL_SIZE: 8
+      EMAIL_USE_QUEUE: 'true'
+      ALLOW_MOCK_PAYMENT: 'false'
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      API_PUBLIC_ORIGIN: ${API_PUBLIC_ORIGIN:-http://127.0.0.1:5000}
+      METRICS_BEARER_TOKEN_FILE: /run/secrets/metrics_token
+      REDIS_URL: redis://redis:6379
+      RATE_LIMIT_REQUIRE_REDIS: 'true'
+    secrets:
+      - db_password
+      - jwt_access
+      - jwt_refresh
+      - metrics_token
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: node scripts/docker-entrypoint.mjs
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:5000/api/health/ready']
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    restart: unless-stopped
+    stop_grace_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '256mb', '--maxmemory-policy', 'allkeys-lru']
+    volumes:
+      - redisdata:/data
+    # Bind localhost only — not exposed publicly
+    ports:
+      - '127.0.0.1:6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  email-worker:
+    build: .
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: app
+      DB_USER: postgres
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      DB_SSL: 'false'
+      EMAIL_USE_QUEUE: 'true'
+      SECRET_KEY_ACCESS_TOKEN_FILE: /run/secrets/jwt_access
+      SECRET_KEY_REFRESH_TOKEN_FILE: /run/secrets/jwt_refresh
+    secrets:
+      - db_password
+      - jwt_access
+      - jwt_refresh
+    depends_on:
+      api:
+        condition: service_healthy
+    command: node scripts/email-worker-entrypoint.mjs
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  jwt_access:
+    file: ./secrets/jwt_access.txt
+  jwt_refresh:
+    file: ./secrets/jwt_refresh.txt
+  metrics_token:
+    file: ./secrets/metrics_token.txt
+
+volumes:
+  pgdata:
+  redisdata:

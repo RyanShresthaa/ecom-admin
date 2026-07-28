@@ -1,0 +1,134 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Icon } from '@iconify/react';
+import type { Product } from '@/shared/data/productData';
+import { useCart } from '@/shared/context/CartContext';
+import { useWishlist } from '@/shared/context/WishlistContext';
+import { useProductPrice } from '@/shared/hooks/useProductPrice';
+import Button from '@/shared/ui/Button';
+
+interface ProductCardProps {
+  product: Product;
+}
+
+export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const [added, setAdded] = useState(false);
+  const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const priceLabel = useProductPrice(product);
+
+  const isWishlisted = isInWishlist(product.id) || isInWishlist(product.slug);
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product);
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(product, 1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  };
+
+  return (
+    <div className="group bg-white rounded-2xl border border-primary/10 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:shadow-md hover:border-primary/20 h-full select-none">
+      <div>
+        {/* Image Container */}
+        <div className="relative w-full aspect-[4/3] overflow-hidden bg-[#FAF6F2]">
+          <Link href={`/products/${product.slug}`} className="block relative w-full h-full">
+            {product.image ? (
+              <Image
+                src={product.image}
+                alt={product.name}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs text-primary/50">
+                No image
+              </div>
+            )}
+          </Link>
+        </div>
+
+        {/* Product Details */}
+        <div className="p-4 sm:p-5 flex flex-col items-start text-left gap-1.5">
+          <Link href={`/products/${product.slug}`}>
+            <h4 className="font-heading font-semibold text-primary-dark text-sm sm:text-base leading-tight hover:text-primary transition-colors cursor-pointer line-clamp-1">
+              {product.name}
+            </h4>
+          </Link>
+
+          {/* Star Rating */}
+          <div className="flex items-center text-[#c89b5d] text-xs gap-0.5">
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
+          </div>
+
+          {/* Category & Location */}
+          <div className="flex flex-col gap-0.5 font-secondary text-[10px] sm:text-[11px] text-body/75 tracking-wide leading-tight">
+            <span>{product.category}</span>
+            <span>{product.location}</span>
+          </div>
+
+          {/* Price & Wishlist Row */}
+          <div className="w-full flex items-center justify-between mt-1">
+            <span className="font-secondary font-bold text-primary text-[15px] sm:text-[16px] leading-tight">
+              {priceLabel}
+            </span>
+
+            <button
+              type="button"
+              onClick={handleWishlistToggle}
+              className={`p-1 rounded-full transition-colors cursor-pointer ${
+                isWishlisted ? 'text-red-500' : 'text-primary hover:text-red-500'
+              }`}
+              aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              <Icon
+                icon={isWishlisted ? 'ph:heart-fill' : 'ph:heart'}
+                className="w-5 h-5 transition-transform duration-300 active:scale-125"
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons Row */}
+      <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-1 flex items-center gap-2 w-full">
+        <Link href={`/products/${product.slug}`} className="flex-1 min-w-0">
+          <Button
+            variant="primary"
+            className="w-full !px-1.5 !py-2.5 text-[9.5px] sm:text-[10.5px] tracking-wide whitespace-nowrap"
+          >
+            View Product
+          </Button>
+        </Link>
+
+        <div className="flex-1 min-w-0">
+          <Button
+            variant="secondary"
+            onClick={handleAddToCart}
+            className={`w-full !px-1.5 !py-2.5 text-[9.5px] sm:text-[10.5px] tracking-wide whitespace-nowrap ${
+              added ? 'bg-emerald-700 border-emerald-700 text-white hover:bg-emerald-800' : ''
+            }`}
+          >
+            {added ? 'Added ✓' : 'Add to Cart'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProductCard;

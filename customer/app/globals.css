@@ -1,0 +1,293 @@
+@import "tailwindcss";
+
+/* ========================================
+   FONTS
+======================================== */
+
+@font-face {
+  font-family: "PT Serif";
+  src: url("/fonts/PT_Serif/PTSerif-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  src: url("/fonts/PT_Serif/PTSerif-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  src: url("/fonts/PT_Serif/PTSerif-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PT Serif";
+  src: url("/fonts/PT_Serif/PTSerif-BoldItalic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ========================================
+   ROOT DESIGN TOKENS
+======================================== */
+
+:root {
+  color-scheme: light !important;
+
+  /* ── Brand Colors ── */
+  /* Terracotta — main brand color */
+  --primary: #8C523A;
+  /* Dark terracotta / deep warm brown */
+  --primary-dark: #4E291B;
+  /* Medium warm terracotta */
+  --primary-mid: #A6674E;
+  /* Light/vibrant terracotta (hover, highlights) */
+  --primary-light: #C2836B;
+  /* Pale terracotta tint (soft backgrounds, chips) */
+  --primary-lighter: #F5ECE8;
+
+  --primary-heading: #c89b5d;
+
+  /* ── Accent / Secondary (Beige) ── */
+  --accent: #E6D5C3;
+  --accent-dark: #BCA893;
+  --accent-light: #F3EBE2;
+  --accent-lighter: #FAF7F4;
+
+  --secondary: #E6D5C3;
+  --secondary-dark: #BCA893;
+  --secondary-light: #F3EBE2;
+  --secondary-lighter: #FAF7F4;
+
+  /* ── Neutrals ── */
+  --background: #FAF6F2;
+  --surface: #8C523A;
+  --foreground: #2A170F;
+
+  /* ── Text ── */
+  --text-heading: #4E291B;
+  --text-body: #664132;
+  --text-muted: #9E7D6F;
+
+  /* ── Borders ── */
+  --border: rgba(140, 82, 58, 0.18);
+
+  /* ── Radius ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* ── Shadows ── */
+  --shadow-soft: 0 18px 40px rgba(78, 41, 27, 0.12);
+
+  /* ── Layout ── */
+  --container: 1450px;
+}
+
+
+
+/* ========================================
+   TAILWIND THEME TOKENS
+======================================== */
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-mid: var(--primary-mid);
+  --color-primary-light: var(--primary-light);
+  --color-primary-lighter: var(--primary-lighter);
+  --color-primary-heading: var(--primary-heading);
+
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-light: var(--accent-light);
+  --color-accent-lighter: var(--accent-lighter);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-dark: var(--secondary-dark);
+  --color-secondary-light: var(--secondary-light);
+  --color-secondary-lighter: var(--secondary-lighter);
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+
+  --color-heading: var(--text-heading);
+  --color-body: var(--text-body);
+  --color-muted: var(--text-muted);
+
+  --color-border: var(--border);
+
+  --font-primary: var(--font-geist-sans), sans-serif;
+  --font-secondary: var(--font-geist-sans), sans-serif;
+  --font-heading: "PT Serif", serif;
+  --font-calligraphy: "PT Serif", serif;
+}
+
+/* ========================================
+   BASE STYLES
+======================================== */
+
+html {
+  color-scheme: light !important;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-primary);
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+}
+
+/* ========================================
+   TYPOGRAPHY
+======================================== */
+
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading) !important;
+    color: var(--text-heading);
+    line-height: 1.2;
+  }
+
+  p {
+    font-family: var(--font-secondary);
+    color: var(--text-body);
+    line-height: 1.6;
+  }
+}
+
+/* ========================================
+   REUSABLE UTILITIES
+======================================= */
+
+.container-custom {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+
+/* Terracotta gradient for text highlights */
+.text-gradient {
+  background: linear-gradient(to bottom, #8C523A, #C2836B);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Terracotta Dark scrim used on hero images bottom fade */
+.gradient-smooth-bottom {
+  background: linear-gradient(to top,
+      #1D0B05 0%,
+      rgba(29, 11, 5, 0.98) 8%,
+      rgba(38, 15, 7, 0.92) 20%,
+      rgba(78, 41, 27, 0.75) 38%,
+      rgba(140, 82, 58, 0.45) 58%,
+      rgba(140, 82, 58, 0.18) 78%,
+      rgba(140, 82, 58, 0) 100%);
+}
+
+/* Terracotta Dark scrim used on hero images top fade */
+.gradient-smooth-top {
+  background: linear-gradient(to bottom,
+      #1D0B05 0%,
+      rgba(29, 11, 5, 0.98) 8%,
+      rgba(38, 15, 7, 0.92) 20%,
+      rgba(78, 41, 27, 0.75) 38%,
+      rgba(140, 82, 58, 0.45) 58%,
+      rgba(140, 82, 58, 0.18) 78%,
+      rgba(140, 82, 58, 0) 100%);
+}
+
+
+
+/* ========================================
+   CARDS
+======================================== */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+
+/* ========================================
+   SELECTION
+======================================== */
+
+/* Selected text uses brand terracotta with light text */
+::selection {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+/* bg-white stays white (light theme now) */
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+[class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.text-neutral-950,
+.text-neutral-900,
+.text-neutral-800,
+.text-neutral-700,
+.text-neutral-600,
+.text-neutral-500,
+.text-neutral-400,
+.text-neutral-300,
+.text-neutral-200 {
+  color: var(--text-body) !important;
+}
+
+.border-neutral-200,
+.border-neutral-300,
+.border-neutral-800,
+.border-white {
+  border-color: var(--border) !important;
+}
+
+/* ========================================
+   SCROLLBAR
+======================================== */
+
+/* Hide scrollbar completely for all elements and browsers */
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+* {
+  -ms-overflow-style: none !important;
+  /* IE and Edge */
+  scrollbar-width: none !important;
+  /* Firefox */
+}

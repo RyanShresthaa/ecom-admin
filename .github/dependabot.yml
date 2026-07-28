@@ -1,0 +1,37 @@
+# Dependabot — npm + GitHub Actions
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, backend]
+
+  - package-ecosystem: npm
+    directory: /customer
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, customer]
+
+  - package-ecosystem: npm
+    directory: /admin-dashboard
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, admin]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    labels: [dependencies, ci]
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    labels: [dependencies, docker]

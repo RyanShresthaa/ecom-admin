@@ -1,0 +1,153 @@
+# Reverse proxy — HTTPS termination, compression, health probe, docs lockdown
+# Replace api.yourdomain.com and certificate paths.
+# Certbot: certbot --nginx -d api.yourdomain.com
+
+upstream app_api {
+    server 127.0.0.1:5000;
+    keepalive 32;
+}
+
+# Prefer modern TLS; disable weak protocols
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 1d;
+ssl_session_tickets off;
+
+# OCSP stapling (requires valid chain)
+ssl_stapling on;
+ssl_stapling_verify on;
+resolver 1.1.1.1 8.8.8.8 valid=300s;
+resolver_timeout 5s;
+
+gzip on;
+gzip_vary on;
+gzip_proxied any;
+gzip_comp_level 5;
+gzip_min_length 256;
+gzip_types
+    text/plain
+    text/css
+    text/javascript
+    application/javascript
+    application/json
+    application/xml
+    image/svg+xml;
+
+server {
+    listen 443 ssl http2;
+    server_name api.yourdomain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
+
+    # Security headers (supplement Helmet on the app)
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    client_max_body_size 2m;
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 60s;
+
+    # External uptime / LB health (no auth)
+    location = /api/health {
+        proxy_pass http://app_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        access_log off;
+    }
+
+    location = /api/health/live {
+        proxy_pass http://app_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+
+    location = /api/health/ready {
+        proxy_pass http://app_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+
+    # Lock down Swagger in production (adjust allow list or deny all)
+    location /api/docs {
+        allow 10.0.0.0/8;
+        allow 172.16.0.0/12;
+        allow 192.168.0.0/16;
+        deny all;
+        proxy_pass http://app_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Prometheus scrape — private scrapers only (+ app-level METRICS_BEARER_TOKEN)
+    location = /metrics {
+        allow 10.0.0.0/8;
+        allow 172.16.0.0/12;
+        allow 192.168.0.0/16;
+        allow 127.0.0.1;
+        deny all;
+        proxy_pass http://app_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+        access_log off;
+    }
+
+    location / {
+        proxy_pass http://app_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        # Do not cache API responses by default
+        add_header Cache-Control "no-store" always;
+    }
+}
+
+# --- Optional: serve Vite/Next static builds on the same host ---
+# server {
+#     listen 443 ssl http2;
+#     server_name shop.yourdomain.com;
+#     ssl_certificate     /etc/letsencrypt/live/shop.yourdomain.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/shop.yourdomain.com/privkey.pem;
+#
+#     root /var/www/shop;
+#     index index.html;
+#
+#     location /assets/ {
+#         # Vite hashed assets — long cache
+#         expires 1y;
+#         add_header Cache-Control "public, max-age=31536000, immutable";
+#         try_files $uri =404;
+#     }
+#
+#     location /_next/static/ {
+#         expires 1y;
+#         add_header Cache-Control "public, max-age=31536000, immutable";
+#     }
+#
+#     location / {
+#         try_files $uri $uri/ /index.html;
+#     }
+# }
+
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+    return 301 https://$host$request_uri;
+}

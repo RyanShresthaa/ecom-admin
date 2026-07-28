@@ -1,0 +1,227 @@
+groups:
+  - name: ecommerce-api-availability
+    rules:
+      - alert: ApiUnavailable
+        expr: up{job="ecommerce-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'API Prometheus target down'
+          description: 'Scrape target ecommerce-api is down for >2m.'
+
+      - alert: ReadinessFailing
+        expr: |
+          (sum(rate(app_http_requests_total{route="/api/health/ready",status_code="503"}[5m]))
+            /
+           clamp_min(sum(rate(app_http_requests_total{route="/api/health/ready"}[5m])), 1e-9)
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Readiness probe frequently returning 503'
+          description: 'Database or readiness path unhealthy.'
+
+      - alert: DatabaseProbeSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(app_db_query_duration_seconds_bucket{operation=~"readiness_ping|health_ping"}[5m])) by (le, operation)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'DB readiness/health probe p95 > 500ms'
+
+      - alert: ProcessRestarted
+        expr: time() - app_process_start_time_seconds < 180
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: 'API process started recently (<3m)'
+          description: 'Informational — correlate with deploys or crashes.'
+
+  - name: ecommerce-api-http
+    rules:
+      - alert: High5xxRate
+        expr: |
+          (
+            sum(rate(app_http_requests_total{status_code=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(app_http_requests_total[5m])), 1e-9)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: '5xx rate > 5%'
+
+      - alert: High4xxRate
+        expr: |
+          (
+            sum(rate(app_http_requests_total{status_code=~"4.."}[5m]))
+            /
+            clamp_min(sum(rate(app_http_requests_total[5m])), 1e-9)
+          ) > 0.40
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: '4xx rate > 40% (client/auth noise or bad deploy)'
+
+      - alert: HighRequestLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'HTTP request p95 > 2s'
+
+      - alert: ExcessiveRateLimiting
+        expr: sum(rate(app_http_requests_total{status_code="429"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High HTTP 429 rate (>1/s)'
+
+  - name: ecommerce-api-auth
+    rules:
+      - alert: AuthLoginLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(app_auth_login_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Login p95 > 2s'
+
+      - alert: AuthFailureRateHigh
+        expr: |
+          (
+            sum(rate(app_auth_login_attempts_total{outcome="failure"}[5m]))
+            /
+            clamp_min(sum(rate(app_auth_login_attempts_total{outcome=~"success|failure"}[5m])), 1e-9)
+          ) > 0.30
+          and
+          sum(rate(app_auth_login_attempts_total{outcome=~"success|failure"}[5m])) > (20/300)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Auth failure rate > 30%'
+
+      - alert: HighLoginFailureBusiness
+        expr: |
+          (
+            sum(rate(app_business_users_total{event="login_failed"}[5m]))
+            /
+            clamp_min(
+              sum(rate(app_business_users_total{event=~"login_success|login_failed"}[5m])),
+              1e-9
+            )
+          ) > 0.35
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Business login failure rate > 35%'
+
+      - alert: BcryptCompareLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(app_bcrypt_compare_duration_seconds_bucket[5m])) by (le)
+          ) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'bcrypt compare p95 > 1.5s'
+
+  - name: ecommerce-api-runtime
+    rules:
+      - alert: HighEventLoopLag
+        expr: app_nodejs_eventloop_lag_p99_seconds > 0.25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Event loop lag p99 > 250ms'
+
+      - alert: HighProcessCpu
+        expr: rate(app_process_cpu_seconds_total[5m]) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Process CPU > 85%'
+
+      - alert: HighProcessMemory
+        expr: app_process_resident_memory_bytes > 1.5e9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'RSS > 1.5 GiB'
+
+      - alert: HighHeapUsage
+        expr: |
+          app_nodejs_heap_size_used_bytes
+            /
+          clamp_min(app_nodejs_heap_size_total_bytes, 1)
+          > 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Heap used > 90% of heap total'
+
+  - name: ecommerce-api-host
+    rules:
+      # Requires node_exporter (or equivalent) on the host — optional
+      - alert: LowDiskSpace
+        expr: |
+          (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} 
+            / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) < 0.10
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Disk free < 10% (node_exporter)'
+
+  - name: ecommerce-api-business
+    rules:
+      - alert: PaymentFailureSpike
+        expr: |
+          (
+            sum(rate(app_business_payments_total{outcome="failed"}[10m]))
+            /
+            clamp_min(sum(rate(app_business_payments_total[10m])), 1e-9)
+          ) > 0.25
+          and sum(rate(app_business_payments_total[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Payment failure rate > 25%'
+
+      - alert: OrderFailureSpike
+        expr: |
+          (
+            sum(rate(app_business_orders_total{outcome="failed"}[10m]))
+            /
+            clamp_min(sum(rate(app_business_orders_total[10m])), 1e-9)
+          ) > 0.20
+          and sum(rate(app_business_orders_total[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Order failure rate > 20%'

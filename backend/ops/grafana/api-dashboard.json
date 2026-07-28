@@ -1,0 +1,162 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "HTTP status codes (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(rate(app_http_requests_total[5m])) by (status_code)", "legendFormat": "{{status_code}}" }]
+    },
+    {
+      "title": "Request latency p50/p95",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "title": "In-flight + 429 rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "app_http_requests_in_flight", "legendFormat": "in_flight" },
+        { "expr": "sum(rate(app_http_requests_total{status_code=\"429\"}[5m]))", "legendFormat": "429/s" }
+      ]
+    },
+    {
+      "title": "CPU",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [{ "expr": "rate(app_process_cpu_seconds_total[5m])", "legendFormat": "cpu" }]
+    },
+    {
+      "title": "Memory / Heap",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        { "expr": "app_process_resident_memory_bytes", "legendFormat": "rss" },
+        { "expr": "app_nodejs_heap_size_used_bytes", "legendFormat": "heap_used" },
+        { "expr": "app_nodejs_heap_size_total_bytes", "legendFormat": "heap_total" }
+      ]
+    },
+    {
+      "title": "Event loop lag",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "app_nodejs_eventloop_lag_mean_seconds", "legendFormat": "mean" },
+        { "expr": "app_nodejs_eventloop_lag_p99_seconds", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "title": "Database probe latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(app_db_query_duration_seconds_bucket[5m])) by (le, operation))", "legendFormat": "{{operation}}" }
+      ]
+    },
+    {
+      "title": "Authentication — login outcomes",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "sum(rate(app_auth_login_attempts_total[5m])) by (outcome)", "legendFormat": "{{outcome}}" },
+        { "expr": "sum(rate(app_business_users_total{event=~\"login_success|login_failed|google_login\"}[5m])) by (event)", "legendFormat": "{{event}}" }
+      ]
+    },
+    {
+      "title": "Authentication — login / bcrypt latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(app_auth_login_duration_seconds_bucket[5m])) by (le))", "legendFormat": "login_p95" },
+        { "expr": "histogram_quantile(0.95, sum(rate(app_bcrypt_compare_duration_seconds_bucket[5m])) by (le))", "legendFormat": "bcrypt_p95" }
+      ]
+    },
+    {
+      "title": "Orders",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 32 },
+      "targets": [{ "expr": "sum(rate(app_business_orders_total[5m])) by (outcome, channel)", "legendFormat": "{{channel}} {{outcome}}" }]
+    },
+    {
+      "title": "Payments",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 32 },
+      "targets": [{ "expr": "sum(rate(app_business_payments_total[5m])) by (outcome, provider)", "legendFormat": "{{provider}} {{outcome}}" }]
+    },
+    {
+      "title": "Checkout funnel",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 32 },
+      "targets": [{ "expr": "sum(rate(app_business_checkout_total[5m])) by (step)", "legendFormat": "{{step}}" }]
+    },
+    {
+      "title": "Business KPIs — users / newsletter / uploads",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "targets": [
+        { "expr": "sum(rate(app_business_users_total[5m])) by (event)", "legendFormat": "user:{{event}}" },
+        { "expr": "sum(rate(app_business_newsletter_subscriptions_total[5m])) by (outcome)", "legendFormat": "newsletter:{{outcome}}" },
+        { "expr": "sum(rate(app_business_uploads_total[5m])) by (outcome)", "legendFormat": "upload:{{outcome}}" }
+      ]
+    },
+    {
+      "title": "Cart abandonment (proxy + explicit)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "targets": [
+        {
+          "expr": "1 - (sum(rate(app_business_checkout_total{step=\"completed\"}[15m])) / clamp_min(sum(rate(app_business_checkout_total{step=\"started\"}[15m])), 1e-9))",
+          "legendFormat": "funnel_proxy_ratio"
+        },
+        {
+          "expr": "sum(rate(app_business_cart_abandonments_total[5m])) by (reason)",
+          "legendFormat": "explicit:{{reason}}"
+        },
+        {
+          "expr": "sum(rate(app_business_checkout_total{step=\"abandoned\"}[5m]))",
+          "legendFormat": "checkout_step_abandoned"
+        }
+      ]
+    },
+    {
+      "title": "Host disk free ratio (node_exporter)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "targets": [
+        {
+          "expr": "node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\"}",
+          "legendFormat": "{{mountpoint}}"
+        }
+      ]
+    },
+    {
+      "title": "Rate limit 429s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "targets": [
+        {
+          "expr": "sum(rate(app_http_requests_total{status_code=\"429\"}[5m]))",
+          "legendFormat": "429/s"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["ecommerce", "api", "prometheus", "auth", "business"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Ecommerce API",
+  "uid": "ecommerce-api",
+  "version": 4
+}

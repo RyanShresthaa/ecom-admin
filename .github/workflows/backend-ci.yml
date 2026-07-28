@@ -1,0 +1,100 @@
+# CI/CD for backend — runs on push/PR to main or master
+name: Backend CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: app_ci
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      SECRET_KEY_ACCESS_TOKEN: ci-access-secret-min-32-chars-long-xx
+      SECRET_KEY_REFRESH_TOKEN: ci-refresh-secret-min-32-chars-long-xx
+      CLIENT_URL: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000
+      EMAIL_USE_QUEUE: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run migrations
+        run: npm run db:migrate
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Start API server
+        run: |
+          node server.js &
+          echo $! > server.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/api/health > /dev/null; then
+              echo "Server ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: API smoke tests
+        run: npm run test:api
+        env:
+          API_BASE_URL: http://localhost:5000
+
+      - name: Integration validation tests
+        run: npm run test:integration
+        env:
+          API_BASE_URL: http://localhost:5000
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then kill $(cat server.pid) || true; fi

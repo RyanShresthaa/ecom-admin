@@ -1,0 +1,54 @@
+# Subset kept for docs that link here. Full production rules: alerts.yml
+groups:
+  - name: ecommerce-api-auth-legacy
+    rules:
+      - alert: AuthLoginLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(app_auth_login_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Login p95 > 2s (see also ops/prometheus/alerts.yml)'
+
+      - alert: AuthFailureRateHigh
+        expr: |
+          (
+            sum(rate(app_auth_login_attempts_total{outcome="failure"}[5m]))
+            /
+            clamp_min(sum(rate(app_auth_login_attempts_total{outcome=~"success|failure"}[5m])), 1e-9)
+          ) > 0.30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Auth failure rate > 30%'
+
+      - alert: ExcessiveHttp429
+        expr: sum(rate(app_http_requests_total{status_code="429"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High rate of HTTP 429 responses'
+
+      - alert: ProcessCpuHigh
+        expr: rate(app_process_cpu_seconds_total[5m]) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Process CPU > 85%'
+
+      - alert: BcryptCompareLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(app_bcrypt_compare_duration_seconds_bucket[5m])) by (le)
+          ) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'bcrypt compare p95 > 1.5s'

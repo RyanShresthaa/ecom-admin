@@ -1,0 +1,108 @@
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password TEXT,
+    mobile VARCHAR(20),
+    avatar TEXT DEFAULT '',
+    refresh_token TEXT DEFAULT '',
+    verify_email BOOLEAN NOT NULL DEFAULT false,
+    last_login_date TIMESTAMPTZ,
+    status VARCHAR(20) NOT NULL DEFAULT 'Active',
+    forgot_password_otp VARCHAR(10),
+    forgot_password_expiry TIMESTAMPTZ,
+    role VARCHAR(20) NOT NULL DEFAULT 'User',
+    google_id VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile VARCHAR(20);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_email BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_date TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'Active';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS forgot_password_otp VARCHAR(10);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS forgot_password_expiry TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'User';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
+
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    image TEXT DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS subcategories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    image TEXT DEFAULT '',
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    image JSONB NOT NULL DEFAULT '[]',
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    subcategory_id INTEGER REFERENCES subcategories(id) ON DELETE SET NULL,
+    unit VARCHAR(50) DEFAULT '',
+    stock INTEGER NOT NULL DEFAULT 0,
+    price NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    discount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    description TEXT DEFAULT '',
+    more_details JSONB NOT NULL DEFAULT '{}',
+    publish BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cart_items (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, product_id)
+);
+
+CREATE TABLE IF NOT EXISTS addresses (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    address_line TEXT NOT NULL DEFAULT '',
+    city VARCHAR(100) NOT NULL DEFAULT '',
+    state VARCHAR(100) DEFAULT '',
+    pincode VARCHAR(20),
+    country VARCHAR(100) NOT NULL DEFAULT '',
+    mobile VARCHAR(20),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    order_id VARCHAR(100) NOT NULL UNIQUE,
+    product_id INTEGER NOT NULL REFERENCES products(id),
+    product_details JSONB NOT NULL DEFAULT '{}',
+    payment_id VARCHAR(255) DEFAULT '',
+    payment_status VARCHAR(100) DEFAULT '',
+    delivery_status VARCHAR(100) DEFAULT '',
+    delivery_address INTEGER REFERENCES addresses(id) ON DELETE SET NULL,
+    sub_total_amt NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    total_amt NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    invoice_receipt TEXT DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);

@@ -1,0 +1,23 @@
+# systemd unit — daily DB backup + optional S3 upload
+# Install:
+#   sudo cp deploy/systemd/db-backup.service /etc/systemd/system/
+#   sudo cp deploy/systemd/db-backup.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now db-backup.timer
+
+[Unit]
+Description=App PostgreSQL backup (pg_dump + optional S3)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=app
+WorkingDirectory=/opt/app/backend
+EnvironmentFile=-/etc/app/backend.env
+EnvironmentFile=-/etc/app/backup.env
+# UV not required for backup script
+ExecStart=/usr/bin/npm run db:backup:offsite
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
