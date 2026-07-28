@@ -12,12 +12,21 @@ import pg from 'pg';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
+function resolveSsl() {
+    const raw = String(process.env.DB_SSL || '').toLowerCase();
+    if (raw === 'true' || raw === 'require') {
+        return { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' };
+    }
+    return false;
+}
+
 const pool = new pg.Pool({
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT || 5432),
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
+    ssl: resolveSsl(),
 });
 
 await pool.query(`
