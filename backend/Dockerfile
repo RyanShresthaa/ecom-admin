@@ -28,4 +28,4 @@ USER app
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
   CMD wget -qO- http://127.0.0.1:5000/api/health/live || exit 1
 
-CMD ["sh", "-c", "node scripts/migrate.mjs && node scripts/reset-admin-password.mjs && node server.js"]
+  CMD ["sh", "-c", "node scripts/migrate.mjs && node server.js"]
