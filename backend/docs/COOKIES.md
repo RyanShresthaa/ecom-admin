@@ -127,12 +127,11 @@ Local HTTP: Secure is off unless SameSite=None (then Secure is forced — use HT
 - CSRF required whenever session cookies are present on mutating routes.
 - Behind a reverse proxy: set `TRUST_PROXY_HOPS` so Secure cookies and rate-limit IPs see real client / HTTPS.
 - `E2E_RELAX_RATE_LIMIT` / `LOAD_TEST_BYPASS` disable rate limits — rejected at production boot.
-- Local Docker Compose API is on **host port 5001** (`127.0.0.1:5001`) so it does not steal `:5000` from `npm run dev` / Playwright (see `e2e/README.md`).
+- Local Docker Compose API is on **host port 5001** (`127.0.0.1:5001`) so it does not steal `:5000` from `npm run dev`.
 
 ## Related
 
 - [DEPLOYMENT.md](./DEPLOYMENT.md) — HTTPS, proxy, HSTS
 - `config/security.js` — cookie option builders
 - `middleware/csrf.js` — CSRF middleware
-- `e2e/auth-cookies.spec.mjs` — Playwright browser cookie tests
 

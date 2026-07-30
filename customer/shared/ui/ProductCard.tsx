@@ -16,11 +16,15 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [added, setAdded] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, cart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const priceLabel = useProductPrice(product);
 
   const isWishlisted = isInWishlist(product.id) || isInWishlist(product.slug);
+  const stock = Math.max(0, Math.floor(Number(product.stock) || 0));
+  const inCartQty =
+    cart.find((item) => item.id === product.id || item.slug === product.slug)?.quantity || 0;
+  const canAdd = stock > 0 && inCartQty < stock;
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -31,7 +35,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product, 1);
+    if (!canAdd) return;
+    const ok = addToCart(product, 1);
+    if (!ok) return;
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -119,11 +125,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <Button
             variant="secondary"
             onClick={handleAddToCart}
-            className={`w-full !px-1.5 !py-2.5 text-[9.5px] sm:text-[10.5px] tracking-wide whitespace-nowrap ${
+            disabled={!canAdd && !added}
+            className={`w-full !px-1.5 !py-2.5 text-[9.5px] sm:text-[10.5px] tracking-wide whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
               added ? 'bg-emerald-700 border-emerald-700 text-white hover:bg-emerald-800' : ''
             }`}
           >
-            {added ? 'Added ✓' : 'Add to Cart'}
+            {stock < 1 ? 'Out of Stock' : added ? 'Added ✓' : canAdd ? 'Add to Cart' : 'Max in Cart'}
           </Button>
         </div>
       </div>

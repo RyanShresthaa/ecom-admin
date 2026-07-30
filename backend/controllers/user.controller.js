@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 
-import sendEmail from '../config/sendEmail.js';
+import sendEmail, { sendEmailDirect } from '../config/sendEmail.js';
 import { enqueueEmail } from '../models/emailQueue.model.js';
 import {
     getAccessCookieOptions,
@@ -15,6 +15,7 @@ import {
     getClearRefreshCookieOptions,
     getClearCsrfCookieOptions,
     getRefreshSecret,
+    getAccessSecret,
     getTrustedFrontendBaseUrl,
     JWT_VERIFY_OPTIONS,
 } from '../config/security.js';
@@ -60,6 +61,10 @@ import {
     deleteUserAccount,
     exportUserData,
 } from '../models/user.model.js';
+import { normalizeNotificationPrefs } from '../utils/notificationPrefs.js';
+import pool from '../config/connectDB.js';
+import { randomBase32Secret, totpKeyUri, verifyTotpCode } from '../utils/totp.js';
+import { findReviewsByUser } from '../models/review.model.js';
 
 export const PASSWORD_RESET_VERIFIED = 'VERIFIED';
 /** Same marker pattern in `pin_reset_otp` after email OTP is verified (before `reset-pin`). */
@@ -128,33 +133,43 @@ export async function registerUserController(request, response) {
         const hashed = await hashPassword(password);
         const verify_email_token = crypto.randomBytes(32).toString('hex');
         const save = await createUser({ name, email, password: hashed });
-        await updateUser(pickId(save), { verify_email_token });
+        // Local/dev: auto-verify so storefront signup → login works without SMTP.
+        // Production still requires the email link.
+        const autoVerify =
+            process.env.NODE_ENV !== 'production' ||
+            String(process.env.AUTO_VERIFY_EMAIL || '').toLowerCase() === 'true';
+        await updateUser(pickId(save), {
+            verify_email_token: autoVerify ? null : verify_email_token,
+            ...(autoVerify ? { verify_email: true } : {}),
+        });
 
-        const baseUrl = getTrustedFrontendBaseUrl();
-        const url = `${baseUrl}/verify-email?code=${encodeURIComponent(verify_email_token)}`;
-        // Always enqueue — never block registration on SMTP RTT (run email:worker)
-        try {
-            await enqueueEmail({
-                sendTo: email,
-                subject: 'Verify email',
-                html: verifyEmailTemplate(name, url),
-            });
-        } catch (err) {
-            // Fallback: fire-and-forget direct send if queue insert fails
-            void sendEmail({
-                sendTo: email,
-                subject: 'Verify email',
-                html: verifyEmailTemplate(name, url),
-            }).catch(async (sendErr) => {
-                await logSecurityEvent({
-                    userId: pickId(save),
-                    action: 'auth.register_email_failed',
-                    ip: getClientIp(request),
-                    userAgent: getUserAgent(request),
-                    success: false,
-                    details: { reason: String(sendErr?.message || sendErr || err?.message || err) },
-                }).catch(() => {});
-            });
+        if (!autoVerify) {
+            const baseUrl = getTrustedFrontendBaseUrl();
+            const url = `${baseUrl}/verify-email?code=${encodeURIComponent(verify_email_token)}`;
+            // Always enqueue — never block registration on SMTP RTT (run email:worker)
+            try {
+                await enqueueEmail({
+                    sendTo: email,
+                    subject: 'Verify email',
+                    html: verifyEmailTemplate(name, url),
+                });
+            } catch (err) {
+                // Fallback: fire-and-forget direct send if queue insert fails
+                void sendEmail({
+                    sendTo: email,
+                    subject: 'Verify email',
+                    html: verifyEmailTemplate(name, url),
+                }).catch(async (sendErr) => {
+                    await logSecurityEvent({
+                        userId: pickId(save),
+                        action: 'auth.register_email_failed',
+                        ip: getClientIp(request),
+                        userAgent: getUserAgent(request),
+                        success: false,
+                        details: { reason: String(sendErr?.message || sendErr || err?.message || err) },
+                    }).catch(() => {});
+                });
+            }
         }
 
         await logSecurityEvent({
@@ -243,6 +258,12 @@ export async function loginController(request, response) {
 
         await rehashPasswordIfNeeded(user.id, password, user.password, updateUser);
 
+        const twoFaResponse = await maybeRequireTwoFactor(response, user);
+        if (twoFaResponse) {
+            outcome = 'success';
+            return twoFaResponse;
+        }
+
         const { csrfToken } = await issueAuthCookies(response, user.id, request);
         const publicUser = await findUserPublicById(user.id);
         authLoginAttempts.inc({ outcome: 'success' });
@@ -292,6 +313,7 @@ export async function googleLoginController(request, response) {
                     google_id: googleId,
                     verify_email: true,
                     ...(picture ? { avatar: picture } : {}),
+                    ...(name ? { name } : {}),
                 });
                 user = await findUserById(byEmail.id);
             } else {
@@ -302,11 +324,21 @@ export async function googleLoginController(request, response) {
                     avatar: picture,
                 });
             }
+        } else if (picture || name) {
+            // Keep Google photo/name fresh on every sign-in
+            await updateUser(user.id, {
+                ...(picture ? { avatar: picture } : {}),
+                ...(name ? { name } : {}),
+            });
+            user = await findUserById(user.id);
         }
 
         if (!user || user.status !== 'Active') {
             return response.status(403).json({ message: 'Account not active', error: true, success: false });
         }
+
+        const twoFaResponse = await maybeRequireTwoFactor(response, user);
+        if (twoFaResponse) return twoFaResponse;
 
         const { csrfToken } = await issueAuthCookies(response, user.id, request);
         const publicUser = await findUserPublicById(user.id);
@@ -414,7 +446,7 @@ export async function forgotPasswordController(request, response) {
     try {
         const { email } = request.body;
         const generic =
-            'If an account exists for that email, we sent reset instructions.';
+            'If an account exists for that email, we sent a 6-digit reset code.';
         if (!email) {
             return response.status(400).json({ message: 'provide email', error: true, success: false });
         }
@@ -425,18 +457,21 @@ export async function forgotPasswordController(request, response) {
         const otp = String(generateOtp());
         const expireTime = new Date(Date.now() + 60 * 60 * 1000);
         await updateUser(user.id, { forgot_password_otp: otp, forgot_password_expiry: expireTime });
+        const mail = {
+            sendTo: email,
+            subject: 'Your Matina Crafts password reset code',
+            html: forgotPasswordTemplate({ name: user.name, otp }),
+            text: `Hi ${user.name || 'there'}, your Matina Crafts password reset code is ${otp}. It expires in 1 hour.`,
+        };
+        // OTP is time-sensitive — send via SMTP now (do not wait on the email worker).
         try {
-            await enqueueEmail({
-                sendTo: email,
-                subject: 'Forgot Password',
-                html: forgotPasswordTemplate({ name: user.name, otp }),
-            });
+            await sendEmailDirect(mail);
         } catch {
-            void sendEmail({
-                sendTo: email,
-                subject: 'Forgot Password',
-                html: forgotPasswordTemplate({ name: user.name, otp }),
-            }).catch(() => {});
+            try {
+                await enqueueEmail(mail);
+            } catch {
+                void sendEmail(mail).catch(() => {});
+            }
         }
         return response.json({ message: generic, error: false, success: true });
     } catch (error) {
@@ -659,9 +694,481 @@ export async function refreshToken(request, response) {
 export async function userDetails(request, response) {
     try {
         const user = await findUserPublicById(request.userId);
-        return response.json({ message: 'user details', data: user, error: false, success: true });
+        if (!user) {
+            return response.status(404).json({ message: 'User not found', error: true, success: false });
+        }
+        const prefs = normalizeNotificationPrefs(user.notification_prefs);
+        return response.json({
+            message: 'user details',
+            data: {
+                ...user,
+                totpEnabled: Boolean(user.totp_enabled),
+                notification_prefs: prefs,
+                notificationPrefs: prefs,
+            },
+            error: false,
+            success: true,
+        });
     } catch {
         return response.status(500).json({ message: 'Something is wrong', error: true, success: false });
+    }
+}
+
+export async function getPreferencesController(request, response) {
+    try {
+        const user = await findUserPublicById(request.userId);
+        if (!user) {
+            return response.status(404).json({ message: 'User not found', error: true, success: false });
+        }
+        const prefs = normalizeNotificationPrefs(user.notification_prefs);
+        let shareUrl = null;
+        if (prefs.shareWishlist) {
+            const { findActiveWishlistShareByUser } = await import('../models/wishlistShare.model.js');
+            const share = await findActiveWishlistShareByUser(request.userId);
+            if (share?.token) {
+                const { getTrustedFrontendBaseUrl } = await import('../config/security.js');
+                shareUrl = `${getTrustedFrontendBaseUrl().replace(/\/$/, '')}/wishlist/shared/${share.token}`;
+            }
+        }
+        return response.json({
+            message: 'Preferences',
+            data: {
+                ...prefs,
+                totpEnabled: Boolean(user.totp_enabled),
+                shareUrl,
+                twilioConfigured: Boolean(
+                    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN,
+                ),
+                webPushConfigured: Boolean(
+                    process.env.WEB_PUSH_VAPID_PUBLIC_KEY && process.env.WEB_PUSH_VAPID_PRIVATE_KEY,
+                ),
+            },
+            error: false,
+            success: true,
+        });
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+async function syncMarketingNewsletter(email, enabled) {
+    const normalized = String(email || '')
+        .trim()
+        .toLowerCase();
+    if (!normalized) return;
+    if (enabled) {
+        await pool.query(
+            `INSERT INTO newsletter_subscribers (email, source, active)
+             VALUES ($1, 'account-settings', true)
+             ON CONFLICT (email) DO UPDATE SET
+               active = true,
+               updated_at = NOW()`,
+            [normalized],
+        );
+    } else {
+        await pool.query(
+            `UPDATE newsletter_subscribers
+             SET active = false, updated_at = NOW()
+             WHERE email = $1`,
+            [normalized],
+        );
+    }
+}
+
+export async function updatePreferencesController(request, response) {
+    try {
+        const user = await findUserById(request.userId);
+        if (!user) {
+            return response.status(404).json({ message: 'User not found', error: true, success: false });
+        }
+
+        const current = normalizeNotificationPrefs(user.notification_prefs);
+        const body = request.body || {};
+        const next = normalizeNotificationPrefs({
+            orderUpdates:
+                typeof body.orderUpdates === 'boolean' ? body.orderUpdates : current.orderUpdates,
+            marketingEmails:
+                typeof body.marketingEmails === 'boolean'
+                    ? body.marketingEmails
+                    : current.marketingEmails,
+            reviewRequests:
+                typeof body.reviewRequests === 'boolean'
+                    ? body.reviewRequests
+                    : current.reviewRequests,
+            publicProfile:
+                typeof body.publicProfile === 'boolean'
+                    ? body.publicProfile
+                    : current.publicProfile,
+            smsNotifications:
+                typeof body.smsNotifications === 'boolean'
+                    ? body.smsNotifications
+                    : current.smsNotifications,
+            pushNotifications:
+                typeof body.pushNotifications === 'boolean'
+                    ? body.pushNotifications
+                    : current.pushNotifications,
+            shareWishlist:
+                typeof body.shareWishlist === 'boolean'
+                    ? body.shareWishlist
+                    : current.shareWishlist,
+        });
+
+        if (next.smsNotifications && !String(user.mobile || '').trim()) {
+            return response.status(400).json({
+                message: 'Add a mobile number to your profile before enabling SMS notifications',
+                error: true,
+                success: false,
+            });
+        }
+
+        await updateUser(request.userId, { notification_prefs: next });
+
+        if (next.marketingEmails !== current.marketingEmails) {
+            await syncMarketingNewsletter(user.email, next.marketingEmails).catch(() => {});
+        }
+
+        if (next.shareWishlist && !current.shareWishlist) {
+            const { createOrRefreshWishlistShare } = await import('../models/wishlistShare.model.js');
+            await createOrRefreshWishlistShare(request.userId).catch(() => {});
+        } else if (!next.shareWishlist && current.shareWishlist) {
+            const { deactivateWishlistShares } = await import('../models/wishlistShare.model.js');
+            await deactivateWishlistShares(request.userId).catch(() => {});
+        }
+
+        if (!next.pushNotifications && current.pushNotifications) {
+            const { deleteAllPushSubscriptionsForUser } = await import(
+                '../models/pushSubscription.model.js'
+            );
+            await deleteAllPushSubscriptionsForUser(request.userId).catch(() => {});
+        }
+
+        let shareLink = null;
+        if (next.shareWishlist) {
+            const { findActiveWishlistShareByUser } = await import('../models/wishlistShare.model.js');
+            const { getTrustedFrontendBaseUrl } = await import('../config/security.js');
+            const share = await findActiveWishlistShareByUser(request.userId);
+            if (share?.token) {
+                shareLink = `${getTrustedFrontendBaseUrl().replace(/\/$/, '')}/wishlist/shared/${share.token}`;
+            }
+        }
+
+        return response.json({
+            message: 'Preferences updated',
+            data: {
+                ...next,
+                totpEnabled: Boolean(user.totp_enabled),
+                shareUrl: shareLink,
+                twilioConfigured: Boolean(
+                    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN,
+                ),
+                webPushConfigured: Boolean(
+                    process.env.WEB_PUSH_VAPID_PUBLIC_KEY && process.env.WEB_PUSH_VAPID_PRIVATE_KEY,
+                ),
+            },
+            error: false,
+            success: true,
+        });
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+function hashTwoFactorEmailOtp(otp) {
+    return crypto.createHmac('sha256', getAccessSecret()).update(String(otp)).digest('hex');
+}
+
+function createTwoFactorTempToken(userId, emailOtpHash = null) {
+    const payload = { id: userId, purpose: '2fa' };
+    if (emailOtpHash) payload.emailOtpHash = emailOtpHash;
+    return jwt.sign(payload, getAccessSecret(), { expiresIn: '5m', algorithm: 'HS256' });
+}
+
+function verifyTwoFactorTempToken(token) {
+    const payload = jwt.verify(String(token || ''), getAccessSecret(), {
+        ...JWT_VERIFY_OPTIONS,
+        algorithms: ['HS256'],
+    });
+    if (!payload || payload.purpose !== '2fa' || !payload.id) {
+        throw new Error('Invalid 2FA token');
+    }
+    return {
+        id: payload.id,
+        emailOtpHash: typeof payload.emailOtpHash === 'string' ? payload.emailOtpHash : null,
+    };
+}
+
+async function maybeRequireTwoFactor(response, user) {
+    if (!user?.totp_enabled || !user?.totp_secret) return null;
+    const tempToken = createTwoFactorTempToken(user.id);
+    return response.json({
+        message: 'Two-factor authentication required',
+        error: false,
+        success: true,
+        data: {
+            requires2fa: true,
+            tempToken,
+        },
+    });
+}
+
+/** Email a backup 2FA login code (for users who cannot open their authenticator app). */
+export async function sendTwoFactorEmailOtpController(request, response) {
+    try {
+        const { id: userId } = verifyTwoFactorTempToken(request.body?.tempToken);
+        const user = await findUserById(userId);
+        if (!user || user.status !== 'Active' || !user.totp_enabled) {
+            return response.status(400).json({
+                message: 'Invalid or expired 2FA session',
+                error: true,
+                success: false,
+            });
+        }
+        const otp = String(generateOtp());
+        const emailOtpHash = hashTwoFactorEmailOtp(otp);
+        const tempToken = createTwoFactorTempToken(user.id, emailOtpHash);
+        const html = `
+          <div style="font-family:Georgia,serif;color:#2A170F;max-width:520px;margin:0 auto;padding:24px">
+            <p style="margin:0 0 12px">Hi ${user.name || 'there'},</p>
+            <p style="margin:0 0 16px;line-height:1.5">
+              Use this backup code to finish signing in to Matina Crafts:
+            </p>
+            <div style="background:#FAF6F2;border:1px solid #E2D5C7;border-radius:12px;padding:20px;text-align:center;margin:0 0 16px">
+              <p style="margin:0;font-size:28px;letter-spacing:0.35em;font-weight:bold;font-family:monospace">${otp}</p>
+            </div>
+            <p style="margin:0;font-size:13px;color:#664132">This code expires in 5 minutes.</p>
+            <p style="margin:24px 0 0;font-size:13px">— Matina Crafts</p>
+          </div>`;
+        const text = `Your Matina Crafts sign-in backup code is ${otp}. It expires in 5 minutes.`;
+        const mail = {
+            sendTo: user.email,
+            subject: 'Your Matina Crafts sign-in code',
+            html,
+            text,
+        };
+        try {
+            await sendEmailDirect(mail);
+        } catch (sendErr) {
+            try {
+                await enqueueEmail(mail);
+            } catch {
+                return response.status(502).json({
+                    message:
+                        sendErr?.message ||
+                        'Could not send the email code. Check SMTP settings or try again.',
+                    error: true,
+                    success: false,
+                });
+            }
+        }
+        return response.json({
+            message: 'We emailed a 6-digit backup code. Check inbox and spam.',
+            error: false,
+            success: true,
+            data: { tempToken },
+        });
+    } catch (error) {
+        return response.status(400).json({
+            message: error.message || 'Invalid or expired 2FA session',
+            error: true,
+            success: false,
+        });
+    }
+}
+
+export async function setupTwoFactorController(request, response) {
+    try {
+        const user = await findUserById(request.userId);
+        if (!user) {
+            return response.status(404).json({ message: 'User not found', error: true, success: false });
+        }
+        if (user.totp_enabled) {
+            return response.status(400).json({
+                message: 'Two-factor authentication is already enabled',
+                error: true,
+                success: false,
+            });
+        }
+        const secret = randomBase32Secret();
+        await updateUser(request.userId, { totp_secret: secret, totp_enabled: false });
+        const otpauthUrl = totpKeyUri(secret, user.email);
+        return response.json({
+            message: 'Scan this QR code with your authenticator app, then confirm with a code',
+            error: false,
+            success: true,
+            data: {
+                secret,
+                otpauthUrl,
+                qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`,
+            },
+        });
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+export async function enableTwoFactorController(request, response) {
+    try {
+        const user = await findUserById(request.userId);
+        if (!user?.totp_secret) {
+            return response.status(400).json({
+                message: 'Start 2FA setup first',
+                error: true,
+                success: false,
+            });
+        }
+        if (!verifyTotpCode(user.totp_secret, request.body?.code)) {
+            return response.status(400).json({ message: 'Invalid authenticator code', error: true, success: false });
+        }
+        await updateUser(request.userId, { totp_enabled: true });
+        await logSecurityEvent({
+            userId: request.userId,
+            action: 'auth.2fa_enabled',
+            ip: getClientIp(request),
+            userAgent: getUserAgent(request),
+            success: true,
+            details: {},
+        }).catch(() => {});
+        return response.json({
+            message: 'Two-factor authentication enabled',
+            error: false,
+            success: true,
+            data: { totpEnabled: true },
+        });
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+export async function disableTwoFactorController(request, response) {
+    try {
+        const user = await findUserById(request.userId);
+        if (!user) {
+            return response.status(404).json({ message: 'User not found', error: true, success: false });
+        }
+        if (!user.totp_enabled) {
+            return response.json({
+                message: 'Two-factor authentication is already off',
+                error: false,
+                success: true,
+                data: { totpEnabled: false },
+            });
+        }
+        if (user.password) {
+            if (
+                !request.body?.password ||
+                !(await comparePassword(request.body.password, user.password))
+            ) {
+                return response.status(400).json({
+                    message: 'Password is incorrect',
+                    error: true,
+                    success: false,
+                });
+            }
+        }
+        if (!verifyTotpCode(user.totp_secret, request.body?.code)) {
+            return response.status(400).json({ message: 'Invalid authenticator code', error: true, success: false });
+        }
+        await updateUser(request.userId, { totp_enabled: false, totp_secret: null });
+        await logSecurityEvent({
+            userId: request.userId,
+            action: 'auth.2fa_disabled',
+            ip: getClientIp(request),
+            userAgent: getUserAgent(request),
+            success: true,
+            details: {},
+        }).catch(() => {});
+        return response.json({
+            message: 'Two-factor authentication disabled',
+            error: false,
+            success: true,
+            data: { totpEnabled: false },
+        });
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+export async function verifyTwoFactorLoginController(request, response) {
+    const endLogin = authLoginDuration.startTimer();
+    let outcome;
+    try {
+        const { id: userId, emailOtpHash } = verifyTwoFactorTempToken(request.body?.tempToken);
+        const user = await findUserById(userId);
+        if (!user || user.status !== 'Active' || !user.totp_enabled) {
+            outcome = 'failure';
+            return response.status(400).json({ message: 'Invalid or expired 2FA session', error: true, success: false });
+        }
+        const code = String(request.body?.code || '').trim();
+        const totpOk = verifyTotpCode(user.totp_secret, code);
+        const emailOtpOk =
+            Boolean(emailOtpHash) &&
+            timingSafeEqualStr(emailOtpHash, hashTwoFactorEmailOtp(code));
+        if (!totpOk && !emailOtpOk) {
+            await recordLoginFailure(user.id, request);
+            outcome = 'failure';
+            biz.loginFailed();
+            return response.status(400).json({ message: 'Invalid authenticator code', error: true, success: false });
+        }
+        const { csrfToken } = await issueAuthCookies(response, user.id, request);
+        const publicUser = await findUserPublicById(user.id);
+        authLoginAttempts.inc({ outcome: 'success' });
+        biz.loginSuccess();
+        outcome = 'success';
+        return response.json({
+            message: 'Login successfully',
+            error: false,
+            success: true,
+            data: { csrfToken, user: publicUser },
+        });
+    } catch (error) {
+        outcome = 'error';
+        return response.status(400).json({
+            message: error.message || 'Invalid or expired 2FA session',
+            error: true,
+            success: false,
+        });
+    } finally {
+        endLogin({ outcome: outcome || 'error' });
+    }
+}
+
+export async function getPublicProfileController(request, response) {
+    try {
+        const id = pickId(request.params.id);
+        if (!id) {
+            return response.status(400).json({ message: 'Invalid profile id', error: true, success: false });
+        }
+        const user = await findUserPublicById(id);
+        if (!user || user.status !== 'Active') {
+            return response.status(404).json({ message: 'Profile not found', error: true, success: false });
+        }
+        const prefs = normalizeNotificationPrefs(user.notification_prefs);
+        if (!prefs.publicProfile) {
+            return response.status(404).json({ message: 'This profile is private', error: true, success: false });
+        }
+        const reviews = await findReviewsByUser(user.id, { limit: 30 });
+        return response.json({
+            message: 'Public profile',
+            error: false,
+            success: true,
+            data: {
+                id: user.id,
+                name: user.name,
+                avatar: user.avatar || null,
+                bio: user.bio || '',
+                memberSince: user.createdAt || user.created_at,
+                reviews: reviews.map((r) => ({
+                    id: r.id,
+                    rating: r.rating,
+                    comment: r.comment,
+                    productId: r.productId,
+                    productName: r.productName,
+                    createdAt: r.createdAt,
+                })),
+            },
+        });
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
     }
 }
 
@@ -758,11 +1265,9 @@ export async function applyForSellerController(request, response) {
     }
 }
 
-export async function getCsrfController(request, response) {
+/** Issue / rotate CSRF for double-submit. Public — no session required (token alone grants nothing). */
+export async function getCsrfController(_request, response) {
     try {
-        if (!request.userId) {
-            return response.status(401).json({ message: 'Not authorized', error: true, success: false });
-        }
         const csrfToken = generateCsrfToken();
         setCsrfCookie(response, csrfToken);
         return response.json({ data: { csrfToken }, error: false, success: true });

@@ -14,15 +14,21 @@ import {
   previewCheckoutController,
   updateOrderStatusController,
   confirmOnlineOrderController,
+  cancelMyOrderController,
 } from "../controllers/order.controller.js";
 import { validateBody } from "../middleware/validate.js";
-import { previewCheckoutBodySchema, checkoutWithAddressBodySchema } from "../validation/schemas.js";
+import {
+  previewCheckoutBodySchema,
+  checkoutWithAddressBodySchema,
+  cancelMyOrderBodySchema,
+} from "../validation/schemas.js";
 
 const orderRouter = Router();
 orderRouter.post("/preview-checkout", auth, validateBody(previewCheckoutBodySchema), previewCheckoutController);
 orderRouter.post("/place-cod", auth, validateBody(checkoutWithAddressBodySchema), CashOnDeliveryOrderController);
 orderRouter.post("/place-online", auth, validateBody(checkoutWithAddressBodySchema), paymentController);
 orderRouter.post("/confirm-online", auth, confirmOnlineOrderController);
+orderRouter.post("/cancel", auth, validateBody(cancelMyOrderBodySchema), cancelMyOrderController);
 orderRouter.get("/my-orders", auth, getOrderDetailsController);
 orderRouter.get("/invoice/:id", auth, getInvoiceController);
 orderRouter.get("/all", auth, admin, getAllOrdersController);

@@ -29,6 +29,8 @@ export interface WishlistItem {
   image: string;
   rating: number;
   reviewsCount: number;
+  /** Available units; used when moving to cart. */
+  stock?: number;
   inStock: boolean;
   onSale?: boolean;
   isNewArrival?: boolean;
@@ -86,7 +88,7 @@ export function wishlistItemToProduct(item: WishlistItem): Product {
     dimensions: '',
     age: '',
     school: '',
-    stock: item.inStock ? 10 : 0,
+    stock: Math.max(0, Math.floor(Number(item.stock ?? (item.inStock ? 1 : 0)))),
     galleryImages: item.image ? [item.image] : [],
     tags: [],
     artisan: {
@@ -231,6 +233,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         image: product.image,
         rating: 5,
         reviewsCount: 0,
+        stock: Math.max(0, Math.floor(stock) || 0),
         inStock: stock > 0,
         onSale: Boolean(discount),
       };

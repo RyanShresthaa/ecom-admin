@@ -42,7 +42,9 @@ const Wishlist: React.FC = () => {
     const handleAddToCart = (e: React.MouseEvent, item: (typeof wishlist)[number]) => {
         e.stopPropagation();
         e.preventDefault();
-        addToCart(wishlistItemToProduct(item), 1);
+        if (!item.inStock) return;
+        const ok = addToCart(wishlistItemToProduct(item), 1);
+        if (!ok) return;
 
         setAddedItems((prev) => ({ ...prev, [item.id]: true }));
         setTimeout(() => {

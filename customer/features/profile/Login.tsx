@@ -42,7 +42,7 @@ const Login: React.FC = () => {
   }, [resendCooldown]);
 
   const finishLogin = () => {
-    const next = searchParams.get('next') || '/cart';
+    const next = searchParams.get('next') || '/';
     router.push(next);
   };
 

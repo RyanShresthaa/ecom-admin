@@ -31,8 +31,10 @@ export async function sendEmailDirect({ sendTo, subject, html, text }) {
     if (!t) {
         throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, SMTP_PASS)');
     }
+    const rawFrom = process.env.SMTP_FROM?.trim() || process.env.SMTP_USER.trim();
+    const from = rawFrom.includes('<') ? rawFrom : `"Matina Crafts" <${rawFrom}>`;
     await t.sendMail({
-        from: process.env.SMTP_FROM?.trim() || process.env.SMTP_USER.trim(),
+        from,
         to: sendTo,
         subject,
         text: text || subject,

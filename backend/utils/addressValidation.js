@@ -71,6 +71,79 @@ export function normalizeUsCountry(country) {
 }
 
 /**
+ * Approximate US ZIP3 → state (USPS ranges). Used to catch mismatched city/state/ZIP.
+ * Not a full postal database — rejects obvious ZIP/state mismatches.
+ */
+const ZIP3_STATE = (() => {
+    /** @type {Map<number, string>} */
+    const map = new Map();
+    const add = (state, ranges) => {
+        for (const [lo, hi] of ranges) {
+            for (let z = lo; z <= hi; z += 1) map.set(z, state);
+        }
+    };
+    add('AL', [[350, 369]]);
+    add('AK', [[995, 999]]);
+    add('AZ', [[850, 865]]);
+    add('AR', [[716, 729]]);
+    add('CA', [[900, 961]]);
+    add('CO', [[800, 816]]);
+    add('CT', [[60, 69]]);
+    add('DE', [[197, 199]]);
+    add('DC', [[200, 205]]);
+    add('FL', [[320, 349]]);
+    add('GA', [[300, 319], [398, 399]]);
+    add('HI', [[967, 968]]);
+    add('ID', [[832, 838]]);
+    add('IL', [[600, 629]]);
+    add('IN', [[460, 479]]);
+    add('IA', [[500, 528]]);
+    add('KS', [[660, 679]]);
+    add('KY', [[400, 427]]);
+    add('LA', [[700, 715]]);
+    add('ME', [[39, 49]]);
+    add('MD', [[206, 219]]);
+    add('MA', [[10, 27], [55, 55]]);
+    add('MI', [[480, 499]]);
+    add('MN', [[550, 567]]);
+    add('MS', [[386, 397]]);
+    add('MO', [[630, 658]]);
+    add('MT', [[590, 599]]);
+    add('NE', [[680, 693]]);
+    add('NV', [[889, 898]]);
+    add('NH', [[30, 38]]);
+    add('NJ', [[70, 89]]);
+    add('NM', [[870, 884]]);
+    add('NY', [[100, 149], [5, 5], [63, 63]]);
+    add('NC', [[270, 289]]);
+    add('ND', [[580, 588]]);
+    add('OH', [[430, 459]]);
+    add('OK', [[730, 749]]);
+    add('OR', [[970, 979]]);
+    add('PA', [[150, 196]]);
+    add('RI', [[28, 29]]);
+    add('SC', [[290, 299]]);
+    add('SD', [[570, 577]]);
+    add('TN', [[370, 385]]);
+    add('TX', [[750, 799], [885, 885]]);
+    add('UT', [[840, 847]]);
+    add('VT', [[50, 59]]);
+    add('VA', [[201, 201], [220, 246]]);
+    add('WA', [[980, 994]]);
+    add('WV', [[247, 268]]);
+    add('WI', [[530, 549]]);
+    add('WY', [[820, 831]]);
+    return map;
+})();
+
+export function lookupUsStateByZip(zip) {
+    const digits = String(zip || '').replace(/\D/g, '');
+    if (digits.length < 3) return null;
+    const zip3 = Number(digits.slice(0, 3));
+    return ZIP3_STATE.get(zip3) || null;
+}
+
+/**
  * @returns {{ ok: true, value: object } | { ok: false, errors: Record<string, string> }}
  */
 export function validateUsShippingAddress(input = {}) {
@@ -103,6 +176,12 @@ export function validateUsShippingAddress(input = {}) {
 
     if (!/^\d{5}(-\d{4})?$/.test(pincode)) {
         errors.pincode = 'Enter a valid US ZIP code (12345 or 12345-6789).';
+    } else if (state && US_STATE_CODES.has(state)) {
+        const zipState = lookupUsStateByZip(pincode);
+        if (zipState && zipState !== state) {
+            errors.pincode = `ZIP ${pincode.slice(0, 5)} does not match ${state} (expected ${zipState}).`;
+            errors.state = `State does not match ZIP ${pincode.slice(0, 5)}.`;
+        }
     }
 
     if (country !== 'United States') {

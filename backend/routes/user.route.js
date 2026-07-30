@@ -27,6 +27,14 @@ import {
     verifyForgotPinOtpController,
     resetPinController,
     deactivateAccountController,
+    getPreferencesController,
+    updatePreferencesController,
+    setupTwoFactorController,
+    enableTwoFactorController,
+    disableTwoFactorController,
+    sendTwoFactorEmailOtpController,
+    verifyTwoFactorLoginController,
+    getPublicProfileController,
 } from '../controllers/user.controller.js';
 import auth from '../middleware/auth.js';
 import upload from '../middleware/multer.js';
@@ -49,6 +57,11 @@ import {
     resetPinBodySchema,
     loginPinBodySchema,
     deactivateAccountBodySchema,
+    notificationPrefsBodySchema,
+    totpCodeBodySchema,
+    totpDisableBodySchema,
+    totpLoginEmailOtpBodySchema,
+    totpLoginVerifyBodySchema,
 } from '../validation/schemas.js';
 
 const userRouter = Router();
@@ -77,10 +90,23 @@ userRouter.put('/reset-password', passwordResetLimiter, resetpassword);
 userRouter.post('/reset-password', passwordResetLimiter, resetpassword);
 userRouter.post('/refresh-token', refreshLimiter, refreshToken);
 userRouter.get('/user-details', auth, userDetails);
-userRouter.get('/csrf', auth, getCsrfController);
+userRouter.get('/csrf', getCsrfController);
 userRouter.post('/apply-seller', auth, applyForSellerController);
 userRouter.get('/export-account', auth, exportAccountController);
 userRouter.delete('/delete-account', auth, deleteAccountController);
+userRouter.get('/preferences', auth, getPreferencesController);
+userRouter.put('/preferences', auth, validateBody(notificationPrefsBodySchema), updatePreferencesController);
+userRouter.post('/2fa/setup', auth, setupTwoFactorController);
+userRouter.post('/2fa/enable', auth, validateBody(totpCodeBodySchema), enableTwoFactorController);
+userRouter.post('/2fa/disable', auth, validateBody(totpDisableBodySchema), disableTwoFactorController);
+userRouter.post(
+    '/2fa/email-otp',
+    loginLimiter,
+    validateBody(totpLoginEmailOtpBodySchema),
+    sendTwoFactorEmailOtpController,
+);
+userRouter.post('/2fa/verify-login', loginLimiter, validateBody(totpLoginVerifyBodySchema), verifyTwoFactorLoginController);
+userRouter.get('/public/:id', getPublicProfileController);
 userRouter.post('/deactivate-account', auth, validateBody(deactivateAccountBodySchema), deactivateAccountController);
 
 export default userRouter;

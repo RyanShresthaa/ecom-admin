@@ -4,7 +4,7 @@
 import pool from '../config/connectDB.js';
 import { mapRow } from '../utils/sql.js';
 
-const PUBLIC_FIELDS = `id, name, email, mobile, avatar, bio, verify_email, last_login_date, status, role, seller_request, created_at, updated_at,
+const PUBLIC_FIELDS = `id, name, email, mobile, avatar, bio, verify_email, last_login_date, status, role, seller_request, notification_prefs, totp_enabled, created_at, updated_at,
     (pin_hash IS NOT NULL AND length(trim(pin_hash)) > 0) AS has_mobile_pin`;
 
 export async function findUserByEmail(email) {
@@ -120,14 +120,22 @@ export async function updateUser(id, fields) {
         'pin_hash',
         'pin_reset_otp',
         'pin_reset_expiry',
+        'notification_prefs',
+        'totp_secret',
+        'totp_enabled',
     ];
     const sets = [];
     const values = [];
     let i = 1;
     for (const key of allowed) {
         if (fields[key] !== undefined) {
-            sets.push(`${key} = $${i++}`);
-            values.push(fields[key]);
+            if (key === 'notification_prefs') {
+                sets.push(`${key} = $${i++}::jsonb`);
+                values.push(JSON.stringify(fields[key]));
+            } else {
+                sets.push(`${key} = $${i++}`);
+                values.push(fields[key]);
+            }
         }
     }
     if (!sets.length) return findUserById(id);

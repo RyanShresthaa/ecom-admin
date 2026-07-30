@@ -24,7 +24,7 @@ const Collection = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const { addToCart } = useCart();
+  const { addToCart, cart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { settings, loading: localeLoading } = useShopLocale();
 
@@ -137,6 +137,11 @@ const Collection = () => {
           {!loading &&
             products.map((product) => {
               const wishlisted = isInWishlist(product.id) || isInWishlist(product.slug);
+              const stock = Math.max(0, Math.floor(Number(product.stock) || 0));
+              const inCartQty =
+                cart.find((item) => item.id === product.id || item.slug === product.slug)
+                  ?.quantity || 0;
+              const canAdd = stock > 0 && inCartQty < stock;
               return (
               <div key={product.id} className="flex flex-col items-center">
                 <Link
@@ -185,8 +190,14 @@ const Collection = () => {
                 </div>
 
                 <div className="self-center flex items-center gap-2">
-                  <Button type="button" onClick={() => addToCart(product, 1)}>
-                    Add to Cart
+                  <Button
+                    type="button"
+                    disabled={!canAdd}
+                    onClick={() => {
+                      if (canAdd) addToCart(product, 1);
+                    }}
+                  >
+                    {stock < 1 ? 'Out of Stock' : canAdd ? 'Add to Cart' : 'Max in Cart'}
                   </Button>
                   <button
                     type="button"

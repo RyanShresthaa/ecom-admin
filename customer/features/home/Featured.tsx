@@ -22,7 +22,7 @@ const Featured = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const { addToCart } = useCart();
+  const { addToCart, cart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { settings, loading: localeLoading } = useShopLocale();
 
@@ -94,6 +94,11 @@ const Featured = () => {
           {!loading &&
             products.map((product) => {
               const wishlisted = isInWishlist(product.id) || isInWishlist(product.slug);
+              const stock = Math.max(0, Math.floor(Number(product.stock) || 0));
+              const inCartQty =
+                cart.find((item) => item.id === product.id || item.slug === product.slug)
+                  ?.quantity || 0;
+              const canAdd = stock > 0 && inCartQty < stock;
               return (
                 <div
                   key={product.id}
@@ -147,10 +152,13 @@ const Featured = () => {
                   <div className="flex items-center gap-2 w-full mt-5">
                     <button
                       type="button"
-                      onClick={() => addToCart(product, 1)}
-                      className="flex-1 bg-primary text-white text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.15em] py-2.5 rounded-full hover:bg-primary-dark transition-all duration-300 active:scale-[0.98] shadow-sm cursor-pointer"
+                      disabled={!canAdd}
+                      onClick={() => {
+                        if (canAdd) addToCart(product, 1);
+                      }}
+                      className="flex-1 bg-primary text-white text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.15em] py-2.5 rounded-full hover:bg-primary-dark transition-all duration-300 active:scale-[0.98] shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                     >
-                      Add to Cart
+                      {stock < 1 ? 'Out of Stock' : canAdd ? 'Add to Cart' : 'Max in Cart'}
                     </button>
                     <button
                       type="button"

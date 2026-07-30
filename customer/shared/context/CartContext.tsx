@@ -32,12 +32,15 @@ export interface CartItem {
   originalPriceNum?: number;
   image: string;
   quantity: number;
+  /** Available inventory; used to cap cart qty. */
+  stock?: number;
   rating?: number;
 }
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, quantity?: number) => void;
+  /** Returns false if nothing was added (out of stock / already at max). */
+  addToCart: (product: Product, quantity?: number) => boolean;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
@@ -61,6 +64,12 @@ function parsePrice(priceStr: string): number {
   const cleaned = String(priceStr).replace(/[^0-9.]/g, '');
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeStock(value: unknown): number | undefined {
+  if (value == null || value === '') return undefined;
+  const n = Math.floor(Number(value));
+  return Number.isFinite(n) ? Math.max(0, n) : undefined;
 }
 
 /** Resolve display-currency unit price from a catalog product. */
@@ -186,45 +195,66 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [cart, coupon, promoCode, persistPromo]);
 
-  const addToCart = (product: Product, quantity = 1) => {
+  const addToCart = (product: Product, quantity = 1): boolean => {
+    const stock = normalizeStock(product.stock);
+    if (stock !== undefined && stock < 1) {
+      return false;
+    }
+
+    const requested = Math.max(1, Math.floor(Number(quantity) || 1));
+    let qtyAdded = 0;
+
     setCart((prevCart) => {
       const existingIndex = prevCart.findIndex(
         (item) => item.id === product.id || item.slug === product.slug,
       );
+      const currentQty = existingIndex > -1 ? prevCart[existingIndex].quantity : 0;
+      const room =
+        stock === undefined ? requested : Math.max(0, stock - currentQty);
+      qtyAdded = Math.min(requested, room);
+      if (qtyAdded < 1) {
+        return prevCart;
+      }
+
       const { amount: numericPrice, label: priceString } = resolveDisplayPrice(product);
-      let next: CartItem[];
 
       if (existingIndex > -1) {
-        next = [...prevCart];
+        const next = [...prevCart];
         next[existingIndex] = {
           ...next[existingIndex],
-          quantity: next[existingIndex].quantity + quantity,
+          quantity: currentQty + qtyAdded,
+          stock: stock ?? next[existingIndex].stock,
         };
-      } else {
-        next = [
-          ...prevCart,
-          {
-            id: product.id,
-            name: product.name,
-            slug: product.slug,
-            category: product.category || 'Handicraft',
-            artisanName: product.artisan?.name || 'Artisan',
-            artisanLocation: product.location || 'Nepal',
-            price: numericPrice,
-            priceString,
-            originalPrice: product.originalPrice,
-            image: product.image,
-            quantity,
-            rating: 5,
-          },
-        ];
+        return next;
       }
-      return next;
+
+      return [
+        ...prevCart,
+        {
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          category: product.category || 'Handicraft',
+          artisanName: product.artisan?.name || 'Artisan',
+          artisanLocation: product.location || 'Nepal',
+          price: numericPrice,
+          priceString,
+          originalPrice: product.originalPrice,
+          image: product.image,
+          quantity: qtyAdded,
+          stock,
+          rating: 5,
+        },
+      ];
     });
 
-    if (isSynced) {
-      void addServerCartItem(product.id, quantity).catch(() => undefined);
+    if (qtyAdded > 0 && isSynced) {
+      void addServerCartItem(product.id, qtyAdded).catch(() => {
+        void refreshFromServer();
+      });
     }
+
+    return qtyAdded > 0;
   };
 
   const removeFromCart = (id: string) => {
@@ -242,17 +272,31 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prev
         .map((item) => {
           if (item.id !== id) return item;
-          const newQty = item.quantity + delta;
+          const stock = normalizeStock(item.stock);
+          let newQty = item.quantity + delta;
+          if (delta > 0 && stock !== undefined) {
+            if (stock < 1 || item.quantity >= stock) {
+              return item;
+            }
+            newQty = Math.min(newQty, stock);
+          }
           if (newQty <= 0) {
             if (isSynced && item.cartLineId) {
               void removeServerCartItem(item.cartLineId).catch(() => undefined);
             }
             return null;
           }
+          if (newQty === item.quantity) {
+            return item;
+          }
           if (isSynced && item.cartLineId) {
-            void updateServerCartItem(item.cartLineId, newQty).catch(() => undefined);
+            void updateServerCartItem(item.cartLineId, newQty).catch(() => {
+              void refreshFromServer();
+            });
           } else if (isSynced) {
-            void addServerCartItem(item.id, newQty).catch(() => undefined);
+            void addServerCartItem(item.id, newQty).catch(() => {
+              void refreshFromServer();
+            });
           }
           return { ...item, quantity: newQty };
         })

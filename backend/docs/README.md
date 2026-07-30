@@ -17,10 +17,8 @@ On push/PR to `main` or `master` (when `backend/` changes):
 
 1. Spin up PostgreSQL 16  
 2. `npm ci` → **`npm run lint`** → `npm run db:migrate`  
-3. `npm test` (unit + Nepal VAT + purchase DB flows when DB is up)  
-4. Start server → `npm run test:api` (smoke) → **`npm run test:integration`** (validation + request ID)  
 
-Local: `npm run lint` · `npm run format` (optional Prettier). **`npm test`** runs unit security, **Nepal VAT purchase math**, and **DB integration** (supplier + purchase bill + stock + payment-out) when PostgreSQL is reachable from `.env`; use **`SKIP_DB_TESTS=1`** to skip the DB-only tests. **`SKIP_API_TESTS=1`** applies only to `npm run test:api` / `npm run test:integration` (they need a running server).
+Local: `npm run lint` · `npm run format` (optional Prettier).
 
 **Production deploy** (Docker, HTTPS, backups): see [docs/DEPLOYMENT.md](./DEPLOYMENT.md).
 **Auth cookies / CSRF / SameSite**: see [docs/COOKIES.md](./COOKIES.md).
@@ -479,8 +477,7 @@ VAT formula: **line net (excl. VAT)** = qty × unit price excl. VAT; **VAT** = n
 | Passwords | Upper, lower, number, min length |
 | Verify email | Rate limited (`RATE_LIMIT_VERIFY_EMAIL`) |
 | Admin revenue | `SUM(line_total)`; order count uses distinct `order_id` |
-| Tests | `npm test` (security + VAT math + DB purchase flows), `npm run test:api` (server smoke) |
-| CI/CD | GitHub Actions `.github/workflows/backend-ci.yml` |
+| CI/CD | GitHub Actions `.github/workflows/backend-ci.yml` (lint + migrate) |
 | Idempotent checkout | Header `Idempotency-Key` on `place-cod` / mock `place-online` |
 | Email queue | `EMAIL_USE_QUEUE=true` + `npm run email:worker` |
 

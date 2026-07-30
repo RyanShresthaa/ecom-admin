@@ -182,6 +182,7 @@ const Cart: React.FC = () => {
                         <div className="sm:col-span-2 flex justify-center">
                           <div className="inline-flex items-center bg-[#FAF6F2] border border-primary/15 rounded-full px-2 py-1 gap-2.5 text-xs font-semibold text-primary-dark">
                             <button
+                              type="button"
                               onClick={() => updateQuantity(item.id, -1)}
                               className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-body/80 transition-colors cursor-pointer"
                               aria-label="Decrease quantity"
@@ -192,8 +193,14 @@ const Cart: React.FC = () => {
                               {item.quantity}
                             </span>
                             <button
+                              type="button"
                               onClick={() => updateQuantity(item.id, 1)}
-                              className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-body/80 transition-colors cursor-pointer"
+                              disabled={
+                                item.stock != null &&
+                                Number.isFinite(Number(item.stock)) &&
+                                item.quantity >= Number(item.stock)
+                              }
+                              className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-body/80 transition-colors cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                               aria-label="Increase quantity"
                             >
                               <Icon icon="ph:plus" className="w-3 h-3" />

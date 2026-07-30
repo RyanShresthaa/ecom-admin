@@ -3,7 +3,7 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default [
-    { ignores: ['node_modules/**', 'backup-*.sql', 'scripts/**', 'e2e/**', 'ecosystem.config.cjs', 'ops/**'] },
+    { ignores: ['node_modules/**', 'backup-*.sql', 'scripts/**', 'ecosystem.config.cjs', 'ops/**'] },
     js.configs.recommended,
     {
         files: ['**/*.js'],

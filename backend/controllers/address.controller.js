@@ -1,6 +1,6 @@
 /**
  * Address CRUD for `/api/address` — all rows scoped by `req.userId` in models.
- * Bodies are normalized USA addresses via `addressBodySchema`.
+ * Bodies are normalized via `addressBodySchema` (+ ZIP/state consistency checks).
  */
 import {
     createAddress,
@@ -9,6 +9,8 @@ import {
     deleteAddress,
 } from '../models/address.model.js';
 import { pickId } from '../utils/sql.js';
+import { validateShippingAddress, firstAddressError } from '../utils/addressValidation.js';
+import { getCachedRegionMode } from '../utils/regionModeCache.js';
 
 export const addAddressController = async (req, res) => {
     try {
@@ -54,6 +56,40 @@ export const deleteAddressController = async (req, res) => {
     try {
         await deleteAddress(pickId(req.body._id), req.userId);
         return res.json({ message: 'Address deleted', error: false, success: true });
+    } catch (error) {
+        return res.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+};
+
+/** POST /api/address/verify — check location/shipping fields without saving. */
+export const verifyAddressController = async (req, res) => {
+    try {
+        const body = req.body || {};
+        const result = validateShippingAddress(
+            {
+                address_line: body.address_line ?? body.addressLine,
+                city: body.city,
+                state: body.state,
+                pincode: body.pincode ?? body.zip ?? body.postal_code,
+                country: body.country,
+                mobile: body.mobile ?? body.phone,
+            },
+            getCachedRegionMode(),
+        );
+        if (!result.ok) {
+            return res.status(400).json({
+                message: firstAddressError(result),
+                errors: result.errors,
+                error: true,
+                success: false,
+            });
+        }
+        return res.json({
+            message: 'Address looks valid',
+            data: result.value,
+            error: false,
+            success: true,
+        });
     } catch (error) {
         return res.status(500).json({ message: error.message || error, error: true, success: false });
     }

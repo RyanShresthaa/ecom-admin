@@ -47,6 +47,8 @@ const AUTH_BOOTSTRAP_PATHS = new Set([
     '/api/user/login',
 
     '/api/user/google',
+    '/api/user/2fa/verify-login',
+    '/api/user/2fa/email-otp',
 
     '/api/user/verify-email',
 

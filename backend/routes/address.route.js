@@ -1,5 +1,5 @@
 /**
- * /api/address — user delivery addresses (CRUD, auth required).
+ * /api/address — user delivery addresses (CRUD + verify, auth required).
  * @see controllers/address.controller.js · OpenAPI: docs/openapi/commerce.paths.js
  */
 import { Router } from "express";
@@ -11,9 +11,11 @@ import {
   deleteAddressController,
   getAddressController,
   updateAddressController,
+  verifyAddressController,
 } from "../controllers/address.controller.js";
 
 const addressRouter = Router();
+addressRouter.post("/verify", auth, verifyAddressController);
 addressRouter.post("/add", auth, validateBody(addressBodySchema), addAddressController);
 addressRouter.get("/get", auth, getAddressController);
 addressRouter.put("/update", auth, validateBody(addressUpdateBodySchema), updateAddressController);

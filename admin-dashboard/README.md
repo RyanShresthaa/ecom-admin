@@ -74,30 +74,13 @@ src/
 └── main.jsx                        # Entry point
 ```
 
-## 🔌 Swapping the mock API for a real backend
+## 🔌 API client
 
-Every data call in the app goes through **`src/lib/api.js`**, which currently delegates to the in-memory mock server in `src/mock/server.js`. The function signatures and return shapes already match a typical REST API (`{ rows, pageCount, rowCount }` for lists, plain objects for single resources), so you can swap in real network calls without touching any component or hook:
-
-```js
-import axios from 'axios'
-const http = axios.create({ baseURL: import.meta.env.VITE_API_URL })
-
-export const api = {
-  products: {
-    list: (params) => http.get('/products', { params }).then((r) => r.data),
-    create: (payload) => http.post('/products', payload).then((r) => r.data),
-    update: (id, payload) => http.put(`/products/${id}`, payload).then((r) => r.data),
-    remove: (id) => http.delete(`/products/${id}`).then((r) => r.data),
-  },
-  // ...orders, inventory, dashboard, settings
-}
-```
-
-Everything else — TanStack Query hooks, tables, dialogs — stays exactly the same.
+Every data call goes through **`src/lib/api.js`** (Axios via `src/lib/http.js`) against the Express backend (`VITE_API_URL`). List endpoints return `{ rows, pageCount, rowCount }`; single resources return plain objects.
 
 ## 🗃️ Data & state patterns
 
-- **Server-side table state**: pagination and sorting live in the page component's `useState`, get passed into the TanStack Query hook as `queryKey`/params, and the mock server returns the correctly paginated/sorted/filtered slice — exactly how you'd wire up a real backend.
+- **Server-side table state**: pagination and sorting live in the page component's `useState`, get passed into the TanStack Query hook as `queryKey`/params.
 - **Debounced search**: `useDebouncedValue` delays search-triggered refetches by 350ms.
 - **Optimistic-feeling refresh**: `isFetching` (not `isLoading`) drives the small "Updating…" indicator on tables, so existing rows stay visible during a refetch instead of flashing a skeleton.
 - **Mutations** (`useCreateProduct`, `useUpdateOrderStatus`, etc.) invalidate the relevant query keys on success and surface toasts via `sonner`.

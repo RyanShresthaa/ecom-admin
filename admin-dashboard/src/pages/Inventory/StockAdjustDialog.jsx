@@ -98,7 +98,28 @@ export function StockAdjustDialog({
         <DialogHeader>
           <DialogTitle>{TITLES[mode]}</DialogTitle>
           <DialogDescription>
-            {product.productName} · current stock {product.stockQuantity}
+            {product.productName}
+            <span className="mt-1 block text-foreground">
+              Current stock: <span className="font-mono font-medium tabular-nums">{product.stockQuantity}</span>
+              {mode === 'add' && Number(quantity) > 0 && (
+                <>
+                  {' '}
+                  → after add:{' '}
+                  <span className="font-mono font-medium tabular-nums">
+                    {product.stockQuantity + Number(quantity)}
+                  </span>
+                </>
+              )}
+              {mode === 'remove' && Number(quantity) > 0 && (
+                <>
+                  {' '}
+                  → after remove:{' '}
+                  <span className="font-mono font-medium tabular-nums">
+                    {Math.max(0, product.stockQuantity - Number(quantity))}
+                  </span>
+                </>
+              )}
+            </span>
           </DialogDescription>
         </DialogHeader>
 

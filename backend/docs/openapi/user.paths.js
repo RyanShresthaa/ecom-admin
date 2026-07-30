@@ -100,8 +100,7 @@
  * /api/user/csrf:
  *   get:
  *     tags: [Auth]
- *     summary: Refresh CSRF token
- *     security: [{ cookieAuth: [] }]
+ *     summary: Issue CSRF token (public; no login required)
  *     responses:
  *       200: { description: New csrfToken }
  *

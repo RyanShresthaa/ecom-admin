@@ -4,6 +4,8 @@
  */
 import { queueTransactionalEmail } from './emailQueue.js';
 import { logger } from './logger.js';
+import { wantsOrderEmails } from './notificationPrefs.js';
+import { notifyOrderPlaced, notifyOrderUpdate } from './notifyChannels.js';
 
 export function orderConfirmationHtml({ name, orderId, summary, currency = 'INR' }) {
     const rows = summary.lines
@@ -38,27 +40,39 @@ export function lowStockHtml({ name, products }) {
 }
 
 export async function sendOrderConfirmation({ user, orderId, summary }) {
-    try {
-        await queueTransactionalEmail({
-            sendTo: user.email,
-            subject: `Order confirmed ${orderId}`,
-            html: orderConfirmationHtml({ name: user.name, orderId, summary }),
-        });
-    } catch (e) {
-        logger.warn('Order confirmation email failed', e.message);
+    if (wantsOrderEmails(user)) {
+        try {
+            await queueTransactionalEmail({
+                sendTo: user.email,
+                subject: `Order confirmed ${orderId}`,
+                html: orderConfirmationHtml({ name: user.name, orderId, summary }),
+            });
+        } catch (e) {
+            logger.warn('Order confirmation email failed', e.message);
+        }
     }
+    await notifyOrderPlaced({
+        user,
+        orderId,
+        totalAmt: summary?.totalAmt,
+    }).catch((e) => logger.warn('Order placed channel notify failed', e.message));
 }
 
 export async function sendOrderStatusEmail({ user, orderId, status }) {
-    try {
-        await queueTransactionalEmail({
-            sendTo: user.email,
-            subject: `Order ${orderId} — ${status}`,
-            html: orderStatusHtml({ name: user.name, orderId, status }),
-        });
-    } catch (e) {
-        logger.warn('Order status email failed', e.message);
+    if (wantsOrderEmails(user)) {
+        try {
+            await queueTransactionalEmail({
+                sendTo: user.email,
+                subject: `Order ${orderId} — ${status}`,
+                html: orderStatusHtml({ name: user.name, orderId, status }),
+            });
+        } catch (e) {
+            logger.warn('Order status email failed', e.message);
+        }
     }
+    await notifyOrderUpdate({ user, orderId, status }).catch((e) =>
+        logger.warn('Order status channel notify failed', e.message),
+    );
 }
 
 export async function sendLowStockAlert({ seller, products }) {

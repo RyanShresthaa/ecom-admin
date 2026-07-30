@@ -130,6 +130,24 @@
  *     responses:
  *       200: { description: Updated }
  *
+ * /api/order/cancel:
+ *   post:
+ *     tags: [Orders]
+ *     summary: Cancel own order (customer, pre-shipping only)
+ *     security: [{ cookieAuth: [] }, { csrfHeader: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderId]
+ *             properties:
+ *               orderId: { oneOf: [{ type: string }, { type: integer }] }
+ *     responses:
+ *       200: { description: Cancelled }
+ *       400: { description: Too late to cancel / validation error }
+ *
  * /api/address/get:
  *   get:
  *     tags: [Addresses]

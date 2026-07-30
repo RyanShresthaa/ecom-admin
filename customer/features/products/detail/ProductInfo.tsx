@@ -16,13 +16,20 @@ interface ProductInfoProps {
 export default function ProductInfo({ product }: ProductInfoProps) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [stockError, setStockError] = useState('');
   const [avg, setAvg] = useState<number | null>(null);
   const [reviewCount, setReviewCount] = useState(0);
-  const { addToCart } = useCart();
+  const { addToCart, cart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const router = useRouter();
   const wishlisted = isInWishlist(product.id) || isInWishlist(product.slug);
   const priceLabel = useProductPrice(product);
+
+  const inCartQty =
+    cart.find((item) => item.id === product.id || item.slug === product.slug)?.quantity || 0;
+  const stock = Math.max(0, Math.floor(Number(product.stock) || 0));
+  const remaining = Math.max(0, stock - inCartQty);
+  const outOfStock = stock < 1;
 
   useEffect(() => {
     let cancelled = false;
@@ -40,17 +47,43 @@ export default function ProductInfo({ product }: ProductInfoProps) {
     };
   }, [product.id]);
 
+  useEffect(() => {
+    setQuantity((prev) => {
+      if (remaining < 1) return 1;
+      return Math.min(Math.max(1, prev), remaining);
+    });
+  }, [remaining]);
+
   const decrease = () => setQuantity((prev) => Math.max(1, prev - 1));
-  const increase = () => setQuantity((prev) => Math.min(product.stock, prev + 1));
+  const increase = () =>
+    setQuantity((prev) => Math.min(Math.max(1, remaining), prev + 1));
 
   const handleAddToCart = () => {
-    addToCart(product, quantity);
+    setStockError('');
+    if (outOfStock || remaining < 1) {
+      setStockError(outOfStock ? 'This item is out of stock.' : 'No more stock available to add.');
+      return;
+    }
+    const ok = addToCart(product, Math.min(quantity, remaining));
+    if (!ok) {
+      setStockError('No more stock available to add.');
+      return;
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 2500);
   };
 
   const handleBuyNow = () => {
-    addToCart(product, quantity);
+    setStockError('');
+    if (outOfStock || remaining < 1) {
+      setStockError(outOfStock ? 'This item is out of stock.' : 'No more stock available to add.');
+      return;
+    }
+    const ok = addToCart(product, Math.min(quantity, remaining));
+    if (!ok) {
+      setStockError('No more stock available to add.');
+      return;
+    }
     router.push('/cart');
   };
 
@@ -156,8 +189,10 @@ export default function ProductInfo({ product }: ProductInfoProps) {
       <div className="flex items-center gap-4 pt-1">
         <div className="flex items-center border border-primary/15 rounded-full overflow-hidden">
           <button
+            type="button"
             onClick={decrease}
-            className="w-10 h-10 flex items-center justify-center text-primary-dark hover:bg-primary-lighter/40 transition-colors cursor-pointer"
+            disabled={outOfStock || remaining < 1}
+            className="w-10 h-10 flex items-center justify-center text-primary-dark hover:bg-primary-lighter/40 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Icon icon="ph:minus" className="w-4 h-4" />
           </button>
@@ -165,16 +200,26 @@ export default function ProductInfo({ product }: ProductInfoProps) {
             {quantity}
           </span>
           <button
+            type="button"
             onClick={increase}
-            className="w-10 h-10 flex items-center justify-center text-primary-dark hover:bg-primary-lighter/40 transition-colors cursor-pointer"
+            disabled={outOfStock || quantity >= remaining}
+            className="w-10 h-10 flex items-center justify-center text-primary-dark hover:bg-primary-lighter/40 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Icon icon="ph:plus" className="w-4 h-4" />
           </button>
         </div>
         <span className="font-secondary text-xs text-body/60">
-          Only {product.stock} in stock
+          {outOfStock
+            ? 'Out of stock'
+            : remaining < stock
+              ? `${remaining} left to add (${stock} in stock)`
+              : `Only ${stock} in stock`}
         </span>
       </div>
+
+      {stockError ? (
+        <p className="text-xs text-red-600 font-secondary -mt-2">{stockError}</p>
+      ) : null}
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-3 pt-1">
@@ -182,12 +227,21 @@ export default function ProductInfo({ product }: ProductInfoProps) {
           <button
             type="button"
             onClick={handleAddToCart}
-            className={`flex-1 py-3.5 rounded-full text-white font-semibold text-sm uppercase tracking-[0.15em] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] ${
+            disabled={outOfStock || remaining < 1}
+            className={`flex-1 py-3.5 rounded-full text-white font-semibold text-sm uppercase tracking-[0.15em] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 ${
               added ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-primary hover:bg-primary-dark'
             }`}
           >
             <Icon icon={added ? 'ph:check-bold' : 'ph:shopping-cart-simple'} className="w-5 h-5" />
-            <span>{added ? 'Added to Cart ✓' : 'Add to Cart'}</span>
+            <span>
+              {outOfStock || remaining < 1
+                ? outOfStock
+                  ? 'Out of Stock'
+                  : 'Max in Cart'
+                : added
+                  ? 'Added to Cart ✓'
+                  : 'Add to Cart'}
+            </span>
           </button>
           <button
             type="button"
@@ -205,9 +259,10 @@ export default function ProductInfo({ product }: ProductInfoProps) {
         <button
           type="button"
           onClick={handleBuyNow}
-          className="w-full py-3.5 rounded-full border-2 border-primary text-primary font-semibold text-sm uppercase tracking-[0.15em] hover:bg-primary hover:text-white transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+          disabled={outOfStock || remaining < 1}
+          className="w-full py-3.5 rounded-full border-2 border-primary text-primary font-semibold text-sm uppercase tracking-[0.15em] hover:bg-primary hover:text-white transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-primary disabled:active:scale-100"
         >
-          <span>Buy Now</span>
+          <span>{outOfStock ? 'Out of Stock' : 'Buy Now'}</span>
         </button>
       </div>
 

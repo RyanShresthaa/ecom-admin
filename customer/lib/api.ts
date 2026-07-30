@@ -1002,6 +1002,7 @@ export function cartLineToLocal(line: ApiCartLine) {
     originalPrice: basics.originalPrice,
     image: basics.image,
     quantity: Number(line.quantity) || 1,
+    stock: basics.stock,
     rating: 5,
   };
 }
@@ -1042,6 +1043,7 @@ export function wishlistLineToLocal(line: ApiWishlistLine) {
     image: basics.image,
     rating: 0,
     reviewsCount: 0,
+    stock: basics.stock,
     inStock: basics.stock > 0,
     onSale: Boolean(basics.discountBadge),
   };

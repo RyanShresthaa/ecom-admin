@@ -258,14 +258,30 @@ export async function updateProduct(id, body) {
 /**
  * Hard-delete when nothing references the product in orders.
  * If order history exists, unpublish + zero stock (soft delete) so history stays intact.
+ * Must also clear warehouse_stock — otherwise Inventory shows stock 0 while warehouses
+ * still hold units, and "Add stock" jumps to (hidden + added) which looks random.
  */
 export async function deleteProduct(id) {
     const refs = await pool.query(`SELECT 1 FROM orders WHERE product_id = $1 LIMIT 1`, [id]);
     if (refs.rows.length) {
-        await pool.query(
-            `UPDATE products SET publish = false, stock = 0, updated_at = NOW() WHERE id = $1`,
-            [id],
-        );
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query(
+                `UPDATE warehouse_stock SET quantity = 0, updated_at = NOW() WHERE product_id = $1`,
+                [id],
+            );
+            await client.query(
+                `UPDATE products SET publish = false, stock = 0, updated_at = NOW() WHERE id = $1`,
+                [id],
+            );
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
         return { deletedCount: 1, soft: true };
     }
     const r = await pool.query(`DELETE FROM products WHERE id = $1`, [id]);

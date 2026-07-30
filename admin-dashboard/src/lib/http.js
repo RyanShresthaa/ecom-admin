@@ -81,7 +81,9 @@ function isAuthEndpoint(url = '') {
     url.includes('/user/refresh-token') ||
     url.includes('/user/logout') ||
     url.includes('/user/google') ||
-    url.includes('/user/login-pin')
+    url.includes('/user/login-pin') ||
+    url.includes('/user/csrf') ||
+    url.includes('/user/2fa/')
   )
 }
 
@@ -104,16 +106,17 @@ async function refreshSession() {
   return refreshPromise
 }
 
-/** Fetch CSRF from API body — cookie is not readable cross-origin (5173 → 5000). */
+/** Fetch CSRF from API body — cookie is not readable cross-origin. */
 export async function fetchCsrfToken() {
   if (!csrfFetchPromise) {
     csrfFetchPromise = http
       .get('/user/csrf')
       .then((res) => {
         const token = res.data.data?.csrfToken
-        setCsrfToken(token)
-        return token
+        if (token) setCsrfToken(token)
+        return token ?? null
       })
+      .catch(() => null)
       .finally(() => {
         csrfFetchPromise = null
       })
@@ -136,20 +139,17 @@ function isCsrfForbidden(error) {
 
 http.interceptors.request.use(async (config) => {
   const method = config.method?.toLowerCase() ?? ''
-  if (!SAFE_METHODS.has(method) && !isCsrfEndpoint(config.url)) {
+  const url = config.url || ''
+  // Don't bootstrap CSRF before auth endpoints — login/refresh skip CSRF server-side
+  if (!SAFE_METHODS.has(method) && !isAuthEndpoint(url) && !isCsrfEndpoint(url)) {
     if (!getCsrfToken()) {
-      try {
-        await fetchCsrfToken()
-      } catch {
-        /* no session — backend skips CSRF when session cookies are absent */
-      }
+      await fetchCsrfToken()
     }
     const token = getCsrfToken()
     if (token) {
       config.headers['X-CSRF-Token'] = token
     }
   }
-  // Auth relies on httpOnly cookies (withCredentials). Do not attach Bearer JWTs from storage.
   return config
 })
 
@@ -159,7 +159,13 @@ http.interceptors.response.use(
     const original = error.config
     const status = error.response?.status
 
-    if (status === 401 && original && !original._retry && !isAuthEndpoint(original.url)) {
+    if (
+      status === 401 &&
+      original &&
+      !original._retry &&
+      !isAuthEndpoint(original.url) &&
+      !isCsrfEndpoint(original.url)
+    ) {
       original._retry = true
       try {
         await refreshSession()
@@ -174,6 +180,8 @@ http.interceptors.response.use(
       original._csrfRetry = true
       try {
         await fetchCsrfToken()
+        const token = getCsrfToken()
+        if (token) original.headers['X-CSRF-Token'] = token
         return http(original)
       } catch {
         setCsrfToken(null)

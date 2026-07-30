@@ -35,10 +35,30 @@ export async function getProductRatingSummary(productId) {
     return r.rows[0];
 }
 
-export async function deleteReview(id, userId) {
+export async function findReviewsByUser(userId, { limit = 50 } = {}) {
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 50));
+    const r = await pool.query(
+        `SELECT r.*, p.name AS product_name, p.id AS product_id
+         FROM reviews r
+         LEFT JOIN products p ON p.id = r.product_id
+         WHERE r.user_id = $1
+         ORDER BY r.created_at DESC
+         LIMIT $2`,
+        [userId, safeLimit],
+    );
+    return r.rows.map((row) => ({
+        ...mapRow(row),
+        productName: row.product_name,
+        productId: row.product_id,
+    }));
+}
+
+/** Delete own review by id. Returns true if a row was removed. */
+export async function deleteReview(reviewId, userId) {
+    if (!reviewId || !userId) return false;
     const r = await pool.query(
         `DELETE FROM reviews WHERE id = $1 AND user_id = $2 RETURNING id`,
-        [id, userId],
+        [reviewId, userId],
     );
-    return r.rowCount > 0;
+    return Boolean(r.rows[0]);
 }

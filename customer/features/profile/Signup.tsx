@@ -59,7 +59,7 @@ const Signup: React.FC = () => {
     setLoading(true);
     try {
       await signup(name.trim(), email.trim(), password);
-      router.push('/login?registered=true&next=/cart');
+      router.push('/login?registered=true');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account');
     } finally {
@@ -71,7 +71,7 @@ const Signup: React.FC = () => {
     async (credential: string) => {
       setError('');
       await googleLogin(credential);
-      router.push('/cart');
+      router.push('/');
     },
     [googleLogin, router],
   );

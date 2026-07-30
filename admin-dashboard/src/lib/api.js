@@ -15,6 +15,7 @@ import {
   shopSettingsToAdmin,
   toBackendDeliveryStatus,
 } from '@/lib/adapters'
+import { resolveFeedbackSender } from '@/lib/parseFeedback'
 
 let catalogCache = null
 let usersCache = null
@@ -423,23 +424,27 @@ export const api = {
         : 'Default warehouse'
       const warehouseId = defaultWarehouse ? String(defaultWarehouse.id ?? defaultWarehouse._id) : ''
 
-      let rows = allProducts.map((p, index) => {
-        const mapped = mapProduct(p)
-        const threshold = Number(p.low_stock_threshold ?? 15)
-        const stockQuantity = mapped.stock
-        return {
-          id: `INV-${String(index + 1).padStart(4, '0')}`,
-          productId: mapped.id,
-          productName: mapped.name,
-          sku: mapped.sku,
-          category: mapped.category,
-          stockQuantity,
-          warehouse: warehouseLabel,
-          warehouseId,
-          threshold,
-          lowStock: stockQuantity < threshold,
-        }
-      })
+      let rows = allProducts
+        .map((p, index) => {
+          const mapped = mapProduct(p)
+          // Soft-deleted / unpublished products are not sellable inventory rows
+          if (mapped.status === 'inactive') return null
+          const threshold = Number(p.low_stock_threshold ?? 15)
+          const stockQuantity = mapped.stock
+          return {
+            id: `INV-${String(index + 1).padStart(4, '0')}`,
+            productId: mapped.id,
+            productName: mapped.name,
+            sku: mapped.sku,
+            category: mapped.category,
+            stockQuantity,
+            warehouse: warehouseLabel,
+            warehouseId,
+            threshold,
+            lowStock: stockQuantity < threshold,
+          }
+        })
+        .filter(Boolean)
 
       if (search) {
         const q = search.toLowerCase()
@@ -580,18 +585,26 @@ export const api = {
       const params = { limit, skip }
       if (targetType && targetType !== 'all') params.targetType = targetType
       const res = await http.get('/admin/feedback', { params })
-      return (res.data.data ?? []).map((f) => ({
-        id: String(f.id ?? f._id),
-        targetType: f.target_type ?? f.targetType ?? '',
-        rating: f.rating ?? null,
-        title: f.title || '',
-        comment: f.comment || '',
-        userName: f.user_name || f.userName || 'Guest',
-        userEmail: f.user_email || f.userEmail || '',
-        productId: f.product_id ?? f.productId ?? null,
-        sellerId: f.seller_id ?? f.sellerId ?? null,
-        createdAt: f.createdAt ?? f.created_at ?? null,
-      }))
+      return (res.data.data ?? []).map((f) => {
+        const sender = resolveFeedbackSender(f)
+        return {
+          id: String(f.id ?? f._id),
+          targetType: f.target_type ?? f.targetType ?? '',
+          rating: f.rating ?? null,
+          title: f.title || '',
+          comment: f.comment || '',
+          message: sender.message,
+          userName: sender.displayName,
+          userEmail: sender.displayEmail,
+          phone: sender.phone || '',
+          address: sender.address || '',
+          isContactForm: sender.isContactForm,
+          accountLinked: sender.accountLinked,
+          productId: f.product_id ?? f.productId ?? null,
+          sellerId: f.seller_id ?? f.sellerId ?? null,
+          createdAt: f.createdAt ?? f.created_at ?? null,
+        }
+      })
     },
   },
 

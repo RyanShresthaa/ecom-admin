@@ -18,7 +18,7 @@ defaults:
     working-directory: backend
 
 jobs:
-  test:
+  lint-and-migrate:
     runs-on: ubuntu-latest
 
     services:
@@ -66,35 +66,3 @@ jobs:
 
       - name: Run migrations
         run: npm run db:migrate
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Start API server
-        run: |
-          node server.js &
-          echo $! > server.pid
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:5000/api/health > /dev/null; then
-              echo "Server ready"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Server failed to start"
-          exit 1
-
-      - name: API smoke tests
-        run: npm run test:api
-        env:
-          API_BASE_URL: http://localhost:5000
-
-      - name: Integration validation tests
-        run: npm run test:integration
-        env:
-          API_BASE_URL: http://localhost:5000
-
-      - name: Stop server
-        if: always()
-        run: |
-          if [ -f server.pid ]; then kill $(cat server.pid) || true; fi

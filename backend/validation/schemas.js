@@ -8,6 +8,10 @@ import {
     firstAddressError,
     normalizeUsCountry,
 } from '../utils/addressValidation.js';
+import {
+    validatePaymentMethodDetails,
+    firstPaymentError,
+} from '../utils/paymentMethodValidation.js';
 import { getCachedRegionMode } from '../utils/regionModeCache.js';
 
 const productLine = z.object({
@@ -136,6 +140,47 @@ export const deactivateAccountBodySchema = z.object({
     password: z.string().max(256).optional(),
 });
 
+/** PUT /api/user/preferences */
+export const notificationPrefsBodySchema = z
+    .object({
+        orderUpdates: z.boolean().optional(),
+        marketingEmails: z.boolean().optional(),
+        reviewRequests: z.boolean().optional(),
+        publicProfile: z.boolean().optional(),
+        smsNotifications: z.boolean().optional(),
+        pushNotifications: z.boolean().optional(),
+        shareWishlist: z.boolean().optional(),
+    })
+    .refine(
+        (data) =>
+            data.orderUpdates !== undefined ||
+            data.marketingEmails !== undefined ||
+            data.reviewRequests !== undefined ||
+            data.publicProfile !== undefined ||
+            data.smsNotifications !== undefined ||
+            data.pushNotifications !== undefined ||
+            data.shareWishlist !== undefined,
+        { message: 'Provide at least one preference to update' },
+    );
+
+export const totpCodeBodySchema = z.object({
+    code: z.string().trim().min(6).max(12),
+});
+
+export const totpDisableBodySchema = z.object({
+    code: z.string().trim().min(6).max(12),
+    password: z.string().max(256).optional(),
+});
+
+export const totpLoginEmailOtpBodySchema = z.object({
+    tempToken: z.string().trim().min(10).max(2048),
+});
+
+export const totpLoginVerifyBodySchema = z.object({
+    tempToken: z.string().trim().min(10).max(2048),
+    code: z.string().trim().min(6).max(12),
+});
+
 /** PUT /api/admin/users/:id/status */
 export const adminUserStatusBodySchema = z.object({
     status: z.enum(['Active', 'Inactive']),
@@ -149,6 +194,11 @@ export const feedbackSubmitBodySchema = z.object({
     rating: z.number().int().min(1).max(5).optional(),
     title: z.string().trim().max(200).optional(),
     comment: z.string().trim().min(1).max(8000),
+});
+
+/** POST /api/order/cancel — customer self-service cancel (pre-shipping only) */
+export const cancelMyOrderBodySchema = z.object({
+    orderId: z.union([z.string().trim().min(1).max(120), z.number().int().positive()]),
 });
 
 const inventoryProductId = z.union([z.string().trim().min(1), z.number().int().positive()]);
@@ -317,3 +367,60 @@ export const purchaseReturnCreateBodySchema = z.object({
     reason: z.string().max(5000).optional(),
     lines: z.array(purchaseReturnLineSchema).min(1).max(200),
 });
+
+/** POST /api/address/verify — same shape as add, returns normalized address without saving */
+export const addressVerifyBodySchema = addressBodySchema;
+
+/** POST /api/payment/methods/verify | /methods/add */
+export const paymentMethodBodySchema = z
+    .object({
+        type: z.enum(['card', 'bank']).optional(),
+        methodType: z.enum(['card', 'bank']).optional(),
+        // Card
+        cardNumber: z.string().max(32).optional(),
+        number: z.string().max(32).optional(),
+        pan: z.string().max(32).optional(),
+        expiryDate: z.string().max(10).optional(),
+        expiry: z.string().max(10).optional(),
+        expMonth: z.union([z.string(), z.number()]).optional(),
+        expYear: z.union([z.string(), z.number()]).optional(),
+        cvv: z.string().max(8).optional(),
+        cvc: z.string().max(8).optional(),
+        cardholderName: z.string().max(200).optional(),
+        billingZip: z.string().max(20).optional(),
+        billing_zip: z.string().max(20).optional(),
+        // Bank
+        routingNumber: z.string().max(20).optional(),
+        routing: z.string().max(20).optional(),
+        accountNumber: z.string().max(32).optional(),
+        account: z.string().max(32).optional(),
+        accountNumberConfirm: z.string().max(32).optional(),
+        confirmAccount: z.string().max(32).optional(),
+        accountHolderName: z.string().max(200).optional(),
+        bankName: z.string().max(120).optional(),
+        bank_name: z.string().max(120).optional(),
+        accountType: z.string().max(20).optional(),
+        account_type: z.string().max(20).optional(),
+        name: z.string().max(200).optional(),
+        billing_name: z.string().max(200).optional(),
+        is_default: z.boolean().optional(),
+        isDefault: z.boolean().optional(),
+    })
+    .superRefine((data, ctx) => {
+        const result = validatePaymentMethodDetails(data);
+        if (!result.ok) {
+            for (const [field, message] of Object.entries(result.errors)) {
+                ctx.addIssue({ code: 'custom', message, path: [field] });
+            }
+        }
+    })
+    .transform((data) => {
+        const result = validatePaymentMethodDetails(data);
+        if (!result.ok) {
+            throw new Error(firstPaymentError(result));
+        }
+        return {
+            ...result.value,
+            is_default: Boolean(data.is_default ?? data.isDefault),
+        };
+    });

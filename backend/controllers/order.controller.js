@@ -20,6 +20,7 @@ import { isMockPaymentAllowed, MOCK_PAYMENT_DISABLED_MSG } from '../config/payme
 import { withCheckoutIdempotency } from '../utils/checkoutIdempotency.js';
 import { biz } from '../config/businessMetrics.js';
 import { logger } from '../utils/logger.js';
+import { buildInvoicePayload, invoiceToHtml } from '../utils/invoice.js';
 import {
     createPendingCheckout,
     setPendingStripeSession,
@@ -450,6 +451,13 @@ export async function getAllOrdersController(request, response) {
 
 const isCancelledStatus = (s) => /^cancel/i.test(String(s || ''));
 
+/** Customer may cancel only before the order is out for shipping / beyond. */
+function isPastCustomerCancelWindow(status) {
+    const s = String(status || '').toLowerCase().trim();
+    if (!s) return false;
+    return /ship|out.?for|transit|deliver|dispatch|return/i.test(s);
+}
+
 function isPaidStatus(s) {
     const u = String(s || '').toUpperCase().trim();
     if (!u) return false;
@@ -691,9 +699,114 @@ export async function updateOrderStatusController(request, response) {
     }
 }
 
+/**
+ * Customer self-service cancel. Allowed only while delivery is still pre-shipping
+ * (Pending / empty / processing). Once shipped / out for delivery / delivered, blocked.
+ * Body: { orderId } — checkout group id, or a single order line id.
+ */
+export async function cancelMyOrderController(request, response) {
+    try {
+        const raw = request.body?.orderId ?? request.body?._id ?? request.body?.id;
+        if (raw == null || String(raw).trim() === '') {
+            return response.status(400).json({
+                message: 'orderId is required',
+                error: true,
+                success: false,
+            });
+        }
+
+        const rawStr = String(raw).trim();
+        const asLineId = /^\d+$/.test(rawStr) ? Number(rawStr) : null;
+        let previous = asLineId ? await findOrderById(asLineId) : null;
+        if (!previous) {
+            const group = await findOrdersByOrderGroupId(rawStr);
+            previous = group[0] || null;
+        }
+        if (!previous) {
+            return response.status(404).json({ message: 'Order not found', error: true, success: false });
+        }
+
+        if (Number(previous.userId) !== Number(request.userId)) {
+            return response.status(403).json({ message: 'Permission denied', error: true, success: false });
+        }
+
+        const groupId = previous.orderId || previous.order_id;
+        const siblings = groupId
+            ? await findOrdersByOrderGroupId(groupId)
+            : [previous];
+
+        if (siblings.every((s) => isCancelledStatus(s.delivery_status))) {
+            return response.json({
+                message: 'Order already cancelled',
+                data: previous,
+                error: false,
+                success: true,
+            });
+        }
+
+        if (siblings.some((s) => isPastCustomerCancelWindow(s.delivery_status))) {
+            return response.status(400).json({
+                message:
+                    'This order can no longer be cancelled because it is already out for shipping or delivered. Please contact support.',
+                error: true,
+                success: false,
+            });
+        }
+
+        const cancelMeta = await cancelOrderGroup(previous);
+        const user = await findUserById(request.userId);
+        if (user) {
+            await sendOrderStatusEmail({
+                user,
+                orderId: previous.orderId,
+                status: 'cancelled',
+            });
+        }
+
+        await logAudit({
+            adminId: request.userId,
+            action: 'order.customer_cancel',
+            entityType: 'order',
+            entityId: pickId(previous.id || previous._id),
+            details: {
+                orderGroupId: groupId,
+                payment_status: cancelMeta?.payment_status,
+                refundMode: cancelMeta?.refundMode,
+                cancelledCount: cancelMeta?.cancelledCount,
+            },
+            ip: getClientIp(request),
+            userAgent: getUserAgent(request),
+        });
+
+        return response.json({
+            message:
+                cancelMeta?.payment_status === 'REFUNDED'
+                    ? 'Order cancelled and payment refunded'
+                    : 'Order cancelled',
+            data: cancelMeta?.data ?? previous,
+            payment_status: cancelMeta?.payment_status,
+            refundMode: cancelMeta?.refundMode,
+            error: false,
+            success: true,
+        });
+    } catch (error) {
+        logger.warn('cancelMyOrder failed', { message: error.message });
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
 export async function getInvoiceController(request, response) {
     try {
-        const order = await findOrderById(pickId(request.params.id));
+        const raw = String(request.params.id || '').trim();
+        if (!raw) {
+            return response.status(400).json({ message: 'Order id required', error: true, success: false });
+        }
+        const asLineId = /^\d+$/.test(raw) ? Number(raw) : null;
+        let order = asLineId ? await findOrderById(asLineId) : null;
+        if (!order) {
+            const group = await findOrdersByOrderGroupId(raw);
+            order = group[0] || null;
+        }
         if (!order) {
             return response.status(404).json({ message: 'Order not found', error: true, success: false });
         }
@@ -701,8 +814,48 @@ export async function getInvoiceController(request, response) {
         if (order.userId !== request.userId && me?.role !== 'Admin') {
             return response.status(403).json({ message: 'Permission denied', error: true, success: false });
         }
+
+        const user = await findUserById(order.userId);
+        const group = await findOrdersByOrderGroupId(order.orderId);
+        const lines = (group.length ? group : [order]).map((row) => ({
+            product: {
+                name:
+                    row.product_details?.name ||
+                    (typeof row.productId === 'object' && row.productId?.name) ||
+                    `Item #${row.id ?? row._id}`,
+            },
+            quantity: row.quantity,
+            unitPrice: row.unitPrice,
+            lineTotal: row.lineTotal,
+        }));
+        const first = group[0] || order;
+        const address =
+            (typeof first.delivery_address === 'object' && first.delivery_address) ||
+            (await findAddressById(pickId(first.delivery_address))) ||
+            null;
+        const html =
+            invoiceToHtml(
+                buildInvoicePayload({
+                    orderId: order.orderId,
+                    user: { name: user?.name || '', email: user?.email || '', mobile: user?.mobile },
+                    address,
+                    summary: {
+                        lines,
+                        subtotal: first.subTotalAmt,
+                        totalAmt: first.totalAmt,
+                        taxAmt: first.taxAmt,
+                        shippingAmt: first.shippingAmt,
+                        couponDiscount: first.couponDiscount,
+                        couponCode: first.couponCode,
+                        currency: 'USD',
+                    },
+                    paymentStatus: first.payment_status,
+                    createdAt: first.createdAt,
+                }),
+            ) || order.invoiceReceipt || '';
+
         return response.json({
-            data: { html: order.invoiceReceipt || '' },
+            data: { html },
             error: false,
             success: true,
         });
