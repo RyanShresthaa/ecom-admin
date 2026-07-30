@@ -8,8 +8,8 @@ import { formatDate, getInitials } from '@/lib/utils'
 
 const columnHelper = createColumnHelper()
 
-export function getOrderColumns({ onView, formatCatalogPrice }) {
-  const formatPrice = formatCatalogPrice || ((v) => String(v))
+export function getOrderColumns({ onView, formatCurrency }) {
+  const formatPrice = formatCurrency || ((v) => String(v))
   return [
     columnHelper.accessor('id', {
       header: 'Order ID',

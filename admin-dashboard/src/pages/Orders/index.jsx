@@ -21,7 +21,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useLocale } from '@/context/LocaleContext'
 
 export default function Orders() {
-  const { formatCatalogPrice } = useLocale()
+  const { formatCurrency } = useLocale()
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [deliveryStatus, setDeliveryStatus] = useState('all')
@@ -63,8 +63,8 @@ export default function Orders() {
   }
 
   const columns = useMemo(
-    () => getOrderColumns({ onView: setViewingOrder, formatCatalogPrice }),
-    [formatCatalogPrice],
+    () => getOrderColumns({ onView: setViewingOrder, formatCurrency }),
+    [formatCurrency],
   )
 
   return (

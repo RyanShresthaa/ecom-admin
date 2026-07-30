@@ -14,7 +14,7 @@ import { formatDate, getInitials } from '@/lib/utils'
 import { useLocale } from '@/context/LocaleContext'
 
 export function OrderDetailsDrawer({ order, open, onOpenChange }) {
-  const { formatCatalogPrice } = useLocale()
+  const { formatCurrency } = useLocale()
   if (!order) return null
 
   return (
@@ -70,11 +70,11 @@ export function OrderDetailsDrawer({ order, open, onOpenChange }) {
                   <div className="flex flex-col">
                     <span className="font-medium text-foreground">{item.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      Qty {item.qty} × {formatCatalogPrice(item.price)}
+                      Qty {item.qty} × {formatCurrency(item.price)}
                     </span>
                   </div>
                   <span className="font-mono text-sm font-medium tabular-nums">
-                    {formatCatalogPrice(item.price * item.qty)}
+                    {formatCurrency(item.price * item.qty)}
                   </span>
                 </div>
               ))}
@@ -86,7 +86,7 @@ export function OrderDetailsDrawer({ order, open, onOpenChange }) {
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-foreground">Order total</span>
             <span className="font-mono text-base font-semibold tabular-nums text-foreground">
-              {formatCatalogPrice(order.totalAmount)}
+              {formatCurrency(order.totalAmount)}
             </span>
           </div>
         </div>

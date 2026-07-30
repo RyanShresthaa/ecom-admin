@@ -105,7 +105,7 @@ export async function adminSearchController(req, res) {
     }
 }
 
-/** GET /api/admin/sales-series?days=14 — revenue in stored order amounts (NPR catalog base). */
+/** GET /api/admin/sales-series?days=14 — revenue from stored checkout amounts (shop display currency). */
 export async function salesSeriesController(req, res) {
     try {
         const days = Math.min(90, Math.max(1, Number(req.query.days) || 14));

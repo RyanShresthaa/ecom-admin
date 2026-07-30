@@ -101,11 +101,24 @@ export function groupOrderLines(lines, usersById = new Map()) {
     const orderKey = String(line.orderId ?? line.order_id ?? line.id)
     const user = usersById.get(String(line.userId ?? line.user_id))
     const details = line.product_details ?? line.productDetails ?? {}
+    const qty = Number(line.quantity ?? details.quantity ?? 1)
+    // Checkout stores unit/line totals in shop display currency (USD/NPR), not catalog NPR.
+    const unitPrice = Number(
+      line.unitPrice ??
+        line.unit_price ??
+        details.unitPrice ??
+        details.unit_price ??
+        0,
+    )
+    const lineTotal = Number(
+      line.lineTotal ?? line.line_total ?? details.lineTotal ?? unitPrice * qty,
+    )
+    const orderTotal = Number(line.totalAmt ?? line.total_amt)
     const item = {
       productId: String(line.productId ?? line.product_id ?? ''),
       name: details.name ?? details.productName ?? 'Product',
-      price: Number(details.price ?? line.unitPrice ?? line.unit_price ?? 0),
-      qty: Number(line.quantity ?? details.quantity ?? 1),
+      price: unitPrice,
+      qty,
     }
 
     if (!groups.has(orderKey)) {
@@ -116,7 +129,7 @@ export function groupOrderLines(lines, usersById = new Map()) {
         customerEmail: user?.email ?? '',
         date: line.createdAt ?? line.created_at ?? new Date().toISOString(),
         items: [],
-        totalAmount: 0,
+        totalAmount: Number.isFinite(orderTotal) && orderTotal > 0 ? orderTotal : lineTotal,
         paymentStatus: toAdminPaymentStatus(line.paymentStatus ?? line.payment_status),
         deliveryStatus: toAdminDeliveryStatus(line.deliveryStatus ?? line.delivery_status),
         shippingAddress: formatAddress(line.delivery_address ?? line.deliveryAddress),
@@ -126,9 +139,12 @@ export function groupOrderLines(lines, usersById = new Map()) {
     const group = groups.get(orderKey)
     group.lineIds.push(String(line.id ?? line._id))
     group.items.push(item)
-    group.totalAmount = Number(
-      (group.totalAmount + (line.totalAmt ?? line.total_amt ?? item.price * item.qty)).toFixed(2),
-    )
+    if (Number.isFinite(orderTotal) && orderTotal > 0) {
+      // Same order total is duplicated on every line — take it once, don't sum.
+      group.totalAmount = orderTotal
+    } else {
+      group.totalAmount = Number((group.totalAmount + lineTotal).toFixed(2))
+    }
   }
 
   return [...groups.values()].sort((a, b) => new Date(b.date) - new Date(a.date))

@@ -9,19 +9,11 @@ import { RecentOrdersTable } from '@/pages/Dashboard/RecentOrdersTable'
 import { useDashboardStats, useSalesSeries } from '@/hooks/useDashboard'
 import { formatNumber, cn } from '@/lib/utils'
 import { useLocale } from '@/context/LocaleContext'
-import { toDisplayAmount } from '@/lib/currency'
-import { useSettingsQuery } from '@/hooks/useSettings'
 
 export default function Dashboard() {
   const stats = useDashboardStats()
   const sales = useSalesSeries()
-  const { data: settings } = useSettingsQuery()
-  const { formatCatalogPrice, currency, regionMode, usdNprRate } = useLocale()
-
-  const fx = {
-    regionMode: settings?.regionMode === 'nepal' || regionMode === 'nepal' ? 'nepal' : 'us',
-    usdNprRate: Number(settings?.usdNprRate || usdNprRate) > 0 ? Number(settings?.usdNprRate || usdNprRate) : 133,
-  }
+  const { formatCurrency, currency } = useLocale()
 
   const refreshAll = () => {
     stats.refetch()
@@ -30,20 +22,18 @@ export default function Dashboard() {
 
   const isFetching = stats.isFetching || sales.isFetching
 
+  // Order totals are stored in shop display currency (USD/NPR), not catalog NPR.
   const totalRevenueLabel = stats.data
-    ? formatCatalogPrice(stats.data.totalRevenue)
+    ? formatCurrency(stats.data.totalRevenue)
     : '—'
 
-  const salesData = (sales.data || []).map((row) => ({
-    ...row,
-    revenue: toDisplayAmount(row.revenue, fx),
-  }))
+  const salesData = sales.data || []
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Dashboard"
-        description={`Overview in ${currency === 'NPR' ? 'NPR' : 'USD'} · catalog amounts convert automatically.`}
+        description={`Overview in ${currency === 'NPR' ? 'NPR' : 'USD'} · order amounts match checkout currency.`}
         actions={
           <Button variant="outline" size="sm" onClick={refreshAll} disabled={isFetching} className="gap-1.5">
             <ArrowsClockwise size={14} className={cn(isFetching && 'animate-spin')} />

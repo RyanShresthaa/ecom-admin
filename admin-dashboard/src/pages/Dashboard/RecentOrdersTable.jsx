@@ -11,7 +11,7 @@ const columnHelper = createColumnHelper()
 
 export function RecentOrdersTable() {
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 5 })
-  const { formatCatalogPrice } = useLocale()
+  const { formatCurrency } = useLocale()
 
   const params = useMemo(() => ({ page: pagination.pageIndex, pageSize: pagination.pageSize }), [pagination])
   const { data, isLoading, isFetching } = useRecentOrders(params)
@@ -45,7 +45,7 @@ export function RecentOrdersTable() {
         header: 'Amount',
         cell: (info) => (
           <span className="font-mono text-sm font-medium tabular-nums">
-            {formatCatalogPrice(info.getValue())}
+            {formatCurrency(info.getValue())}
           </span>
         ),
       }),
@@ -58,7 +58,7 @@ export function RecentOrdersTable() {
         cell: (info) => <DeliveryStatusBadge status={info.getValue()} />,
       }),
     ],
-    [formatCatalogPrice],
+    [formatCurrency],
   )
 
   return (
