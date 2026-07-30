@@ -63,6 +63,7 @@ function PaymentSuccessInner() {
   }, [sessionId]);
 
   const invoiceLineId = orders[0] ? String(orders[0].id ?? orders[0]._id ?? '') : '';
+  const orderGroupId = orders[0] ? String(orders[0].orderId || invoiceLineId) : '';
 
   return (
     <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20">
@@ -92,6 +93,7 @@ function PaymentSuccessInner() {
           <div className="mb-8 flex justify-center">
             <InvoiceButton
               orderLineId={invoiceLineId}
+              orderId={orderGroupId}
               paymentStatus="PAID"
               deliveryStatus={orders[0]?.delivery_status}
             />

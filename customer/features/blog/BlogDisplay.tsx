@@ -19,9 +19,17 @@ const BlogDisplay: React.FC<Props> = ({ posts }) => {
       </div>
 
       {posts.length === 0 ? (
-        <p className="text-center text-primary/70 font-secondary pb-16">
-          No journal posts yet. Check back soon.
-        </p>
+        <div className="max-w-xl mx-auto bg-white rounded-3xl border border-primary/10 p-12 text-center mb-16">
+          <div className="w-16 h-16 rounded-full bg-[#F5ECE8] text-primary flex items-center justify-center mx-auto mb-5">
+            <span className="font-heading text-2xl text-primary">M</span>
+          </div>
+          <h2 className="font-heading text-2xl font-medium text-[#2A170F] mb-2">
+            No journal posts yet
+          </h2>
+          <p className="font-secondary text-sm text-body/70">
+            Check back soon for craft stories and updates from Matina Crafts.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 lg:gap-12">
           {posts.map((post) => (

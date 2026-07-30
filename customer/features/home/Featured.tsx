@@ -79,8 +79,9 @@ const Featured = () => {
           )}
 
           {!loading && products.length === 0 && (
-            <div className="col-span-full py-12 text-center flex flex-col items-center gap-4">
-              <p className="font-secondary text-sm text-body/70">No products yet.</p>
+            <div className="col-span-full py-12 text-center flex flex-col items-center gap-4 bg-white rounded-3xl border border-primary/10 px-6">
+              <p className="font-heading text-xl text-[#2A170F]">No featured pieces yet</p>
+              <p className="font-secondary text-sm text-body/70">Browse the shop for handmade crafts.</p>
               <Link
                 href="/products"
                 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary hover:text-primary-dark"
@@ -127,12 +128,9 @@ const Featured = () => {
                       </Link>
 
                       <div className="flex items-center gap-1 text-[10px] mt-0.5">
-                        <div className="flex items-center text-[#c89b5d]">
-                          {[...Array(5)].map((_, i) => (
-                            <Icon key={i} icon="ph:star-fill" className="w-3 h-3" />
-                          ))}
-                        </div>
-                        <span className="text-body/75 font-secondary">5.0</span>
+                        <span className="text-body/60 font-secondary uppercase tracking-wider">
+                          Handmade in Nepal
+                        </span>
                       </div>
 
                       <span className="text-[10px] text-body/60 font-secondary mt-0.5 line-clamp-1">

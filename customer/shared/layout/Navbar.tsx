@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { useCart } from '@/shared/context/CartContext';
 import { useWishlist } from '@/shared/context/WishlistContext';
+import { useAuth } from '@/shared/context/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +17,7 @@ const Navbar = () => {
   const pathname = usePathname();
   const { totalItems } = useCart();
   const { totalWishlistItems } = useWishlist();
+  const { isLoggedIn } = useAuth();
 
   // The home route features the Hero section, where text should be black
   const isHome = pathname === '/';
@@ -25,6 +27,8 @@ const Navbar = () => {
   const isContact = pathname === '/contact';
   const isBlog = pathname.startsWith('/blog') || pathname.startsWith('/blogs');
   const isWishlist = pathname === '/wishlist';
+  const isCart = pathname === '/cart';
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/profile' || pathname.startsWith('/orders') || pathname.startsWith('/addresses') || pathname.startsWith('/payments') || pathname === '/settings' || pathname === '/checkout';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -53,9 +57,9 @@ const Navbar = () => {
   return (
     <>
       <nav
-        className={`w-full z-50 transition-all duration-500 ease-in-out ${isHome || isAbout || isProductsPage || isContact || isBlog || isWishlist ? 'fixed' : 'sticky'
+        className={`w-full z-50 transition-all duration-500 ease-in-out ${isHome || isAbout || isProductsPage || isContact || isBlog || isWishlist || isAuthPage || isCart ? 'fixed' : 'sticky'
           } top-0 left-0 ${visible ? 'translate-y-0' : '-translate-y-full'
-          } ${isAbout || isProductDetail || isContact || isBlog || isWishlist
+          } ${isAbout || isProductDetail || isContact || isBlog || isWishlist || isAuthPage || isCart
             ? (scrolled
               ? 'bg-[#FAF6F2]/90 backdrop-blur-md border-b border-primary/10 py-1'
               : 'bg-transparent py-1 border-b border-transparent')
@@ -66,8 +70,8 @@ const Navbar = () => {
               : (isHome || isProductsPage
                 ? 'bg-transparent py-1 border-b border-transparent'
                 : 'bg-primary py-1 border-b border-transparent')
-          } ${isAbout || isProductDetail || isContact || isBlog || isWishlist
-            ? 'text-primary'
+          } ${isAbout || isProductDetail || isContact || isBlog || isWishlist || isAuthPage || isCart
+            ? 'text-[#2A170F]'
             : (isHome || isProductsPage) && !scrolled
               ? 'text-white'
               : (isHome || isProductsPage) && scrolled
@@ -216,20 +220,6 @@ const Navbar = () => {
               <Icon icon="lucide:user" className="w-[18px] h-[18px]" />
             </Link>
 
-            <Link
-              href="/orders"
-              className={`hidden lg:flex items-center justify-center transition-all duration-300 hover:scale-110 ${isAbout || isProductDetail || isContact || isBlog || isWishlist
-                ? 'hover:text-primary-dark'
-                : (isHome || isProductsPage)
-                  ? (scrolled ? 'hover:text-primary' : 'hover:text-secondary')
-                  : 'hover:text-secondary'
-                }`}
-              aria-label="Orders"
-              title="My orders"
-            >
-              <Icon icon="lucide:package" className="w-[18px] h-[18px]" />
-            </Link>
-
             {/* Wishlist / Heart */}
             <Link
               href="/wishlist"
@@ -331,31 +321,22 @@ const Navbar = () => {
               {isActive('/products') && <span className="w-1.5 h-1.5 rounded-full bg-[#8C523A]" />}
             </Link>
             <Link
-              href="/about"
-              className={`hover:text-[#8C523A] transition-colors py-2 flex items-center justify-between ${isActive('/about') ? 'text-[#8C523A] font-bold' : ''
+              href="/our-story"
+              className={`hover:text-[#8C523A] transition-colors py-2 flex items-center justify-between ${isActive('/our-story') ? 'text-[#8C523A] font-bold' : ''
                 }`}
               onClick={() => setIsOpen(false)}
             >
               <span>Our Story</span>
-              {isActive('/about') && <span className="w-1.5 h-1.5 rounded-full bg-[#8C523A]" />}
+              {isActive('/our-story') && <span className="w-1.5 h-1.5 rounded-full bg-[#8C523A]" />}
             </Link>
             <Link
-              href="/blog"
-              className={`hover:text-[#8C523A] transition-colors py-2 flex items-center justify-between ${isActive('/blog') ? 'text-[#8C523A] font-bold' : ''
+              href="/collections"
+              className={`hover:text-[#8C523A] transition-colors py-2 flex items-center justify-between ${isActive('/collections') ? 'text-[#8C523A] font-bold' : ''
                 }`}
               onClick={() => setIsOpen(false)}
             >
-              <span>Journal</span>
-              {isActive('/blog') && <span className="w-1.5 h-1.5 rounded-full bg-[#8C523A]" />}
-            </Link>
-            <Link
-              href="/contact"
-              className={`hover:text-[#8C523A] transition-colors py-2 flex items-center justify-between ${isActive('/contact') ? 'text-[#8C523A] font-bold' : ''
-                }`}
-              onClick={() => setIsOpen(false)}
-            >
-              <span>Contact</span>
-              {isActive('/contact') && <span className="w-1.5 h-1.5 rounded-full bg-[#8C523A]" />}
+              <span>Collections</span>
+              {isActive('/collections') && <span className="w-1.5 h-1.5 rounded-full bg-[#8C523A]" />}
             </Link>
           </nav>
 
@@ -368,14 +349,6 @@ const Navbar = () => {
             >
               <Icon icon="lucide:user" className="w-5 h-5 text-[#2A170F]" />
               <span>My Profile</span>
-            </Link>
-            <Link
-              href="/orders"
-              className="flex items-center gap-3.5 hover:text-[#8C523A] transition-colors py-2.5"
-              onClick={() => setIsOpen(false)}
-            >
-              <Icon icon="lucide:package" className="w-5 h-5 text-[#2A170F]" />
-              <span>My Orders</span>
             </Link>
             <Link
               href="/wishlist"

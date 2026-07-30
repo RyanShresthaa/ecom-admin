@@ -234,16 +234,48 @@ const ProductDisplay = () => {
 
   if (loading) {
     return (
-      <div className="w-full py-20 text-center font-secondary text-primary">
-        Loading products…
+      <div className="w-full py-20 px-4">
+        <div className="max-w-xl mx-auto bg-white rounded-3xl border border-primary/10 p-10 text-center font-secondary text-sm text-body/70">
+          Loading products…
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full py-20 text-center font-secondary text-red-600">
-        {error}
+      <div className="w-full py-20 px-4">
+        <div className="max-w-xl mx-auto bg-white rounded-3xl border border-red-200 p-10 text-center">
+          <h3 className="font-heading text-xl font-medium text-[#2A170F] mb-2">
+            Could not load products
+          </h3>
+          <p className="font-secondary text-sm text-red-700 mb-6">{error}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 rounded-full bg-[#8C523A] text-white text-xs font-semibold uppercase tracking-wider"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="w-full py-20 px-4 bg-background">
+        <div className="max-w-xl mx-auto bg-white rounded-3xl border border-primary/10 p-12 text-center flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full bg-[#F5ECE8] text-primary flex items-center justify-center mb-6">
+            <Icon icon="ph:basket-light" className="w-8 h-8" />
+          </div>
+          <h3 className="font-heading text-2xl font-medium text-[#2A170F] mb-2">
+            Catalog coming soon
+          </h3>
+          <p className="font-secondary text-sm text-body/70 mb-2 max-w-sm">
+            No products are published yet. Check back soon for handmade pieces from Nepal.
+          </p>
+        </div>
       </div>
     );
   }

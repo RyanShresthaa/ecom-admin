@@ -11,18 +11,21 @@ interface BlogDetailProps {
 
 const getCategoryStyles = (category: string) => {
     switch (category.toLowerCase()) {
-        case 'entrepreneurs':
-            return 'bg-emerald-100/90 text-emerald-800 border-emerald-200/50';
-        case 'startups':
-            return 'bg-blue-100/90 text-blue-800 border-blue-200/50';
-        case 'tech industry':
-            return 'bg-purple-100/90 text-purple-800 border-purple-200/50';
-        case 'innovation':
-            return 'bg-amber-100/90 text-amber-800 border-amber-200/50';
-        case 'artificial intelligence':
-            return 'bg-indigo-100/90 text-indigo-800 border-indigo-200/50';
-        case 'lifestyle & wellness':
-            return 'bg-rose-100/95 text-rose-800 border-rose-200/50';
+        case 'textiles':
+        case 'weaving':
+            return 'bg-[#F5ECE8] text-[#7C4831] border-[#E2D5C7]';
+        case 'metalwork':
+        case 'jewelry':
+            return 'bg-amber-50 text-amber-900 border-amber-200/60';
+        case 'woodwork':
+        case 'carving':
+            return 'bg-emerald-50 text-emerald-900 border-emerald-200/50';
+        case 'studio notes':
+        case 'behind the scenes':
+            return 'bg-[#FAF6F2] text-[#2A170F] border-primary/20';
+        case 'artisans':
+        case 'makers':
+            return 'bg-rose-50 text-rose-900 border-rose-200/50';
         default:
             return 'bg-primary/20 text-primary-dark border-primary/30';
     }

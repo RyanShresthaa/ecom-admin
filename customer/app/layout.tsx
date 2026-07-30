@@ -7,6 +7,7 @@ import Footer from "@/shared/layout/Footer";
 import { CartProvider } from "@/shared/context/CartContext";
 import { WishlistProvider } from "@/shared/context/WishlistContext";
 import { ShopLocaleProvider } from "@/shared/context/ShopLocaleContext";
+import { AuthProvider } from "@/shared/context/AuthContext";
 
 export const metadata: Metadata = {
   title: "Matina Crafts - Authentic Nepalese Handicrafts",
@@ -25,15 +26,17 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ShopLocaleProvider>
-          <WishlistProvider>
-            <CartProvider>
-              <LenisProvider>
-                <Navbar />
-                {children}
-                <Footer />
-              </LenisProvider>
-            </CartProvider>
-          </WishlistProvider>
+          <AuthProvider>
+            <WishlistProvider>
+              <CartProvider>
+                <LenisProvider>
+                  <Navbar />
+                  {children}
+                  <Footer />
+                </LenisProvider>
+              </CartProvider>
+            </WishlistProvider>
+          </AuthProvider>
         </ShopLocaleProvider>
       </body>
     </html>

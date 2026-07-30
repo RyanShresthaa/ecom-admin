@@ -89,7 +89,7 @@ export default function ProductReviews({ productId, onSummary }: Props) {
   };
 
   return (
-    <section className="mt-16 pt-12 border-t border-primary/10">
+    <section id="reviews" className="mt-16 pt-12 border-t border-primary/10 scroll-mt-28">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <h2 className="font-heading text-2xl sm:text-3xl text-primary-dark">Reviews</h2>

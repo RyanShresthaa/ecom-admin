@@ -8,16 +8,21 @@ import { Icon } from '@iconify/react';
 import { useWishlist, wishlistItemToProduct } from '@/shared/context/WishlistContext';
 import { useCart } from '@/shared/context/CartContext';
 import RelatedProduct from '@/features/products/detail/RelatedProduct';
+import { ApiError, createWishlistShare, fetchMyWishlistShare } from '@/lib/api';
+import { useAuth } from '@/shared/context/AuthContext';
 
 const Wishlist: React.FC = () => {
     const { wishlist, removeFromWishlist } = useWishlist();
     const { addToCart } = useCart();
+    const { isLoggedIn } = useAuth();
     const router = useRouter();
 
     const [activeFilter, setActiveFilter] = useState<'all' | 'inStock' | 'onSale' | 'newArrivals'>('all');
     const [sortBy, setSortBy] = useState<'date' | 'priceLow' | 'priceHigh'>('date');
     const [addedItems, setAddedItems] = useState<Record<string, boolean>>({});
     const [sharedToast, setSharedToast] = useState(false);
+    const [shareBusy, setShareBusy] = useState(false);
+    const [shareError, setShareError] = useState('');
 
     // Filter items based on active tab
     const filteredItems = wishlist.filter((item) => {
@@ -51,12 +56,33 @@ const Wishlist: React.FC = () => {
             .forEach((item) => addToCart(wishlistItemToProduct(item), 1));
     };
 
-    const handleShareList = () => {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(window.location.href);
+    const handleShareList = async () => {
+        setShareError('');
+        if (!isLoggedIn) {
+            router.push('/login?next=/wishlist');
+            return;
         }
-        setSharedToast(true);
-        setTimeout(() => setSharedToast(false), 3000);
+        setShareBusy(true);
+        try {
+            let share = await fetchMyWishlistShare();
+            if (!share?.url) {
+                share = await createWishlistShare();
+            }
+            if (navigator.clipboard && share.url) {
+                await navigator.clipboard.writeText(share.url);
+            }
+            setSharedToast(true);
+            setTimeout(() => setSharedToast(false), 3000);
+        } catch (err) {
+            setShareError(
+                err instanceof ApiError || err instanceof Error
+                    ? err.message
+                    : 'Could not create share link',
+            );
+            setTimeout(() => setShareError(''), 4000);
+        } finally {
+            setShareBusy(false);
+        }
     };
 
     return (
@@ -67,7 +93,12 @@ const Wishlist: React.FC = () => {
                 {sharedToast && (
                     <div className="fixed bottom-6 right-6 bg-[#2A170F] text-white px-5 py-3 rounded-2xl shadow-xl z-50 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
                         <Icon icon="ph:check-circle-fill" className="w-4 h-4 text-emerald-400" />
-                        <span>Wishlist link copied to clipboard!</span>
+                        <span>Public wishlist link copied!</span>
+                    </div>
+                )}
+                {shareError && (
+                    <div className="fixed bottom-6 right-6 bg-red-800 text-white px-5 py-3 rounded-2xl shadow-xl z-50 text-xs font-semibold">
+                        {shareError}
                     </div>
                 )}
 
@@ -89,11 +120,15 @@ const Wishlist: React.FC = () => {
                     {wishlist.length > 0 && (
                         <div className="flex items-center gap-3">
                             <button
-                                onClick={handleShareList}
-                                className="px-5 py-2.5 rounded-full border border-primary/20 bg-white text-body/80 hover:bg-primary-lighter/40 font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+                                onClick={() => void handleShareList()}
+                                disabled={shareBusy}
+                                className="px-5 py-2.5 rounded-full border border-primary/20 bg-white text-body/80 hover:bg-primary-lighter/40 font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-60"
                             >
-                                <Icon icon="ph:share-network" className="w-4 h-4 text-primary" />
-                                <span>Share List</span>
+                                <Icon
+                                    icon={shareBusy ? 'lucide:loader-2' : 'ph:share-network'}
+                                    className={`w-4 h-4 text-primary ${shareBusy ? 'animate-spin' : ''}`}
+                                />
+                                <span>{shareBusy ? 'Sharing…' : 'Share List'}</span>
                             </button>
 
                             <button
@@ -169,6 +204,23 @@ const Wishlist: React.FC = () => {
                         </div>
 
                         {/* Wishlist Product Cards Grid (3 Columns) */}
+                        {sortedItems.length === 0 ? (
+                          <div className="bg-white rounded-3xl p-10 text-center border border-primary/10 flex flex-col items-center my-4">
+                            <h3 className="font-heading text-xl font-medium text-[#2A170F] mb-2">
+                              No pieces match this filter
+                            </h3>
+                            <p className="font-secondary text-sm text-body/70 mb-6 max-w-md">
+                              Try another filter or view all saved items.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setActiveFilter('all')}
+                              className="px-6 py-3 rounded-full bg-[#8C523A] text-white font-semibold text-xs uppercase tracking-wider"
+                            >
+                              Show all items
+                            </button>
+                          </div>
+                        ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                             {sortedItems.map((item) => (
                                 <div
@@ -179,13 +231,19 @@ const Wishlist: React.FC = () => {
                                     <div>
                                         {/* Image Container with Badges & Remove Icon */}
                                         <div className="relative w-full aspect-[4/3] overflow-hidden bg-[#FAF6F2]">
-                                            <Image
+                                            {item.image ? (
+                                              <Image
                                                 src={item.image}
                                                 alt={item.name}
                                                 fill
                                                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                                 className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-                                            />
+                                              />
+                                            ) : (
+                                              <div className="flex h-full w-full items-center justify-center text-xs text-primary/50">
+                                                No image
+                                              </div>
+                                            )}
 
                                             {/* Top-Left Badge */}
                                             {item.badge && (
@@ -233,20 +291,29 @@ const Wishlist: React.FC = () => {
                                                 {item.artisanName}, {item.artisanLocation}
                                             </p>
 
-                                            {/* Star Rating */}
+                                            {item.reviewsCount > 0 ? (
                                             <div className="flex items-center gap-1 mt-0.5">
                                                 <div className="flex items-center text-[#c89b5d] text-xs">
                                                     {[...Array(5)].map((_, i) => (
-                                                        <Icon key={i} icon="ph:star-fill" className="w-3.5 h-3.5" />
+                                                        <Icon
+                                                          key={i}
+                                                          icon={i < Math.round(item.rating || 0) ? 'ph:star-fill' : 'ph:star'}
+                                                          className="w-3.5 h-3.5"
+                                                        />
                                                     ))}
                                                 </div>
                                                 <span className="font-secondary text-xs font-bold text-primary-dark ml-1">
-                                                    {item.rating || 4.9}
+                                                    {item.rating}
                                                 </span>
                                                 <span className="font-secondary text-xs text-body/50">
-                                                    ({item.reviewsCount || 45})
+                                                    ({item.reviewsCount})
                                                 </span>
                                             </div>
+                                            ) : (
+                                              <span className="text-[11px] text-body/50 font-secondary uppercase tracking-wider mt-0.5">
+                                                Handmade in Nepal
+                                              </span>
+                                            )}
 
                                             {/* Price Row */}
                                             <div className="flex items-baseline gap-2 mt-1">
@@ -306,6 +373,7 @@ const Wishlist: React.FC = () => {
                                 </div>
                             ))}
                         </div>
+                        )}
 
                         {/* Bottom CTA Banner */}
                         <div className="bg-[#4E291B] text-white rounded-3xl p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md mt-16">

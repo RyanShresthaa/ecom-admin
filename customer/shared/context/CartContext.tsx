@@ -9,7 +9,6 @@ import {
   computeCouponDiscount,
   fetchServerCart,
   formatMoney,
-  hasSession,
   removeServerCartItem,
   syncLocalCartToServer,
   updateServerCartItem,
@@ -17,6 +16,7 @@ import {
   type ApiCoupon,
 } from '@/lib/api';
 import { getShopFxSettings, toDisplayAmount } from '@/lib/currency';
+import { useAuth } from '@/shared/context/AuthContext';
 
 export interface CartItem {
   id: string;
@@ -89,6 +89,7 @@ function loadLocalCart(): CartItem[] {
 }
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoaded: authLoaded, isLoggedIn } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
@@ -108,8 +109,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshFromServer = useCallback(async () => {
-    const loggedIn = await hasSession();
-    if (!loggedIn) {
+    if (!isLoggedIn) {
       setIsSynced(false);
       return;
     }
@@ -129,7 +129,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsSynced(false);
       }
     }
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const local = loadLocalCart();
@@ -154,8 +154,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authLoaded) return;
     void refreshFromServer();
-  }, [refreshFromServer]);
+  }, [authLoaded, isLoggedIn, refreshFromServer]);
 
   useEffect(() => {
     if (!isLoaded) return;

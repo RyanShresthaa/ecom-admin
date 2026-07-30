@@ -18,7 +18,7 @@ export type ApiProduct = {
   unit?: string;
   discount?: string | number;
   publish?: boolean;
-  image?: string[];
+  image?: string[] | string;
   image_url?: string | null;
   category?: Array<{ id: number; name: string }>;
   subcategory?: Array<{ id: number; name: string }>;
@@ -131,7 +131,20 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * CSRF is double-submit. On cross-origin (localhost:3000 → :5000) the csrfToken
+ * cookie is not readable via document.cookie — keep the value from JSON bodies.
+ */
+let csrfTokenMemory: string | null = null;
 let refreshPromise: Promise<boolean> | null = null;
+
+export function setCsrfToken(token: string | null | undefined) {
+  csrfTokenMemory = token || null;
+}
+
+function getCsrfToken(): string | null {
+  return csrfTokenMemory || getCookie('csrfToken');
+}
 
 function isAuthBootstrapPath(path: string): boolean {
   return (
@@ -140,8 +153,18 @@ function isAuthBootstrapPath(path: string): boolean {
     path.includes('/user/logout') ||
     path.includes('/user/google') ||
     path.includes('/user/login-pin') ||
+    path.includes('/user/2fa/verify-login') ||
+    path.includes('/user/2fa/email-otp') ||
     path.includes('/user/register')
   );
+}
+
+function pickCsrfFromBody(json: Envelope<unknown>): string | null {
+  const data = json.data as { csrfToken?: string } | undefined;
+  if (data && typeof data === 'object' && typeof data.csrfToken === 'string') {
+    return data.csrfToken;
+  }
+  return null;
 }
 
 /** Single-flight refresh so parallel 401s (and multi-tab races) share one rotate. */
@@ -153,7 +176,15 @@ async function refreshSession(): Promise<boolean> {
         credentials: 'include',
         cache: 'no-store',
       });
-      return res.ok;
+      if (!res.ok) return false;
+      try {
+        const json = (await res.json()) as Envelope<{ csrfToken?: string }>;
+        const next = pickCsrfFromBody(json);
+        if (next) setCsrfToken(next);
+      } catch {
+        /* ignore parse errors */
+      }
+      return true;
     })().finally(() => {
       refreshPromise = null;
     });
@@ -163,7 +194,7 @@ async function refreshSession(): Promise<boolean> {
 
 async function apiFetch<T>(
   path: string,
-  options: RequestInit & { json?: unknown; _retry?: boolean } = {},
+  options: RequestInit & { json?: unknown; _retry?: boolean; _csrfRetry?: boolean } = {},
 ): Promise<T> {
   const method = (options.method || 'GET').toUpperCase();
   const headers = new Headers(options.headers || {});
@@ -173,7 +204,7 @@ async function apiFetch<T>(
   }
 
   if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-    const csrf = getCookie('csrfToken');
+    const csrf = getCsrfToken();
     if (csrf) headers.set('X-CSRF-Token', csrf);
   }
 
@@ -198,6 +229,32 @@ async function apiFetch<T>(
     json = (await res.json()) as Envelope<T>;
   } catch {
     /* empty */
+  }
+
+  const csrfFromBody = pickCsrfFromBody(json as Envelope<unknown>);
+  if (csrfFromBody) setCsrfToken(csrfFromBody);
+
+  if (
+    res.status === 403 &&
+    !options._csrfRetry &&
+    String(json.message || '').toLowerCase().includes('csrf')
+  ) {
+    try {
+      const csrfRes = await fetch(`${API_URL}/user/csrf`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (csrfRes.ok) {
+        const csrfJson = (await csrfRes.json()) as Envelope<{ csrfToken?: string }>;
+        const next = pickCsrfFromBody(csrfJson);
+        if (next) {
+          setCsrfToken(next);
+          return apiFetch<T>(path, { ...options, _csrfRetry: true });
+        }
+      }
+    } catch {
+      /* fall through */
+    }
   }
 
   if (!res.ok || json.success === false) {
@@ -229,10 +286,349 @@ export type ApiUserProfile = {
   role?: string;
   bio?: string;
   avatar?: string | null;
+  createdAt?: string;
+  created_at?: string;
 };
 
 export async function fetchUserProfile(): Promise<ApiUserProfile> {
   return apiFetch<ApiUserProfile>('/user/user-details');
+}
+
+type AuthLoginData = {
+  csrfToken?: string;
+  user?: ApiUserProfile;
+};
+
+/** Register a customer account (email verification may be required before login). */
+export async function registerUser(opts: {
+  name: string;
+  email: string;
+  password: string;
+}): Promise<{ message?: string }> {
+  return apiFetch('/user/register', {
+    method: 'POST',
+    json: opts,
+  });
+}
+
+export async function logoutUser(): Promise<void> {
+  try {
+    await apiFetch<unknown>('/user/logout', { method: 'POST', json: {} });
+  } catch {
+    /* clear local state even if API call fails */
+  } finally {
+    setCsrfToken(null);
+  }
+}
+
+/** Request a password-reset OTP email (always returns a generic success message). */
+export async function requestPasswordReset(email: string): Promise<string> {
+  const data = await apiFetch<{ message?: string } | undefined>('/user/forgot-password', {
+    method: 'POST',
+    json: { email },
+  });
+  if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+    return data.message;
+  }
+  return 'If an account exists for that email, we sent a one-time code.';
+}
+
+/** Verify the OTP from the forgot-password email. */
+export async function verifyForgotPasswordOtp(opts: {
+  email: string;
+  otp: string;
+}): Promise<string> {
+  const data = await apiFetch<{ message?: string } | undefined>(
+    '/user/verify-forgot-password-otp',
+    {
+      method: 'POST',
+      json: { email: opts.email, otp: opts.otp },
+    },
+  );
+  if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+    return data.message;
+  }
+  return 'OTP verified';
+}
+
+/** Set a new password after OTP verification. */
+export async function resetPasswordWithOtp(opts: {
+  email: string;
+  newPassword: string;
+  confirmPassword: string;
+}): Promise<string> {
+  const data = await apiFetch<{ message?: string } | undefined>('/user/reset-password', {
+    method: 'POST',
+    json: {
+      email: opts.email,
+      newPassword: opts.newPassword,
+      confirmPassword: opts.confirmPassword,
+    },
+  });
+  if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+    return data.message;
+  }
+  return 'Password updated successfully';
+}
+
+/** Change password while logged in (requires current password). */
+export async function updatePassword(opts: {
+  currentPassword: string;
+  password: string;
+}): Promise<void> {
+  await apiFetch('/user/update-user', {
+    method: 'PUT',
+    json: {
+      currentPassword: opts.currentPassword,
+      password: opts.password,
+    },
+  });
+}
+
+export type NotificationPrefs = {
+  orderUpdates: boolean;
+  marketingEmails: boolean;
+  reviewRequests: boolean;
+  publicProfile: boolean;
+  smsNotifications: boolean;
+  pushNotifications: boolean;
+  shareWishlist: boolean;
+  totpEnabled?: boolean;
+  shareUrl?: string | null;
+  twilioConfigured?: boolean;
+  webPushConfigured?: boolean;
+};
+
+function normalizePrefs(data: NotificationPrefs | null | undefined): NotificationPrefs {
+  return {
+    orderUpdates: data?.orderUpdates !== false,
+    marketingEmails: Boolean(data?.marketingEmails),
+    reviewRequests: Boolean(data?.reviewRequests),
+    publicProfile: Boolean(data?.publicProfile),
+    smsNotifications: Boolean(data?.smsNotifications),
+    pushNotifications: Boolean(data?.pushNotifications),
+    shareWishlist: Boolean(data?.shareWishlist),
+    totpEnabled: Boolean(data?.totpEnabled),
+    shareUrl: data?.shareUrl ?? null,
+    twilioConfigured: Boolean(data?.twilioConfigured),
+    webPushConfigured: Boolean(data?.webPushConfigured),
+  };
+}
+
+export async function fetchNotificationPrefs(): Promise<NotificationPrefs> {
+  const data = await apiFetch<NotificationPrefs>('/user/preferences');
+  return normalizePrefs(data);
+}
+
+export async function updateNotificationPrefs(
+  patch: Partial<NotificationPrefs>,
+): Promise<NotificationPrefs> {
+  const body: Record<string, boolean> = {};
+  if (typeof patch.orderUpdates === 'boolean') body.orderUpdates = patch.orderUpdates;
+  if (typeof patch.marketingEmails === 'boolean') body.marketingEmails = patch.marketingEmails;
+  if (typeof patch.reviewRequests === 'boolean') body.reviewRequests = patch.reviewRequests;
+  if (typeof patch.publicProfile === 'boolean') body.publicProfile = patch.publicProfile;
+  if (typeof patch.smsNotifications === 'boolean') body.smsNotifications = patch.smsNotifications;
+  if (typeof patch.pushNotifications === 'boolean') body.pushNotifications = patch.pushNotifications;
+  if (typeof patch.shareWishlist === 'boolean') body.shareWishlist = patch.shareWishlist;
+  const data = await apiFetch<NotificationPrefs>('/user/preferences', {
+    method: 'PUT',
+    json: body,
+  });
+  return normalizePrefs(data);
+}
+
+export type PushSubscriptionJSON = {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  expirationTime?: number | null;
+};
+
+export async function fetchVapidPublicKey(): Promise<{ publicKey: string | null; configured: boolean }> {
+  const data = await apiFetch<{ publicKey: string | null; configured: boolean }>(
+    '/push/vapid-public-key',
+  );
+  return {
+    publicKey: data?.publicKey ?? null,
+    configured: Boolean(data?.configured),
+  };
+}
+
+export async function subscribePush(subscription: PushSubscriptionJSON): Promise<void> {
+  await apiFetch('/push/subscribe', {
+    method: 'POST',
+    json: { subscription },
+  });
+}
+
+export async function unsubscribePush(endpoint?: string): Promise<void> {
+  await apiFetch('/push/unsubscribe', {
+    method: 'DELETE',
+    json: endpoint ? { endpoint } : {},
+  });
+}
+
+export type WishlistShareInfo = {
+  token: string;
+  url: string;
+};
+
+export type SharedWishlistPayload = {
+  token: string;
+  owner: { id: number | string; name: string; avatar?: string | null };
+  items: Array<{
+    id: number;
+    productId: number;
+    product?: ApiProduct;
+    createdAt?: string;
+  }>;
+  sharedAt?: string;
+};
+
+export async function fetchMyWishlistShare(): Promise<WishlistShareInfo | null> {
+  const data = await apiFetch<WishlistShareInfo | null>('/wishlist/share');
+  if (!data?.token || !data?.url) return null;
+  return data;
+}
+
+export async function createWishlistShare(): Promise<WishlistShareInfo> {
+  return apiFetch<WishlistShareInfo>('/wishlist/share', { method: 'POST', json: {} });
+}
+
+export async function revokeWishlistShare(): Promise<void> {
+  await apiFetch('/wishlist/share', { method: 'DELETE' });
+}
+
+export async function fetchSharedWishlist(token: string): Promise<SharedWishlistPayload> {
+  return apiFetch<SharedWishlistPayload>(`/wishlist/shared/${encodeURIComponent(token)}`);
+}
+
+export type TwoFactorSetup = {
+  secret: string;
+  otpauthUrl: string;
+  qrUrl: string;
+};
+
+export async function setupTwoFactor(): Promise<TwoFactorSetup> {
+  return apiFetch<TwoFactorSetup>('/user/2fa/setup', { method: 'POST', json: {} });
+}
+
+export async function enableTwoFactor(code: string): Promise<void> {
+  await apiFetch('/user/2fa/enable', { method: 'POST', json: { code } });
+}
+
+export async function disableTwoFactor(opts: { code: string; password?: string }): Promise<void> {
+  await apiFetch('/user/2fa/disable', { method: 'POST', json: opts });
+}
+
+export type LoginResult =
+  | { requires2fa: true; tempToken: string }
+  | { requires2fa?: false; user: ApiUserProfile | null };
+
+export async function loginWithPassword(
+  email: string,
+  password: string,
+): Promise<LoginResult> {
+  const data = await apiFetch<AuthLoginData & { requires2fa?: boolean; tempToken?: string }>(
+    '/user/login',
+    {
+      method: 'POST',
+      json: { email, password },
+    },
+  );
+  if (data?.requires2fa && data.tempToken) {
+    return { requires2fa: true, tempToken: data.tempToken };
+  }
+  if (data?.csrfToken) setCsrfToken(data.csrfToken);
+  return {
+    requires2fa: false,
+    user: data?.user ?? (await fetchUserProfile()),
+  };
+}
+
+export async function loginWithGoogleCredential(
+  credential: string,
+): Promise<LoginResult> {
+  const data = await apiFetch<AuthLoginData & { requires2fa?: boolean; tempToken?: string }>(
+    '/user/google',
+    {
+      method: 'POST',
+      json: { credential },
+    },
+  );
+  if (data?.requires2fa && data.tempToken) {
+    return { requires2fa: true, tempToken: data.tempToken };
+  }
+  if (data?.csrfToken) setCsrfToken(data.csrfToken);
+  return {
+    requires2fa: false,
+    user: data?.user ?? (await fetchUserProfile()),
+  };
+}
+
+export async function sendTwoFactorEmailOtp(tempToken: string): Promise<{
+  tempToken: string;
+  message: string;
+}> {
+  const data = await apiFetch<{ tempToken?: string } | undefined>('/user/2fa/email-otp', {
+    method: 'POST',
+    json: { tempToken },
+  });
+  const next =
+    data && typeof data === 'object' && typeof data.tempToken === 'string' ? data.tempToken : '';
+  if (!next) {
+    throw new ApiError('Could not send sign-in code', 500);
+  }
+  return {
+    tempToken: next,
+    message: 'We emailed a 6-digit backup code. Check inbox and spam.',
+  };
+}
+
+export async function verifyTwoFactorLogin(opts: {
+  tempToken: string;
+  code: string;
+}): Promise<ApiUserProfile | null> {
+  const data = await apiFetch<AuthLoginData>('/user/2fa/verify-login', {
+    method: 'POST',
+    json: opts,
+  });
+  if (data?.csrfToken) setCsrfToken(data.csrfToken);
+  return data?.user ?? (await fetchUserProfile());
+}
+
+export type PublicProfile = {
+  id: number | string;
+  name: string;
+  avatar?: string | null;
+  bio?: string;
+  memberSince?: string;
+  reviews: Array<{
+    id: number | string;
+    rating: number;
+    comment?: string;
+    productId?: number | string;
+    productName?: string;
+    createdAt?: string;
+  }>;
+};
+
+export async function fetchPublicProfile(id: string | number): Promise<PublicProfile> {
+  return apiFetch<PublicProfile>(`/user/public/${id}`);
+}
+
+export async function exportAccountData(): Promise<unknown> {
+  return apiFetch<unknown>('/user/export-account');
+}
+
+export async function deleteAccount(opts: {
+  confirm: 'DELETE';
+  password?: string;
+}): Promise<void> {
+  await apiFetch('/user/delete-account', {
+    method: 'DELETE',
+    json: opts,
+  });
 }
 
 export function computeCouponDiscount(subtotal: number, coupon: ApiCoupon | null): number {
@@ -500,7 +896,7 @@ export async function removeServerCartItem(cartLineId: string | number) {
 export async function reportCartAbandon(reason: string): Promise<void> {
   try {
     const headers = new Headers({ 'Content-Type': 'application/json' });
-    const csrf = getCookie('csrfToken');
+    const csrf = getCsrfToken();
     if (csrf) headers.set('X-CSRF-Token', csrf);
     await fetch(`${API_URL}/cart/abandon`, {
       method: 'POST',
@@ -522,6 +918,40 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
+/** Normalize product image URLs for Next.js Image (same rules as mapProduct). */
+function toStorefrontImageUrl(url: unknown): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const stripped = trimmed.replace(/^https?:\/\/(localhost|127\.0\.0\.1):\d+/i, '');
+  if (stripped.startsWith('/')) return stripped;
+  if (trimmed.startsWith('/')) return trimmed;
+  return trimmed;
+}
+
+function firstProductImage(raw: ApiProduct | null | undefined): string {
+  if (!raw) return '';
+  const fromArray = Array.isArray(raw.image)
+    ? raw.image.map(toStorefrontImageUrl).filter(Boolean)
+    : [];
+  if (fromArray[0]) return fromArray[0];
+  if (typeof raw.image === 'string') {
+    const asString = toStorefrontImageUrl(raw.image);
+    if (asString) return asString;
+    // JSON string array from some DB drivers
+    try {
+      const parsed = JSON.parse(raw.image) as unknown;
+      if (Array.isArray(parsed)) {
+        const urls = parsed.map(toStorefrontImageUrl).filter(Boolean);
+        if (urls[0]) return urls[0];
+      }
+    } catch {
+      /* not JSON */
+    }
+  }
+  return toStorefrontImageUrl(raw.image_url);
+}
+
 function productBasics(raw: ApiProduct | null | undefined, fallbackId: string | number) {
   const details =
     typeof raw?.more_details === 'string'
@@ -529,8 +959,7 @@ function productBasics(raw: ApiProduct | null | undefined, fallbackId: string | 
       : ((raw?.more_details as Record<string, unknown>) ?? {});
   const name = raw?.name?.trim() || 'Product';
   const id = String(raw?.id ?? raw?._id ?? fallbackId);
-  const images = Array.isArray(raw?.image) ? raw.image.filter(Boolean) : [];
-  const image = images[0] || raw?.image_url || '';
+  const image = firstProductImage(raw);
   const basePrice = Number(raw?.price ?? 0);
   const fx = getShopFxSettings();
   const priceNum = toDisplayAmount(basePrice, fx);
@@ -551,7 +980,7 @@ function productBasics(raw: ApiProduct | null | undefined, fallbackId: string | 
     originalPrice: typeof details.originalPrice === 'string' ? details.originalPrice : undefined,
     discountBadge:
       Number(raw?.discount ?? 0) > 0 ? `${Number(raw?.discount)}% OFF` : undefined,
-    image: typeof image === 'string' ? image : '',
+    image,
     stock: Number(raw?.stock ?? 0),
   };
 }
@@ -611,7 +1040,7 @@ export function wishlistLineToLocal(line: ApiWishlistLine) {
     originalPrice: basics.originalPrice,
     discountBadge: basics.discountBadge,
     image: basics.image,
-    rating: 5,
+    rating: 0,
     reviewsCount: 0,
     inStock: basics.stock > 0,
     onSale: Boolean(basics.discountBadge),
@@ -621,7 +1050,8 @@ export function wishlistLineToLocal(line: ApiWishlistLine) {
 // ─── Address (auth) ─────────────────────────────────────────
 
 export async function fetchAddresses(): Promise<ApiAddress[]> {
-  return (await apiFetch<ApiAddress[]>('/address/get')) ?? [];
+  const data = await apiFetch<ApiAddress[] | null>('/address/get');
+  return Array.isArray(data) ? data : [];
 }
 
 export async function createAddress(body: {
@@ -633,6 +1063,54 @@ export async function createAddress(body: {
   mobile?: string;
 }): Promise<ApiAddress> {
   return apiFetch<ApiAddress>('/address/add', { method: 'POST', json: body });
+}
+
+export async function deleteAddress(id: string | number): Promise<void> {
+  await apiFetch('/address/delete', {
+    method: 'DELETE',
+    json: { _id: id },
+  });
+}
+
+// ─── Saved payment methods (auth) ───────────────────────────
+
+export type ApiPaymentMethod = {
+  id: number;
+  _id?: number;
+  type: 'card' | 'bank' | string;
+  brand?: string | null;
+  last4: string;
+  exp_month?: number | null;
+  exp_year?: number | null;
+  bank_name?: string | null;
+  account_type?: string | null;
+  billing_name?: string | null;
+  billing_zip?: string | null;
+  routing_last4?: string | null;
+  is_default?: boolean;
+  isDefault?: boolean;
+};
+
+export async function fetchPaymentMethods(): Promise<ApiPaymentMethod[]> {
+  return (await apiFetch<ApiPaymentMethod[]>('/payment/methods')) ?? [];
+}
+
+export async function createPaymentMethod(body: Record<string, unknown>): Promise<ApiPaymentMethod> {
+  return apiFetch<ApiPaymentMethod>('/payment/methods', { method: 'POST', json: body });
+}
+
+export async function deletePaymentMethod(id: string | number): Promise<void> {
+  await apiFetch('/payment/methods', {
+    method: 'DELETE',
+    json: { _id: id },
+  });
+}
+
+export async function setDefaultPaymentMethod(id: string | number): Promise<ApiPaymentMethod> {
+  return apiFetch<ApiPaymentMethod>('/payment/methods/default', {
+    method: 'PUT',
+    json: { _id: id },
+  });
 }
 
 // ─── Orders / checkout (auth) ───────────────────────────────
@@ -670,7 +1148,7 @@ export async function placeCodOrder(opts: {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(getCookie('csrfToken') ? { 'X-CSRF-Token': getCookie('csrfToken')! } : {}),
+      ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
       'Idempotency-Key': idempotencyKey,
     },
     body: JSON.stringify({
@@ -715,7 +1193,7 @@ export async function placeOnlineOrder(opts: {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(getCookie('csrfToken') ? { 'X-CSRF-Token': getCookie('csrfToken')! } : {}),
+      ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
       'Idempotency-Key': idempotencyKey,
     },
     body: JSON.stringify({
@@ -779,6 +1257,13 @@ export async function verifyPayment(orderIds: Array<string | number>, paymentId?
 
 export async function fetchMyOrders(): Promise<ApiOrder[]> {
   return (await apiFetch<ApiOrder[]>('/order/my-orders')) ?? [];
+}
+
+export async function cancelMyOrder(orderId: string | number): Promise<ApiOrder | null> {
+  return (await apiFetch<ApiOrder>('/order/cancel', {
+    method: 'POST',
+    json: { orderId },
+  })) ?? null;
 }
 
 export async function fetchInvoiceHtml(orderId: string | number): Promise<string> {

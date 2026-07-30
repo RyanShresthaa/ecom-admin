@@ -7,6 +7,7 @@ import { Icon } from '@iconify/react';
 import { useCart } from '@/shared/context/CartContext';
 import RelatedProduct from '@/features/products/detail/RelatedProduct';
 import { useShopLocale } from '@/shared/context/ShopLocaleContext';
+import { useAuth } from '@/shared/context/AuthContext';
 import { hasSession } from '@/lib/api';
 
 const Cart: React.FC = () => {
@@ -23,6 +24,7 @@ const Cart: React.FC = () => {
     clearPromoCode,
   } = useCart();
   const { formatMoney, settings, regionMode } = useShopLocale();
+  const { isLoggedIn, isLoaded } = useAuth();
   const flatShipping = Number(settings.flat_shipping_fee ?? (regionMode === 'nepal' ? 100 : 5.99));
   const freeShippingMin = Number(
     settings.free_shipping_min ?? (regionMode === 'nepal' ? 1000 : 75),
@@ -35,17 +37,20 @@ const Cart: React.FC = () => {
   const [promoMessage, setPromoMessage] = useState('');
   const [promoOk, setPromoOk] = useState(false);
   const [applyingPromo, setApplyingPromo] = useState(false);
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const [apiLoggedIn, setApiLoggedIn] = useState(false);
+
+  const loggedIn = isLoggedIn || apiLoggedIn;
 
   useEffect(() => {
     let cancelled = false;
+    if (!isLoaded) return;
     hasSession().then((ok) => {
-      if (!cancelled) setLoggedIn(ok);
+      if (!cancelled) setApiLoggedIn(ok);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isLoaded, isLoggedIn]);
 
   const handleApplyPromo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -340,11 +345,11 @@ const Cart: React.FC = () => {
                 </p>
 
                 <div className="flex flex-col gap-3 pt-2">
-                  {loggedIn === false ? (
+                  {!loggedIn ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
                       <p className="font-secondary text-xs sm:text-sm text-amber-950 leading-relaxed">
                         Sign in is required before checkout. Guest checkout is disabled — your cart
-                        stays saved here until login is available.
+                        stays saved here until you log in.
                       </p>
                     </div>
                   ) : null}
@@ -357,16 +362,13 @@ const Cart: React.FC = () => {
                       <span>Proceed to Checkout</span>
                     </Link>
                   ) : (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full py-4 rounded-full bg-[#8C523A]/45 text-white font-semibold text-xs sm:text-sm uppercase tracking-[0.15em] flex items-center justify-center gap-2 cursor-not-allowed shadow-md"
+                    <Link
+                      href="/login?next=/cart"
+                      className="w-full py-4 rounded-full bg-[#8C523A] text-white font-semibold text-xs sm:text-sm uppercase tracking-[0.15em] hover:bg-primary-dark transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-[0.99]"
                     >
                       <Icon icon="ph:lock-key-fill" className="w-4 h-4" />
-                      <span>
-                        {loggedIn === null ? 'Checking session…' : 'Sign in to checkout'}
-                      </span>
-                    </button>
+                      <span>Sign in to checkout</span>
+                    </Link>
                   )}
 
                   <Link

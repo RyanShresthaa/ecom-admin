@@ -37,7 +37,7 @@ const sections = [
   },
   {
     title: 'Contact',
-    body: 'Questions about privacy: info@bebenepal.com. We may update this policy from time to time; the date below reflects the latest revision.',
+    body: 'Questions about privacy: matinacrafts@gmail.com. We may update this policy from time to time; the date below reflects the latest revision.',
   },
 ];
 

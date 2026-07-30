@@ -7,12 +7,12 @@ import {
   addServerWishlistItem,
   fetchServerWishlist,
   formatMoney,
-  hasSession,
   removeServerWishlistItem,
   syncLocalWishlistToServer,
   wishlistLineToLocal,
 } from '@/lib/api';
 import { getShopFxSettings, toDisplayAmount } from '@/lib/currency';
+import { useAuth } from '@/shared/context/AuthContext';
 
 export interface WishlistItem {
   id: string;
@@ -104,13 +104,21 @@ function loadLocalWishlist(): WishlistItem[] {
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (item: WishlistItem) =>
-        item &&
-        typeof item.id === 'string' &&
-        typeof item.slug === 'string' &&
-        !LEGACY_DEMO_IDS.has(item.id),
-    );
+    return parsed
+      .filter(
+        (item: WishlistItem) =>
+          item &&
+          typeof item.id === 'string' &&
+          typeof item.slug === 'string' &&
+          !LEGACY_DEMO_IDS.has(item.id),
+      )
+      .map((item: WishlistItem) => ({
+        ...item,
+        image:
+          typeof item.image === 'string'
+            ? item.image.replace(/^https?:\/\/(localhost|127\.0\.0\.1):\d+/i, '') || item.image
+            : '',
+      }));
   } catch {
     return [];
   }
@@ -120,19 +128,27 @@ function mergeWishlists(local: WishlistItem[], server: WishlistItem[]): Wishlist
   const byId = new Map<string, WishlistItem>();
   for (const item of server) byId.set(item.id, item);
   for (const item of local) {
-    if (!byId.has(item.id)) byId.set(item.id, item);
+    const existing = byId.get(item.id);
+    if (!existing) {
+      byId.set(item.id, item);
+      continue;
+    }
+    // Prefer a usable image if the server row came back without one
+    if (!existing.image && item.image) {
+      byId.set(item.id, { ...existing, image: item.image });
+    }
   }
   return Array.from(byId.values());
 }
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoaded: authLoaded, isLoggedIn } = useAuth();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
 
   const refreshFromServer = useCallback(async () => {
-    const loggedIn = await hasSession();
-    if (!loggedIn) {
+    if (!isLoggedIn) {
       setIsSynced(false);
       return;
     }
@@ -152,13 +168,17 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setIsSynced(false);
       }
     }
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     setWishlist(loadLocalWishlist());
     setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authLoaded) return;
     void refreshFromServer();
-  }, [refreshFromServer]);
+  }, [authLoaded, isLoggedIn, refreshFromServer]);
 
   useEffect(() => {
     if (!isLoaded) return;

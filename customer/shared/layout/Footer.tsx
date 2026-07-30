@@ -64,16 +64,12 @@ const Footer = () => {
 
               <div className="flex flex-col gap-2 mt-3 font-secondary text-xs sm:text-sm text-[#2A170F]">
                 <p className="flex items-center gap-1">
-                  <span className="font-semibold">Contact:</span>
-                  <span className="text-[#664132]">+977 9812345678</span>
-                </p>
-                <p className="flex items-center gap-1">
                   <span className="font-semibold">Email:</span>
                   <a
-                    href="mailto:info@bebenepal.com"
+                    href="mailto:matinacrafts@gmail.com"
                     className="text-[#664132] hover:text-primary transition-colors"
                   >
-                    info@bebenepal.com
+                    matinacrafts@gmail.com
                   </a>
                 </p>
               </div>

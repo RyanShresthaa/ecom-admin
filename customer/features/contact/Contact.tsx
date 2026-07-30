@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import Button from "@/shared/ui/Button";
 import { ApiError, submitFeedback } from "@/lib/api";
 import { firstError, validateContactForm } from "@/lib/addressValidation";
+import { useAuth } from "@/shared/context/AuthContext";
 
 const contactDetails = [
     {
@@ -40,6 +42,9 @@ const contactDetails = [
 ];
 
 const Contact: React.FC = () => {
+    const { user, isLoggedIn, isLoaded } = useAuth();
+    const searchParams = useSearchParams();
+    const orderRef = (searchParams.get("order") || "").trim();
     const [formData, setFormData] = useState({
         name: "",
         phone: "",
@@ -51,6 +56,29 @@ const Contact: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const [status, setStatus] = useState<"idle" | "ok" | "err">("idle");
     const [statusMsg, setStatusMsg] = useState("");
+    const [prefilled, setPrefilled] = useState(false);
+    const [orderPrefillDone, setOrderPrefillDone] = useState(false);
+
+    useEffect(() => {
+        if (!isLoaded || prefilled || !isLoggedIn || !user) return;
+        setFormData((prev) => ({
+            ...prev,
+            name: prev.name || user.name || "",
+            email: prev.email || user.email || "",
+        }));
+        setPrefilled(true);
+    }, [isLoaded, isLoggedIn, user, prefilled]);
+
+    useEffect(() => {
+        if (!orderRef || orderPrefillDone) return;
+        setFormData((prev) => ({
+            ...prev,
+            message:
+                prev.message.trim() ||
+                `I need help with order ${orderRef}.\n\nPlease describe the issue below:\n`,
+        }));
+        setOrderPrefillDone(true);
+    }, [orderRef, orderPrefillDone]);
 
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -80,15 +108,20 @@ const Contact: React.FC = () => {
         }
 
         try {
-            const title = `Contact from ${check.value.name}`;
+            const title = orderRef
+                ? `Order help — ${orderRef}`
+                : `Contact from ${check.value.name}`;
             const comment = [
                 check.value.message,
                 "",
+                orderRef ? `Order ID: ${orderRef}` : null,
                 `Name: ${check.value.name}`,
                 `Email: ${check.value.email}`,
                 `Phone: ${check.value.phone}`,
                 `Address: ${check.value.address}`,
-            ].join("\n");
+            ]
+                .filter(Boolean)
+                .join("\n");
 
             await submitFeedback({
                 targetType: "business",
@@ -100,9 +133,9 @@ const Contact: React.FC = () => {
             setStatusMsg("Thank you for contacting us! We will get back to you soon.");
             setFieldErrors({});
             setFormData({
-                name: "",
+                name: isLoggedIn && user ? user.name || "" : "",
                 phone: "",
-                email: "",
+                email: isLoggedIn && user ? user.email || "" : "",
                 address: "",
                 message: "",
             });

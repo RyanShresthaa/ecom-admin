@@ -41,7 +41,7 @@ const sections = [
   },
   {
     title: 'Contact',
-    body: 'Questions: info@bebenepal.com. We may update these terms; continued use after changes means you accept the revised terms.',
+    body: 'Questions: matinacrafts@gmail.com. We may update these terms; continued use after changes means you accept the revised terms.',
   },
 ];
 

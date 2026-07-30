@@ -122,8 +122,9 @@ const Collection = () => {
           )}
 
           {!loading && products.length === 0 && (
-            <div className="col-span-full py-12 text-center flex flex-col items-center gap-4">
-              <p className="font-secondary text-sm text-body/70">No products yet.</p>
+            <div className="col-span-full py-12 text-center flex flex-col items-center gap-4 bg-white rounded-3xl border border-primary/10 px-6">
+              <p className="font-heading text-xl text-[#2A170F]">Collection coming soon</p>
+              <p className="font-secondary text-sm text-body/70">Check the full catalog for new arrivals.</p>
               <Link
                 href="/products"
                 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary hover:text-primary-dark"
@@ -178,15 +179,8 @@ const Collection = () => {
                 />
 
                 <div className="flex items-center justify-center gap-1.5 mb-5">
-                  {[...Array(5)].map((_, i) => (
-                    <Icon
-                      key={i}
-                      icon="ph:star-fill"
-                      className="w-3 h-3 text-[#C2836B] opacity-80"
-                    />
-                  ))}
-                  <span className="text-[10px] text-[#9E7D6F] ml-1 font-secondary">
-                    (5.0)
+                  <span className="text-[10px] text-[#9E7D6F] font-secondary uppercase tracking-wider">
+                    Handmade in Nepal
                   </span>
                 </div>
 

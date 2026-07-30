@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Icon } from '@iconify/react';
 import useEmblaCarousel from 'embla-carousel-react';
 import gsap from 'gsap';
@@ -17,7 +18,6 @@ interface Product {
   id: string;
   tagline: string;
   title: string;
-  price: string;
   descriptionParagraphs: string[];
   imageSrc: string;
   bullets: string[];
@@ -28,7 +28,6 @@ const productsData: Product[] = [
     id: 'dhaka-scarf',
     tagline: 'TRADITIONAL TEXTILES',
     title: 'Hand-Spun Dhaka Scarf',
-    price: 'Rs 3,450.00',
     descriptionParagraphs: [
       'Dhaka is more than just a fabric; it is the woven identity of Nepal. Historically worn by royalty and made entirely of hand-spun cotton, the technique involves an incredibly complex supplementary weft style.',
       'What makes Dhaka truly remarkable is that there are no written patterns or charts. Every geometric motif, from stars to flowers, is memorized by the artisan and woven intuitively, making each piece inherently unique.'
@@ -44,7 +43,6 @@ const productsData: Product[] = [
     id: 'indigo-throw',
     tagline: 'HERITAGE HOME',
     title: 'Indigo Heritage Throw',
-    price: 'Rs 2,850.00',
     descriptionParagraphs: [
       'Bringing traditional patterns into the modern home. Woven by hand using certified organic threads dyed with indigo and other native plants from the mid-hills of Nepal.',
       'Every thread is hand-selected and carefully interlaced to ensure strength, durability, and a rich textural experience that highlights the organic beauty of raw craftsmanship.'
@@ -60,7 +58,6 @@ const productsData: Product[] = [
     id: 'yak-shawl',
     tagline: 'WILD FIBERS',
     title: 'Yak Wool Organic Wrap',
-    price: 'Rs 5,500.00',
     descriptionParagraphs: [
       'Crafted from premium yak wool sourced from high-altitude Himalayan regions. Known for its incredible warmth, softness, and natural water-resistant properties.',
       'Each shawl is hand-finished with meticulous hand-sewn details along the borders, creating a durable and highly functional heritage accessory that stands the test of time.'
@@ -74,14 +71,10 @@ const productsData: Product[] = [
   }
 ];
 
-// Sub-component for individual product slide to manage its own quantity state
+// Sub-component for individual product slide
 const ProductSlide = ({ product }: { product: Product }) => {
-  const [quantity, setQuantity] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageWrapperRef = useRef<HTMLDivElement>(null);
-
-  const handleDecrease = () => setQuantity((q) => Math.max(1, q - 1));
-  const handleIncrease = () => setQuantity((q) => q + 1);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -138,13 +131,9 @@ const ProductSlide = ({ product }: { product: Product }) => {
           {product.tagline}
         </span>
 
-        <h3 className="font-heading text-3xl sm:text-4xl font-normal text-[#2A170F] leading-tight tracking-tight mb-2">
+        <h3 className="font-heading text-3xl sm:text-4xl font-normal text-[#2A170F] leading-tight tracking-tight mb-6">
           {product.title}
         </h3>
-
-        <span className="font-secondary text-sm sm:text-base font-bold text-[#8C523A] mb-6 block">
-          {product.price}
-        </span>
 
         {/* Paragraphs */}
         <div className="flex flex-col gap-4 text-xs sm:text-[14px] leading-relaxed text-[#664132]/95 font-secondary mb-8">
@@ -153,45 +142,16 @@ const ProductSlide = ({ product }: { product: Product }) => {
           ))}
         </div>
 
-        {/* Separator */}
         <div className="w-full h-px bg-primary/5 mb-6" />
 
-        {/* Buy Form Actions */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-6">
-          {/* Quantity Selector */}
-          <div className="flex flex-col gap-1.5 self-start sm:self-auto">
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#9E7D6F]">
-              QUANTITY
-            </span>
-            <div className="flex items-center border border-[#E6D5C3] bg-white h-12 w-28">
-              <button
-                type="button"
-                onClick={handleDecrease}
-                className="flex-1 h-full text-[#664132] hover:text-[#8C523A] hover:bg-neutral-50 transition-colors cursor-pointer flex items-center justify-center font-bold text-sm"
-              >
-                -
-              </button>
-              <span className="w-8 text-center font-secondary text-[13px] font-semibold text-[#2A170F] select-none">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={handleIncrease}
-                className="flex-1 h-full text-[#664132] hover:text-[#8C523A] hover:bg-neutral-50 transition-colors cursor-pointer flex items-center justify-center font-bold text-sm"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {/* Add To Cart Button */}
-          <div className="flex-1 flex flex-col gap-1.5 justify-end pt-3.5">
+        <div className="mb-8">
+          <Link href="/products">
             <Button
-              className="w-full h-12 bg-[#C2A388] text-white hover:bg-[#B59479] hover:shadow-sm font-semibold text-[11px] sm:text-xs uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center border-none"
+              className="w-full sm:w-auto h-12 px-8 bg-[#C2A388] text-white hover:bg-[#B59479] hover:shadow-sm font-semibold text-[11px] sm:text-xs uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center border-none"
             >
-              Add to Cart
+              Explore the shop
             </Button>
-          </div>
+          </Link>
         </div>
 
         {/* Bullet Points */}
