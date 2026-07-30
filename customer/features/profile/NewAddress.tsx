@@ -8,16 +8,27 @@ import ProfileSidebar from '@/shared/layout/ProfileSidebar';
 import CountryStateCityFields from '@/shared/ui/CountryStateCityFields';
 import { useRouter } from 'next/navigation';
 import { ApiError, createAddress } from '@/lib/api';
+import {
+  firstError,
+  validateShippingAddress,
+} from '@/lib/addressValidation';
+import {
+  formatUsPhoneInput,
+  sanitizeNameInput,
+  sanitizeSingleLine,
+} from '@/lib/inputValidation';
+import { useShopLocale } from '@/shared/context/ShopLocaleContext';
 
 const NewAddress: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const { regionMode } = useShopLocale();
 
   const [addressType, setAddressType] = useState<'Home' | 'Office' | 'Other'>('Home');
   const [fullName, setFullName] = useState('');
 
   useEffect(() => {
-    if (user?.name) setFullName(user.name);
+    if (user?.name) setFullName(sanitizeNameInput(user.name));
   }, [user?.name]);
   const [phone, setPhone] = useState('');
   const [street, setStreet] = useState('');
@@ -41,25 +52,37 @@ const NewAddress: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    if (!street.trim() || !city.trim() || !stateProvince.trim() || !postalCode.trim() || !phone.trim()) {
-      setError('Please fill in street, city, state/province, postal code, and phone.');
-      return;
-    }
+    const line = apartment.trim()
+      ? `${street.trim()}, ${apartment.trim()}`
+      : street.trim();
+    const address_line = `[${addressType.toUpperCase()}] ${fullName.trim() || user.name} — ${line}`;
 
-    setLoading(true);
-    try {
-      const line = apartment.trim()
-        ? `${street.trim()}, ${apartment.trim()}`
-        : street.trim();
-      const address_line = `[${addressType.toUpperCase()}] ${fullName.trim() || user.name} — ${line}`;
-
-      await createAddress({
-        address_line,
+    const check = validateShippingAddress(
+      {
+        address_line: line || address_line,
         city: city.trim(),
         state: stateProvince.trim(),
         pincode: postalCode.trim(),
         country,
         mobile: phone.trim(),
+      },
+      regionMode,
+    );
+
+    if (!check.ok) {
+      setError(firstError(check.errors) || 'Please fix the address fields.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await createAddress({
+        address_line: `[${addressType.toUpperCase()}] ${fullName.trim() || user.name} — ${check.value.address_line}`,
+        city: check.value.city,
+        state: check.value.state,
+        pincode: check.value.pincode,
+        country: check.value.country,
+        mobile: check.value.mobile,
       });
       router.push('/addresses');
     } catch (err) {
@@ -138,9 +161,11 @@ const NewAddress: React.FC = () => {
                     <input
                       type="text"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => setFullName(sanitizeNameInput(e.target.value))}
                       placeholder="Full name"
                       required
+                      maxLength={80}
+                      autoComplete="name"
                       className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
@@ -152,9 +177,11 @@ const NewAddress: React.FC = () => {
                     <input
                       type="text"
                       value={street}
-                      onChange={(e) => setStreet(e.target.value)}
+                      onChange={(e) => setStreet(sanitizeSingleLine(e.target.value, 200))}
                       placeholder="123 Main St"
                       required
+                      maxLength={200}
+                      autoComplete="street-address"
                       className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
@@ -164,11 +191,20 @@ const NewAddress: React.FC = () => {
                       Phone Number
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) =>
+                        setPhone(
+                          regionMode === 'nepal'
+                            ? e.target.value.replace(/\D/g, '').slice(0, 10)
+                            : formatUsPhoneInput(e.target.value),
+                        )
+                      }
                       placeholder={country === 'Nepal' ? '98XXXXXXXX' : '(415) 555-2671'}
                       required
+                      maxLength={regionMode === 'nepal' ? 10 : 14}
+                      inputMode="numeric"
+                      autoComplete="tel"
                       className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
@@ -180,8 +216,9 @@ const NewAddress: React.FC = () => {
                     <input
                       type="text"
                       value={apartment}
-                      onChange={(e) => setApartment(e.target.value)}
+                      onChange={(e) => setApartment(sanitizeSingleLine(e.target.value, 80))}
                       placeholder="Apt 5B"
+                      maxLength={80}
                       className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
@@ -202,9 +239,18 @@ const NewAddress: React.FC = () => {
                     <input
                       type="text"
                       value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
+                      onChange={(e) =>
+                        setPostalCode(
+                          regionMode === 'nepal'
+                            ? e.target.value.replace(/\D/g, '').slice(0, 6)
+                            : e.target.value.replace(/[^\d-]/g, '').slice(0, 10),
+                        )
+                      }
                       placeholder={country === 'Nepal' ? '44600' : '90210'}
-                      required
+                      required={regionMode !== 'nepal'}
+                      maxLength={regionMode === 'nepal' ? 6 : 10}
+                      inputMode="numeric"
+                      autoComplete="postal-code"
                       className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>

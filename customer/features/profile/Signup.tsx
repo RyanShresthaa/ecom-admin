@@ -8,6 +8,15 @@ import { useAuth } from '@/shared/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Button from '@/shared/ui/Button';
 import GoogleSignInButton from '@/shared/ui/GoogleSignInButton';
+import {
+  sanitizeEmailInput,
+  sanitizeNameInput,
+  sanitizePasswordInput,
+  validateEmail,
+  validateName,
+  validatePassword,
+  validatePasswordMatch,
+} from '@/lib/inputValidation';
 
 const Signup: React.FC = () => {
   const [name, setName] = useState('');
@@ -27,28 +36,24 @@ const Signup: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    if (!name.trim()) {
-      setError('Please enter your full name.');
+    const nameErr = validateName(name);
+    if (nameErr) {
+      setError(nameErr);
       return;
     }
-    if (!email.trim()) {
-      setError('Please enter your email address.');
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      setError(emailErr);
       return;
     }
-    if (!password) {
-      setError('Please enter your password.');
+    const passwordErr = validatePassword(password);
+    if (passwordErr) {
+      setError(passwordErr);
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
-    }
-    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      setError('Password must include uppercase, lowercase, and a number.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+    const matchErr = validatePasswordMatch(password, confirmPassword);
+    if (matchErr) {
+      setError(matchErr);
       return;
     }
     if (!agreeTerms) {
@@ -58,7 +63,7 @@ const Signup: React.FC = () => {
 
     setLoading(true);
     try {
-      await signup(name.trim(), email.trim(), password);
+      await signup(name.trim(), email.trim().toLowerCase(), password);
       router.push('/login?registered=true');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account');
@@ -135,9 +140,11 @@ const Signup: React.FC = () => {
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => setName(sanitizeNameInput(e.target.value))}
                   placeholder="John Doe"
                   required
+                  maxLength={80}
+                  autoComplete="name"
                   className="w-full px-3.5 py-2 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
               </div>
@@ -151,9 +158,11 @@ const Signup: React.FC = () => {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))}
                   placeholder="john@example.com"
                   required
+                  maxLength={320}
+                  autoComplete="email"
                   className="w-full px-3.5 py-2 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
               </div>
@@ -168,9 +177,11 @@ const Signup: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(sanitizePasswordInput(e.target.value))}
                     placeholder="••••••••"
                     required
+                    maxLength={128}
+                    autoComplete="new-password"
                     className="w-full px-3.5 py-2 pr-10 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                   <button
@@ -194,9 +205,11 @@ const Signup: React.FC = () => {
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => setConfirmPassword(sanitizePasswordInput(e.target.value))}
                     placeholder="••••••••"
                     required
+                    maxLength={128}
+                    autoComplete="new-password"
                     className="w-full px-3.5 py-2 pr-10 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                   <button

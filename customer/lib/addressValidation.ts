@@ -200,43 +200,8 @@ export function validateShippingAddress(
   return validateUsShippingAddress(input);
 }
 
-export function validateContactForm(input: {
-  name: string;
-  phone: string;
-  email: string;
-  address: string;
-  message: string;
-}) {
-  const errors: Record<string, string> = {};
-  const name = collapse(input.name);
-  const email = collapse(input.email).toLowerCase();
-  const phoneDigits = normalizeUsPhone(input.phone);
-  const address = collapse(input.address);
-  const message = collapse(input.message);
+export {
+  validateContactForm,
+  firstFieldError as firstError,
+} from '@/lib/inputValidation';
 
-  if (name.length < 2 || looksJunk(name) || !/^[a-zA-Z\s.'-]+$/.test(name)) {
-    errors.name = 'Enter your real full name.';
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || looksJunk(email.split('@')[0] || '')) {
-    errors.email = 'Enter a valid email address.';
-  }
-  if (phoneDigits.length !== 10) {
-    errors.phone = 'Enter a valid 10-digit US phone number.';
-  }
-  if (address.length < 5 || looksJunk(address)) {
-    errors.address = 'Enter a real mailing or street address.';
-  }
-  if (message.length < 10 || looksJunk(message)) {
-    errors.message = 'Please write a short message (at least 10 characters).';
-  }
-
-  return {
-    ok: Object.keys(errors).length === 0,
-    errors,
-    value: { name, email, phone: phoneDigits, address, message },
-  };
-}
-
-export function firstError(errors: Record<string, string | undefined>) {
-  return Object.values(errors).find(Boolean) || '';
-}

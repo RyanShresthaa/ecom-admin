@@ -11,6 +11,13 @@ import GoogleSignInButton from '@/shared/ui/GoogleSignInButton';
 import ForgotPasswordFlow from '@/shared/ui/ForgotPasswordFlow';
 import FlashToast, { type FlashToastTone } from '@/shared/ui/FlashToast';
 import { sendTwoFactorEmailOtp } from '@/lib/api';
+import {
+  digitsOnly,
+  sanitizeEmailInput,
+  sanitizePasswordInput,
+  validateEmail,
+  validateOtpCode,
+} from '@/lib/inputValidation';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -54,6 +61,11 @@ const Login: React.FC = () => {
       setError('Please enter your email address.');
       return;
     }
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      setError(emailErr);
+      return;
+    }
     if (!password) {
       setError('Please enter your password.');
       return;
@@ -79,6 +91,11 @@ const Login: React.FC = () => {
     e.preventDefault();
     if (!twoFaToken) return;
     setError('');
+    const otpErr = validateOtpCode(twoFaCode, 6);
+    if (otpErr) {
+      setError(otpErr);
+      return;
+    }
     setLoading(true);
     try {
       await completeTwoFactorLogin(twoFaToken, twoFaCode.trim());
@@ -202,7 +219,7 @@ const Login: React.FC = () => {
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     value={twoFaCode}
-                    onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(e) => setTwoFaCode(digitsOnly(e.target.value, 6))}
                     placeholder="123456"
                     required
                     className="w-full px-3.5 py-2.5 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary tracking-[0.3em] text-center font-mono"
@@ -249,9 +266,11 @@ const Login: React.FC = () => {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))}
                   placeholder="john@example.com"
                   required
+                  maxLength={320}
+                  autoComplete="email"
                   className="w-full px-3.5 py-2.5 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
               </div>
@@ -265,9 +284,11 @@ const Login: React.FC = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(sanitizePasswordInput(e.target.value))}
                     placeholder="••••••••"
                     required
+                    maxLength={128}
+                    autoComplete="current-password"
                     className="w-full px-3.5 py-2.5 pr-10 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                   <button

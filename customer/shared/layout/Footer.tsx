@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Icon } from '@iconify/react';
 import { subscribeNewsletter } from '@/lib/api';
+import { sanitizeEmailInput, validateEmail } from '@/lib/inputValidation';
 
 const Footer = () => {
   const [email, setEmail] = useState('');
@@ -15,8 +16,14 @@ const Footer = () => {
     e.preventDefault();
     setStatus('loading');
     setMessage('');
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      setStatus('err');
+      setMessage(emailErr);
+      return;
+    }
     try {
-      const res = await subscribeNewsletter(email);
+      const res = await subscribeNewsletter(sanitizeEmailInput(email));
       setStatus('ok');
       setMessage(res?.message || 'Thanks for subscribing!');
       setEmail('');
@@ -116,10 +123,11 @@ const Footer = () => {
                     type="email"
                     value={email}
                     onChange={(e) => {
-                      setEmail(e.target.value);
+                      setEmail(sanitizeEmailInput(e.target.value));
                       if (status !== 'idle') setStatus('idle');
                     }}
                     placeholder="Your e-mail"
+                    maxLength={320}
                     className="bg-transparent font-secondary text-xs sm:text-sm w-full focus:outline-none placeholder-[#2A170F]/45 pr-8 text-[#2A170F]"
                     required
                     disabled={status === 'loading'}
