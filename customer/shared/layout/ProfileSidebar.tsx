@@ -156,7 +156,7 @@ export default function ProfileSidebar({ active }: { active: Active }) {
             />
           </div>
           <p className="text-[9px] text-white/55 mt-2 leading-relaxed">
-            Earn 1 point per $100 after payment and successful delivery.
+            Earn 1 point per $10 after payment and successful delivery.
           </p>
         </div>
       </div>

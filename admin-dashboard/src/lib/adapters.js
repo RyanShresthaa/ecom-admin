@@ -55,9 +55,19 @@ export function toAdminPaymentStatus(status) {
   const raw = String(status || '').toUpperCase()
   if (raw.includes('REFUND')) return 'Refunded'
   if (raw.includes('CANCEL')) return 'Cancelled'
-  if (raw.includes('PAID') || raw === 'PAID') return 'Paid'
-  if (raw.includes('CASH')) return 'Unpaid'
+  if (raw.includes('UNPAID') || raw.includes('CASH') || raw.includes('PENDING')) return 'Unpaid'
+  if (raw.includes('PAID')) return 'Paid'
   return raw ? 'Paid' : 'Unpaid'
+}
+
+/** Map admin Paid/Unpaid labels to backend payment_status values. */
+export function toBackendPaymentStatus(status) {
+  const label = String(status || '').trim()
+  if (label === 'Paid') return 'PAID'
+  if (label === 'Unpaid') return 'UNPAID'
+  if (label === 'Refunded') return 'REFUNDED'
+  if (label === 'Cancelled') return 'CANCELLED'
+  return label || undefined
 }
 
 export function mapProduct(row) {

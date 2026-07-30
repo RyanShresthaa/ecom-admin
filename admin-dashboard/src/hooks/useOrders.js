@@ -28,10 +28,13 @@ export function useUpdateOrderStatus() {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(variables.id) })
       const cancelled = String(variables.payload?.deliveryStatus || '').toLowerCase() === 'cancelled'
+      const payment = variables.payload?.paymentStatus
       toast.success(
         cancelled
           ? data?._cancelMessage || 'Order cancelled (refunded if paid)'
-          : 'Order status updated',
+          : payment
+            ? `Payment marked ${payment}`
+            : 'Order status updated',
       )
     },
     onError: (err) => toast.error(err.message || 'Failed to update order'),

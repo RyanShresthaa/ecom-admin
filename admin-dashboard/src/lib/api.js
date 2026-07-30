@@ -14,6 +14,7 @@ import {
   paginatedResult,
   shopSettingsToAdmin,
   toBackendDeliveryStatus,
+  toBackendPaymentStatus,
 } from '@/lib/adapters'
 import { resolveFeedbackSender } from '@/lib/parseFeedback'
 
@@ -353,7 +354,7 @@ export const api = {
 
       const body = {
         delivery_status: deliveryStatus ? toBackendDeliveryStatus(deliveryStatus) : undefined,
-        payment_status: paymentStatus,
+        payment_status: paymentStatus ? toBackendPaymentStatus(paymentStatus) : undefined,
       }
 
       // Cancel applies to the whole checkout group in one request (stock + refund once)

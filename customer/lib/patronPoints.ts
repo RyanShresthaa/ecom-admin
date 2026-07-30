@@ -1,5 +1,5 @@
 /**
- * Patron points: 1 point per $100 spent (order total).
+ * Patron points: 1 point per $10 spent (order total).
  * Only orders with successful payment AND successful delivery count.
  *
  * Tiers: Member → Bronze (100) → Silver (250) → Gold (500) → Platinum (1000)
@@ -95,7 +95,7 @@ export function isCountableOrder(paymentStatus?: string, deliveryStatus?: string
   );
 }
 
-/** Sum unique checkout totals → integer points ($100 spent = 1 point). */
+/** Sum unique checkout totals → integer points ($10 spent = 1 point). */
 export function pointsFromOrders(
   rows: Array<{
     orderId?: string;
@@ -118,7 +118,7 @@ export function pointsFromOrders(
   }
   let spent = 0;
   for (const v of byGroup.values()) spent += v;
-  return Math.max(0, Math.floor(spent / 100));
+  return Math.max(0, Math.floor(spent / 10));
 }
 
 export function resolvePatronTier(points: number): {
