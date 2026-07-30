@@ -47,11 +47,22 @@ function slugify(value) {
     .slice(0, 180)
 }
 
+function isLikelyImageRef(value) {
+  const v = String(value || '').trim()
+  if (!v) return false
+  if (v.startsWith('http://') || v.startsWith('https://')) return true
+  if (v.startsWith('/')) return true
+  if (v.startsWith('data:image/')) return true
+  return false
+}
+
 export function BlogFormDialog({ open, onOpenChange, onSubmit, isSubmitting, post = null }) {
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [uploading, setUploading] = useState(false)
   const isEdit = Boolean(post?.id)
+  const imageValue = form.image.trim()
+  const hasValidImageRef = isLikelyImageRef(imageValue)
 
   useEffect(() => {
     if (!open) return
@@ -130,7 +141,7 @@ export function BlogFormDialog({ open, onOpenChange, onSubmit, isSubmitting, pos
       subtitle: form.subtitle.trim(),
       content: form.content.trim(),
       category: form.category.trim(),
-      image: form.image.trim(),
+      image: hasValidImageRef ? imageValue : '',
       learnSectionTitle: form.learnSectionTitle.trim(),
       learnItems: form.learnItems.filter((i) => i.title.trim() || i.description.trim()),
       conclusion: form.conclusion.trim(),
@@ -216,9 +227,9 @@ export function BlogFormDialog({ open, onOpenChange, onSubmit, isSubmitting, pos
                 disabled={uploading || isSubmitting}
                 onChange={handleFileChange}
               />
-              {form.image ? (
+              {hasValidImageRef ? (
                 <a
-                  href={form.image}
+                  href={imageValue}
                   target="_blank"
                   rel="noreferrer"
                   className="text-xs text-primary underline"
@@ -227,9 +238,14 @@ export function BlogFormDialog({ open, onOpenChange, onSubmit, isSubmitting, pos
                 </a>
               ) : null}
             </div>
-            {form.image ? (
+            {imageValue && !hasValidImageRef ? (
+              <p className="text-xs text-amber-700">
+                Image must be an absolute URL or start with <code>/</code>.
+              </p>
+            ) : null}
+            {hasValidImageRef ? (
               <img
-                src={form.image}
+                src={imageValue}
                 alt=""
                 className="mt-1 h-24 w-auto rounded-md border border-border object-cover"
               />

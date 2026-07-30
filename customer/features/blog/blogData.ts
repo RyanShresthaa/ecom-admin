@@ -35,6 +35,16 @@ export function formatBlogDate(value?: string | null): string {
   });
 }
 
+function isLikelyImageRef(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const v = value.trim();
+  if (!v) return false;
+  if (v.startsWith('http://') || v.startsWith('https://')) return true;
+  if (v.startsWith('/')) return true;
+  if (v.startsWith('data:image/')) return true;
+  return false;
+}
+
 export function mapApiBlogPost(raw: Record<string, unknown>): BlogPost {
   const learnRaw = raw.learnItems ?? raw.learn_items ?? [];
   const learnItems = Array.isArray(learnRaw)
@@ -48,13 +58,14 @@ export function mapApiBlogPost(raw: Record<string, unknown>): BlogPost {
     : [];
 
   const publishedAt = (raw.publishedAt ?? raw.published_at ?? null) as string | null;
+  const image = isLikelyImageRef(raw.image) ? raw.image : '/images/about/team/team-1.png';
 
   return {
     id: Number(raw.id ?? raw._id ?? 0),
     slug: String(raw.slug || ''),
     title: String(raw.title || ''),
     date: formatBlogDate(publishedAt) || formatBlogDate(String(raw.createdAt ?? raw.created_at ?? '')),
-    image: String(raw.image || '/images/about/team/team-1.png'),
+    image,
     category: String(raw.category || ''),
     subtitle: String(raw.subtitle || ''),
     content: String(raw.content || ''),

@@ -22,7 +22,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <LocaleProvider>
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_relativeSplatPath: true }}>
             <AppRoutes />
             <Toaster position="top-right" richColors closeButton />
           </BrowserRouter>

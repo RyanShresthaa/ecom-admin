@@ -1,12 +1,10 @@
 /**
  * API client — all dashboard data flows through here to the Express backend.
  */
-import { http, getCsrfToken, setCsrfToken } from '@/lib/http'
+import { fetchCsrfToken, http, setCsrfToken } from '@/lib/http'
 
 async function ensureCsrfToken() {
-  if (getCsrfToken()) return
-  const res = await http.get('/user/csrf')
-  setCsrfToken(res.data.data?.csrfToken)
+  await fetchCsrfToken()
 }
 import {
   adminSettingsToShop,

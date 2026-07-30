@@ -32,6 +32,9 @@ function readCookie(name) {
 
 let csrfToken = readCookie('csrfToken')
 let refreshPromise = null
+let csrfFetchPromise = null
+
+const SAFE_METHODS = new Set(['get', 'head', 'options'])
 
 function broadcastRefresh(csrf) {
   try {
@@ -46,8 +49,8 @@ function broadcastRefresh(csrf) {
 try {
   const bc = new BroadcastChannel(REFRESH_CHANNEL)
   bc.onmessage = (event) => {
-    if (event?.data?.type === 'refreshed') {
-      setCsrfToken(event.data.csrfToken ?? readCookie('csrfToken'))
+    if (event?.data?.type === 'refreshed' && event.data.csrfToken) {
+      setCsrfToken(event.data.csrfToken)
     }
   }
 } catch {
@@ -87,9 +90,11 @@ async function refreshSession() {
     refreshPromise = http
       .post('/user/refresh-token')
       .then((res) => {
-        const next = res.data.data?.csrfToken ?? readCookie('csrfToken')
-        setCsrfToken(next)
-        broadcastRefresh(next)
+        const next = res.data.data?.csrfToken
+        if (next) {
+          setCsrfToken(next)
+          broadcastRefresh(next)
+        }
         return res
       })
       .finally(() => {
@@ -99,10 +104,50 @@ async function refreshSession() {
   return refreshPromise
 }
 
-http.interceptors.request.use((config) => {
-  const token = getCsrfToken()
-  if (token && !['get', 'head', 'options'].includes(config.method?.toLowerCase() ?? '')) {
-    config.headers['X-CSRF-Token'] = token
+/** Fetch CSRF from API body — cookie is not readable cross-origin (5173 → 5000). */
+export async function fetchCsrfToken() {
+  if (!csrfFetchPromise) {
+    csrfFetchPromise = http
+      .get('/user/csrf')
+      .then((res) => {
+        const token = res.data.data?.csrfToken
+        setCsrfToken(token)
+        return token
+      })
+      .finally(() => {
+        csrfFetchPromise = null
+      })
+  }
+  return csrfFetchPromise
+}
+
+function isCsrfEndpoint(url = '') {
+  return url.includes('/user/csrf')
+}
+
+function isCsrfForbidden(error) {
+  return (
+    error.response?.status === 403 &&
+    String(error.response?.data?.message || '')
+      .toLowerCase()
+      .includes('csrf')
+  )
+}
+
+http.interceptors.request.use(async (config) => {
+  const method = config.method?.toLowerCase() ?? ''
+  if (!SAFE_METHODS.has(method) && !isCsrfEndpoint(config.url)) {
+    if (!getCsrfToken()) {
+      try {
+        await fetchCsrfToken()
+      } catch {
+        /* no session — backend skips CSRF when session cookies are absent */
+      }
+    }
+    const token = getCsrfToken()
+    if (token) {
+      config.headers['X-CSRF-Token'] = token
+    }
   }
   // Auth relies on httpOnly cookies (withCredentials). Do not attach Bearer JWTs from storage.
   return config
@@ -122,6 +167,16 @@ http.interceptors.response.use(
       } catch {
         setCsrfToken(null)
         clearLegacyTokenStorage()
+      }
+    }
+
+    if (isCsrfForbidden(error) && original && !original._csrfRetry) {
+      original._csrfRetry = true
+      try {
+        await fetchCsrfToken()
+        return http(original)
+      } catch {
+        setCsrfToken(null)
       }
     }
 
