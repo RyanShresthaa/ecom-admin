@@ -74,27 +74,46 @@ async function sendViaResend({ sendTo, subject, html, text }) {
     const key = getResendApiKey();
     if (!key) return null;
 
-    const from = resolveFromAddress(true);
-    const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${key}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            from,
-            to: [sendTo],
-            subject,
-            html,
-            text: text || subject,
-        }),
-    });
+    const primaryFrom = resolveFromAddress(true);
+    const fallbackFrom = 'Matina Crafts <onboarding@resend.dev>';
+
+    const attempt = async (from) => {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${key}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                from,
+                to: [sendTo],
+                subject,
+                html,
+                text: text || subject,
+            }),
+        });
+        const body = await res.text().catch(() => '');
+        return { res, body };
+    };
+
+    let { res, body } = await attempt(primaryFrom);
+
+    // Unverified custom domain → retry with Resend's test sender (works without DNS).
+    const domainUnverified =
+        res.status === 403 && /domain is not verified/i.test(body);
+    if (domainUnverified && primaryFrom !== fallbackFrom) {
+        logger.warn('resend_domain_unverified_retrying_onboarding', { from: primaryFrom });
+        ({ res, body } = await attempt(fallbackFrom));
+    }
 
     if (!res.ok) {
-        const body = await res.text().catch(() => '');
         throw new Error(`Resend failed (${res.status}): ${body.slice(0, 240)}`);
     }
-    logger.info('email_sent', { provider: 'resend', to: sendTo, from });
+    logger.info('email_sent', {
+        provider: 'resend',
+        to: sendTo,
+        from: domainUnverified ? fallbackFrom : primaryFrom,
+    });
     return { sent: true, provider: 'resend' };
 }
 
