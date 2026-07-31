@@ -129,29 +129,53 @@ export async function verifySmtp() {
 
 /**
  * Sends immediately.
- * If RESEND_API_KEY is set, SMTP is never used (avoids silent Gmail sends / Render SMTP blocks).
+ * Prefer Resend when configured. If Resend rejects (unverified domain / test-recipient limits),
+ * fall back to SMTP when available — needed for local Gmail; Render free still blocks SMTP.
  */
 export async function sendEmailDirect({ sendTo, subject, html, text }) {
+    const opts = { sendTo, subject, html, text };
+    let resendError = null;
+
     if (getResendApiKey()) {
-        return sendViaResend({ sendTo, subject, html, text });
+        try {
+            return await sendViaResend(opts);
+        } catch (err) {
+            resendError = err;
+            logger.warn('resend_send_failed', { error: String(err?.message || err), to: sendTo });
+        }
     }
 
     const t = getTransport();
     if (!t) {
         throw new Error(
-            'Email is not configured. Set RESEND_API_KEY (required on Render free tier) or SMTP_HOST/SMTP_USER/SMTP_PASS.',
+            resendError?.message ||
+                'Email is not configured. Set RESEND_API_KEY (and verify a domain) or SMTP_HOST/SMTP_USER/SMTP_PASS.',
         );
     }
-    const from = resolveFromAddress(false);
-    await t.sendMail({
-        from,
-        to: sendTo,
-        subject,
-        text: text || subject,
-        html,
-    });
-    logger.info('email_sent', { provider: 'smtp', to: sendTo, from });
-    return { sent: true, provider: 'smtp' };
+
+    try {
+        const from = resolveFromAddress(false);
+        await t.sendMail({
+            from,
+            to: sendTo,
+            subject,
+            text: text || subject,
+            html,
+        });
+        logger.info('email_sent', {
+            provider: 'smtp',
+            to: sendTo,
+            from,
+            afterResendFailure: Boolean(resendError),
+        });
+        return { sent: true, provider: 'smtp' };
+    } catch (smtpErr) {
+        const parts = [
+            resendError ? `Resend: ${resendError.message}` : null,
+            `SMTP: ${smtpErr?.message || smtpErr}`,
+        ].filter(Boolean);
+        throw new Error(parts.join(' | '));
+    }
 }
 
 /** Default export: queues when EMAIL_USE_QUEUE=true, else sends inline. */
