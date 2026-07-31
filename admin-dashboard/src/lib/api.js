@@ -609,6 +609,31 @@ export const api = {
     },
   },
 
+  productReviews: {
+    list: async ({ productId, limit = 100, skip = 0 } = {}) => {
+      const params = { limit, skip }
+      if (productId) params.productId = productId
+      const res = await http.get('/admin/reviews', { params })
+      if (res.data.success === false) throw new Error(res.data.message || 'Failed to load reviews')
+      return (res.data.data ?? []).map((r) => ({
+        id: String(r.id ?? r._id),
+        productId: r.productId ?? r.product_id ?? null,
+        productName: r.productName ?? r.product_name ?? '',
+        userId: r.userId ?? r.user_id ?? null,
+        userName: r.userName ?? r.user_name ?? '',
+        userEmail: r.userEmail ?? r.user_email ?? '',
+        rating: Number(r.rating ?? 0),
+        comment: r.comment || '',
+        createdAt: r.createdAt ?? r.created_at ?? null,
+      }))
+    },
+    remove: async (id) => {
+      const res = await http.delete(`/admin/reviews/${id}`)
+      if (res.data.success === false) throw new Error(res.data.message || 'Failed to delete review')
+      return res.data
+    },
+  },
+
   googleReviews: {
     list: async () => {
       const res = await http.get('/google-reviews/admin')

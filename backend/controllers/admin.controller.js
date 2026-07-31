@@ -6,6 +6,7 @@ import { countProducts } from '../models/product.model.js';
 import { findCategories } from '../models/category.model.js';
 import { findUsers, findUserById, updateUser, findUserPublicById } from '../models/user.model.js';
 import { listFeedback } from '../models/feedback.model.js';
+import { listReviewsForAdmin, deleteReviewById } from '../models/review.model.js';
 import { pickId } from '../utils/sql.js';
 import { logAudit } from '../models/audit.model.js';
 import { findAuditLogs } from '../models/audit.model.js';
@@ -174,6 +175,46 @@ export const listFeedbackController = async (req, res) => {
             targetType: targetType && ['product', 'seller', 'business'].includes(String(targetType)) ? String(targetType) : undefined,
         });
         return res.json({ data, error: false, success: true });
+    } catch (error) {
+        return res.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+};
+
+/** GET /api/admin/reviews — optional ?productId= */
+export const listProductReviewsController = async (req, res) => {
+    try {
+        const data = await listReviewsForAdmin({
+            limit: Math.min(200, Number(req.query.limit) || 100),
+            skip: Number(req.query.skip) || 0,
+            productId: req.query.productId,
+        });
+        return res.json({ data, error: false, success: true });
+    } catch (error) {
+        return res.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+};
+
+/** DELETE /api/admin/reviews/:id */
+export const deleteProductReviewController = async (req, res) => {
+    try {
+        const reviewId = pickId(req.params.id);
+        if (!reviewId) {
+            return res.status(400).json({ message: 'Review id is required', error: true, success: false });
+        }
+        const ok = await deleteReviewById(reviewId);
+        if (!ok) {
+            return res.status(404).json({ message: 'Review not found', error: true, success: false });
+        }
+        await logAudit({
+            adminId: req.userId,
+            action: 'review.delete',
+            entityType: 'review',
+            entityId: reviewId,
+            details: {},
+            ip: getClientIp(req),
+            userAgent: getUserAgent(req),
+        }).catch(() => {});
+        return res.json({ message: 'Review deleted', error: false, success: true });
     } catch (error) {
         return res.status(500).json({ message: error.message || error, error: true, success: false });
     }

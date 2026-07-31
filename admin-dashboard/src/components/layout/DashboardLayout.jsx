@@ -13,6 +13,7 @@ const TITLES = {
   '/coupons': 'Coupons',
   '/returns': 'Returns',
   '/feedback': 'Feedback',
+  '/product-reviews': 'Product reviews',
   '/google-reviews': 'Google reviews',
   '/blog': 'Journal',
   '/newsletter': 'Newsletter',

@@ -25,6 +25,8 @@ import {
     getAuditLogsController,
     getSecurityEventsController,
     listFeedbackController,
+    listProductReviewsController,
+    deleteProductReviewController,
     setUserStatusController,
 } from "../controllers/admin.controller.js";
 import {
@@ -51,12 +53,14 @@ adminRouter.get("/seller-requests", adminReadLimiter, (req, res, next) => {
     return listUsersController(req, res, next);
 });
 adminRouter.get("/feedback", adminReadLimiter, listFeedbackController);
+adminRouter.get("/reviews", adminReadLimiter, listProductReviewsController);
 adminRouter.get("/audit-logs", adminReadLimiter, getAuditLogsController);
 adminRouter.get("/security-events", adminReadLimiter, getSecurityEventsController);
 
 // ── Writes (non-destructive) ────────────────────────────────────────
 adminRouter.post("/notifications/mark-read", adminWriteLimiter, markNotificationReadController);
 adminRouter.post("/notifications/mark-all-read", adminWriteLimiter, markAllNotificationsReadController);
+adminRouter.delete("/reviews/:id", adminWriteLimiter, deleteProductReviewController);
 
 // ── Sensitive (role / status / seller approve-reject) ───────────────
 adminRouter.put("/users/:id/role", adminSensitiveLimiter, setUserRoleController);

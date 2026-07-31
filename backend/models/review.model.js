@@ -62,3 +62,42 @@ export async function deleteReview(reviewId, userId) {
     );
     return Boolean(r.rows[0]);
 }
+
+/** Admin: list reviews across products (newest first). */
+export async function listReviewsForAdmin({ limit = 100, skip = 0, productId } = {}) {
+    const safeLimit = Math.min(200, Math.max(1, Number(limit) || 100));
+    const safeSkip = Math.max(0, Number(skip) || 0);
+    const params = [];
+    let where = '';
+    if (productId != null && productId !== '' && !Number.isNaN(Number(productId))) {
+        params.push(Number(productId));
+        where = `WHERE r.product_id = $${params.length}`;
+    }
+    params.push(safeLimit, safeSkip);
+    const r = await pool.query(
+        `SELECT r.*,
+                u.name AS user_name,
+                u.email AS user_email,
+                p.name AS product_name
+         FROM reviews r
+         JOIN users u ON u.id = r.user_id
+         LEFT JOIN products p ON p.id = r.product_id
+         ${where}
+         ORDER BY r.created_at DESC
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params,
+    );
+    return r.rows.map((row) => ({
+        ...mapRow(row),
+        userName: row.user_name,
+        userEmail: row.user_email,
+        productName: row.product_name,
+    }));
+}
+
+/** Admin: delete any review by id. Returns true if removed. */
+export async function deleteReviewById(reviewId) {
+    if (!reviewId) return false;
+    const r = await pool.query(`DELETE FROM reviews WHERE id = $1 RETURNING id`, [reviewId]);
+    return Boolean(r.rows[0]);
+}

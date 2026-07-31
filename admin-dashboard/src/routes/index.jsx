@@ -13,6 +13,7 @@ import {
   Coupons,
   Returns,
   Feedback,
+  ProductReviews,
   GoogleReviews,
   Blog,
   Newsletter,
@@ -102,6 +103,14 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<PageLoader />}>
               <Feedback />
+            </Suspense>
+          }
+        />
+        <Route
+          path="product-reviews"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <ProductReviews />
             </Suspense>
           }
         />

@@ -102,6 +102,27 @@
  *     responses:
  *       200: { description: Feedback items }
  *
+ * /api/admin/reviews:
+ *   get:
+ *     tags: [Admin]
+ *     summary: List product reviews from the storefront
+ *     security: [{ cookieAuth: [] }]
+ *     responses:
+ *       200: { description: Product reviews }
+ *
+ * /api/admin/reviews/{id}:
+ *   delete:
+ *     tags: [Admin]
+ *     summary: Delete a product review
+ *     security: [{ cookieAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Deleted }
+ *
  * /api/admin/audit-logs:
  *   get:
  *     tags: [Admin]

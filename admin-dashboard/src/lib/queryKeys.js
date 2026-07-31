@@ -39,6 +39,10 @@ export const queryKeys = {
     all: ['feedback'],
     list: (params) => ['feedback', 'list', params],
   },
+  productReviews: {
+    all: ['product-reviews'],
+    list: (params) => ['product-reviews', 'list', params],
+  },
   googleReviews: {
     all: ['google-reviews'],
     list: ['google-reviews', 'list'],
