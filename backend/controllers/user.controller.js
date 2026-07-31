@@ -16,7 +16,6 @@ import {
     getClearCsrfCookieOptions,
     getRefreshSecret,
     getAccessSecret,
-    getTrustedFrontendBaseUrl,
     JWT_VERIFY_OPTIONS,
 } from '../config/security.js';
 import { extractRefreshToken } from '../utils/extractAuthToken.js';
@@ -74,7 +73,53 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID;
 const googleOAuthClient = googleClientId ? new OAuth2Client(googleClientId) : null;
 
 const REGISTER_RESPONSE_MSG =
-    'Registration successful. If this email is new, check your inbox to verify your account.';
+    'Registration successful. Check your email for a 6-digit verification code.';
+const VERIFY_EMAIL_OTP_TTL_MS = 60 * 60 * 1000;
+const RESEND_VERIFY_GENERIC =
+    'If an unverified account exists for that email, we sent a new verification code.';
+
+function packVerifyEmailOtp(otp, expiresAt) {
+    return `${String(otp)}.${expiresAt.getTime()}`;
+}
+
+function parseVerifyEmailOtp(token) {
+    if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+    const dot = token.indexOf('.');
+    const otp = token.slice(0, dot);
+    const ms = Number(token.slice(dot + 1));
+    if (!/^\d{4,8}$/.test(otp) || !Number.isFinite(ms)) return null;
+    return { otp, expiresAt: new Date(ms) };
+}
+
+function isAutoVerifyEmailEnabled() {
+    return (
+        process.env.NODE_ENV !== 'production' ||
+        String(process.env.AUTO_VERIFY_EMAIL || '').toLowerCase() === 'true'
+    );
+}
+
+/** Issue a fresh email-verify OTP and send it via SMTP immediately (not the queue). */
+async function issueAndSendVerifyEmailOtp(user) {
+    const otp = String(generateOtp());
+    const expiresAt = new Date(Date.now() + VERIFY_EMAIL_OTP_TTL_MS);
+    await updateUser(user.id, { verify_email_token: packVerifyEmailOtp(otp, expiresAt) });
+    const mail = {
+        sendTo: user.email,
+        subject: 'Your Matina Crafts verification code',
+        html: verifyEmailTemplate({ name: user.name, otp }),
+        text: `Hi ${user.name || 'there'}, your Matina Crafts email verification code is ${otp}. It expires in 1 hour.`,
+    };
+    try {
+        await sendEmailDirect(mail);
+    } catch {
+        try {
+            await enqueueEmail(mail);
+        } catch {
+            void sendEmail(mail).catch(() => {});
+        }
+    }
+    return otp;
+}
 
 function clearAuthCookies(response) {
     const accessClear = getClearAccessCookieOptions();
@@ -127,53 +172,50 @@ export async function registerUserController(request, response) {
         if (pwdErr) {
             return response.status(400).json({ message: pwdErr, error: true, success: false });
         }
-        if (await findUserByEmail(email)) {
-            return response.json({ message: REGISTER_RESPONSE_MSG, error: false, success: true });
+        const autoVerify = isAutoVerifyEmailEnabled();
+        const existing = await findUserByEmail(email);
+        if (existing) {
+            // Anti-enumeration: same shape as a new signup. Resend OTP only if still unverified.
+            if (!autoVerify && !existing.verify_email) {
+                try {
+                    await issueAndSendVerifyEmailOtp(existing);
+                } catch {
+                    /* ignore — still return generic success */
+                }
+            }
+            return response.json({
+                message: REGISTER_RESPONSE_MSG,
+                error: false,
+                success: true,
+                data: {
+                    email: String(email).toLowerCase(),
+                    requiresEmailVerification: !autoVerify && !existing.verify_email,
+                },
+            });
         }
         const hashed = await hashPassword(password);
-        const verify_email_token = crypto.randomBytes(32).toString('hex');
         const save = await createUser({ name, email, password: hashed });
-        // Local/dev: auto-verify so storefront signup → login works without SMTP.
-        // Production still requires the email link.
-        const autoVerify =
-            process.env.NODE_ENV !== 'production' ||
-            String(process.env.AUTO_VERIFY_EMAIL || '').toLowerCase() === 'true';
-        await updateUser(pickId(save), {
-            verify_email_token: autoVerify ? null : verify_email_token,
-            ...(autoVerify ? { verify_email: true } : {}),
-        });
+        const userId = pickId(save);
 
-        if (!autoVerify) {
-            const baseUrl = getTrustedFrontendBaseUrl();
-            const url = `${baseUrl}/verify-email?code=${encodeURIComponent(verify_email_token)}`;
-            // Always enqueue — never block registration on SMTP RTT (run email:worker)
+        if (autoVerify) {
+            await updateUser(userId, { verify_email: true, verify_email_token: null });
+        } else {
             try {
-                await enqueueEmail({
-                    sendTo: email,
-                    subject: 'Verify email',
-                    html: verifyEmailTemplate(name, url),
-                });
+                await issueAndSendVerifyEmailOtp({ id: userId, email: save.email, name: save.name });
             } catch (err) {
-                // Fallback: fire-and-forget direct send if queue insert fails
-                void sendEmail({
-                    sendTo: email,
-                    subject: 'Verify email',
-                    html: verifyEmailTemplate(name, url),
-                }).catch(async (sendErr) => {
-                    await logSecurityEvent({
-                        userId: pickId(save),
-                        action: 'auth.register_email_failed',
-                        ip: getClientIp(request),
-                        userAgent: getUserAgent(request),
-                        success: false,
-                        details: { reason: String(sendErr?.message || sendErr || err?.message || err) },
-                    }).catch(() => {});
-                });
+                await logSecurityEvent({
+                    userId,
+                    action: 'auth.register_email_failed',
+                    ip: getClientIp(request),
+                    userAgent: getUserAgent(request),
+                    success: false,
+                    details: { reason: String(err?.message || err) },
+                }).catch(() => {});
             }
         }
 
         await logSecurityEvent({
-            userId: pickId(save),
+            userId,
             action: 'auth.register',
             ip: getClientIp(request),
             userAgent: getUserAgent(request),
@@ -186,7 +228,11 @@ export async function registerUserController(request, response) {
             message: REGISTER_RESPONSE_MSG,
             error: false,
             success: true,
-            data: { name: save.name, email: save.email },
+            data: {
+                name: save.name,
+                email: save.email,
+                requiresEmailVerification: !autoVerify,
+            },
         });
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false });
@@ -195,17 +241,62 @@ export async function registerUserController(request, response) {
 
 export async function verifyEmailController(request, response) {
     try {
-        const code = request.body?.code;
-        if (!code) {
-            return response.status(400).json({ message: 'Invalid code', error: true, success: false });
+        const email = request.body?.email ? String(request.body.email).trim().toLowerCase() : '';
+        const otp = String(request.body?.otp || request.body?.code || '').trim();
+        if (!otp) {
+            return response.status(400).json({ message: 'Enter the verification code', error: true, success: false });
         }
-        const user = await findUserByVerifyToken(String(code));
+
+        // Preferred: email + OTP from signup flow
+        if (email) {
+            const user = await findUserByEmail(email);
+            if (!user) {
+                return response.status(400).json({ message: 'Invalid or expired code', error: true, success: false });
+            }
+            if (user.verify_email) {
+                return response.json({ message: 'Email already verified', success: true, error: false });
+            }
+            const packed = parseVerifyEmailOtp(user.verify_email_token);
+            if (
+                !packed ||
+                String(otp) !== String(packed.otp) ||
+                !packed.expiresAt ||
+                packed.expiresAt < new Date()
+            ) {
+                return response.status(400).json({ message: 'Invalid or expired code', error: true, success: false });
+            }
+            await updateUser(user.id, { verify_email: true, verify_email_token: null });
+            biz.emailVerified();
+            return response.json({ message: 'Email verified. You can sign in now.', success: true, error: false });
+        }
+
+        // Legacy: long link token stored as verify_email_token
+        const user = await findUserByVerifyToken(otp);
         if (!user) {
-            return response.status(400).json({ message: 'Invalid code', error: true, success: false });
+            return response.status(400).json({ message: 'Invalid or expired code', error: true, success: false });
         }
         await updateUser(user.id, { verify_email: true, verify_email_token: null });
         biz.emailVerified();
-        return response.json({ message: 'Verify email done', success: true, error: false });
+        return response.json({ message: 'Email verified. You can sign in now.', success: true, error: false });
+    } catch (error) {
+        return response.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+export async function resendVerifyEmailController(request, response) {
+    try {
+        const email = request.body?.email ? String(request.body.email).trim().toLowerCase() : '';
+        if (!email) {
+            return response.status(400).json({ message: 'provide email', error: true, success: false });
+        }
+        if (isAutoVerifyEmailEnabled()) {
+            return response.json({ message: RESEND_VERIFY_GENERIC, error: false, success: true });
+        }
+        const user = await findUserByEmail(email);
+        if (user && !user.verify_email) {
+            await issueAndSendVerifyEmailOtp(user);
+        }
+        return response.json({ message: RESEND_VERIFY_GENERIC, error: false, success: true });
     } catch (error) {
         return response.status(500).json({ message: error.message || error, error: true, success: false });
     }

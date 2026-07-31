@@ -81,6 +81,24 @@ export const registerBodySchema = z.object({
     // recaptchaToken: z.string().max(8000).optional(),
 });
 
+/** POST /api/user/verify-email — email+otp (signup) or legacy `code` link token */
+export const verifyEmailBodySchema = z
+    .object({
+        email: z.string().trim().email().max(320).optional(),
+        otp: z.string().trim().min(4).max(64).optional(),
+        code: z.string().trim().min(4).max(128).optional(),
+    })
+    .superRefine((val, ctx) => {
+        if (!val.otp && !val.code) {
+            ctx.addIssue({ code: 'custom', message: 'Provide otp or code', path: ['otp'] });
+        }
+    });
+
+/** POST /api/user/resend-verify-email */
+export const resendVerifyEmailBodySchema = z.object({
+    email: z.string().trim().email().max(320),
+});
+
 /** POST /api/user/login */
 export const loginBodySchema = z.object({
     email: z.string().trim().email().max(320),

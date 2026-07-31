@@ -27,7 +27,9 @@ interface AuthContextType {
   isLoaded: boolean;
   login: (email: string, password: string) => Promise<{ requires2fa: true; tempToken: string } | void>;
   completeTwoFactorLogin: (tempToken: string, code: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<{
+    requiresEmailVerification: boolean;
+  }>;
   googleLogin: (
     credential: string,
   ) => Promise<{ requires2fa: true; tempToken: string } | void>;
@@ -110,7 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      await logoutUser();
+      // Only hit /logout when we think a session exists; avoids noisy 401s when already logged out.
+      if (user) await logoutUser();
       clearLegacyAuthStorage();
       setUser(null);
       const result = await loginWithPassword(email, password);
@@ -124,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       throw toAuthError(err, 'Sign in failed');
     }
-  }, []);
+  }, [user]);
 
   const completeTwoFactorLogin = useCallback(async (tempToken: string, code: string) => {
     try {
@@ -141,7 +144,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = useCallback(async (name: string, email: string, password: string) => {
     try {
       clearLegacyAuthStorage();
-      await registerUser({ name, email, password });
+      const result = await registerUser({ name, email, password });
+      return {
+        requiresEmailVerification: Boolean(result?.requiresEmailVerification),
+      };
     } catch (err) {
       throw toAuthError(err, 'Could not create account');
     }
@@ -149,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const googleLogin = useCallback(async (credential: string) => {
     try {
-      await logoutUser();
+      if (user) await logoutUser();
       clearLegacyAuthStorage();
       setUser(null);
       const result = await loginWithGoogleCredential(credential);
@@ -163,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       throw toAuthError(err, 'Google sign-in failed');
     }
-  }, []);
+  }, [user]);
 
   const logout = useCallback(async () => {
     await logoutUser();

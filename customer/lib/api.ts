@@ -304,11 +304,43 @@ export async function registerUser(opts: {
   name: string;
   email: string;
   password: string;
-}): Promise<{ message?: string }> {
+}): Promise<{
+  name?: string;
+  email?: string;
+  requiresEmailVerification?: boolean;
+  message?: string;
+}> {
   return apiFetch('/user/register', {
     method: 'POST',
     json: opts,
   });
+}
+
+/** Confirm signup email with the 6-digit OTP from the verification email. */
+export async function verifySignupEmail(opts: {
+  email: string;
+  otp: string;
+}): Promise<{ message?: string }> {
+  const data = await apiFetch<{ message?: string } | undefined>('/user/verify-email', {
+    method: 'POST',
+    json: { email: opts.email, otp: opts.otp },
+  });
+  if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+    return data;
+  }
+  return { message: 'Email verified. You can sign in now.' };
+}
+
+/** Resend the signup email verification OTP. */
+export async function resendSignupVerifyEmail(email: string): Promise<string> {
+  const data = await apiFetch<{ message?: string } | undefined>('/user/resend-verify-email', {
+    method: 'POST',
+    json: { email },
+  });
+  if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+    return data.message;
+  }
+  return 'If an unverified account exists for that email, we sent a new verification code.';
 }
 
 export async function logoutUser(): Promise<void> {

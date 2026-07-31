@@ -47,6 +47,11 @@ declare global {
 
 const SCRIPT_ID = 'google-gsi-client';
 
+/** GIS only allows one active initialize(); keep a single callback slot. */
+let gisInitializedForClientId: string | null = null;
+let gisCredentialHandler: ((credential: string) => void) | null = null;
+let gisErrorHandler: ((message: string) => void) | null = null;
+
 export function getGoogleClientId(): string {
   return (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '').trim();
 }
@@ -104,19 +109,25 @@ export async function renderGoogleButton(
 
   parent.innerHTML = '';
 
-  window.google.accounts.id.initialize({
-    client_id: opts.clientId,
-    callback: (response) => {
-      if (response.credential) {
-        opts.onCredential(response.credential);
-      } else {
-        opts.onError?.('Google did not return a credential');
-      }
-    },
-    auto_select: false,
-    cancel_on_tap_outside: true,
-    context: opts.text === 'signup_with' ? 'signup' : 'signin',
-  });
+  gisCredentialHandler = opts.onCredential;
+  gisErrorHandler = opts.onError ?? null;
+
+  if (gisInitializedForClientId !== opts.clientId) {
+    window.google.accounts.id.initialize({
+      client_id: opts.clientId,
+      callback: (response) => {
+        if (response.credential) {
+          gisCredentialHandler?.(response.credential);
+        } else {
+          gisErrorHandler?.('Google did not return a credential');
+        }
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      context: opts.text === 'signup_with' ? 'signup' : 'signin',
+    });
+    gisInitializedForClientId = opts.clientId;
+  }
 
   const width = Math.max(240, Math.floor(parent.getBoundingClientRect().width || 320));
 

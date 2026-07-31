@@ -16,6 +16,7 @@ import {
     updateUserDetails,
     uploadAvatar,
     verifyEmailController,
+    resendVerifyEmailController,
     verifyForgotPasswordOtp,
     applyForSellerController,
     exportAccountController,
@@ -50,6 +51,8 @@ import { validateBody } from '../middleware/validate.js';
 import {
     registerBodySchema,
     loginBodySchema,
+    resendVerifyEmailBodySchema,
+    verifyEmailBodySchema,
     setupPinBodySchema,
     changePinBodySchema,
     forgotPinBodySchema,
@@ -67,7 +70,8 @@ import {
 const userRouter = Router();
 
 userRouter.post('/register', registerLimiter, validateBody(registerBodySchema), registerUserController);
-userRouter.post('/verify-email', verifyEmailLimiter, verifyEmailController);
+userRouter.post('/verify-email', verifyEmailLimiter, validateBody(verifyEmailBodySchema), verifyEmailController);
+userRouter.post('/resend-verify-email', verifyEmailLimiter, validateBody(resendVerifyEmailBodySchema), resendVerifyEmailController);
 userRouter.post('/login', loginLimiter, validateBody(loginBodySchema), loginController);
 userRouter.post('/login-pin', loginLimiter, validateBody(loginPinBodySchema), loginPinController);
 userRouter.post('/google', loginLimiter, googleLoginController);

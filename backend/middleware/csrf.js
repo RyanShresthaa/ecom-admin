@@ -52,6 +52,8 @@ const AUTH_BOOTSTRAP_PATHS = new Set([
 
     '/api/user/verify-email',
 
+    '/api/user/resend-verify-email',
+
     '/api/user/forgot-password',
 
     '/api/user/verify-forgot-password-otp',

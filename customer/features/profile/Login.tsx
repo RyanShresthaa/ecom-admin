@@ -33,6 +33,7 @@ const Login: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isJustRegistered = searchParams.get('registered') === 'true';
+  const isJustVerified = searchParams.get('verified') === 'true';
   const isPasswordChanged = searchParams.get('passwordChanged') === 'true';
 
   const [twoFaToken, setTwoFaToken] = useState<string | null>(null);
@@ -182,7 +183,14 @@ const Login: React.FC = () => {
               </Link>
             </div>
 
-            {isJustRegistered && !error && (
+            {isJustVerified && !error && (
+              <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg flex items-center gap-2">
+                <Icon icon="lucide:check-circle" className="w-4 h-4 text-green-600 shrink-0" />
+                <span>Email verified. Sign in with your password to continue.</span>
+              </div>
+            )}
+
+            {isJustRegistered && !isJustVerified && !error && (
               <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg flex items-center gap-2">
                 <Icon icon="lucide:check-circle" className="w-4 h-4 text-green-600 shrink-0" />
                 <span>Account created successfully! Please log in to continue to checkout.</span>

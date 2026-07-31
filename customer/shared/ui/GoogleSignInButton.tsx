@@ -79,13 +79,23 @@ export default function GoogleSignInButton({
 
     void mount();
 
+    let lastWidth = Math.floor(host.getBoundingClientRect().width || 0);
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const onResize = () => {
-      if (!cancelled) void mount();
+      if (cancelled) return;
+      const next = Math.floor(host.getBoundingClientRect().width || 0);
+      if (Math.abs(next - lastWidth) < 24) return;
+      lastWidth = next;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!cancelled) void mount();
+      }, 200);
     };
     window.addEventListener('resize', onResize);
 
     return () => {
       cancelled = true;
+      if (resizeTimer) clearTimeout(resizeTimer);
       window.removeEventListener('resize', onResize);
       if (host) host.innerHTML = '';
     };
