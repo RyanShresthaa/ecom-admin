@@ -62,6 +62,111 @@ export async function setAllGoogleReviewsVisibility(isVisible) {
     return findAllGoogleReviews();
 }
 
+function initialsFromName(name) {
+    return String(name || '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0].toUpperCase())
+        .join('') || 'GR';
+}
+
+/** Admin: create a homepage testimonial / review row. */
+export async function createGoogleReview({
+    name,
+    role = '',
+    text,
+    rating = 5,
+    initials,
+    color = '#8C523A',
+    columnIndex = 0,
+    sortOrder = 0,
+    isVisible = true,
+    sourceKey,
+}) {
+    const author = String(name || '').trim();
+    const body = String(text || '').trim();
+    if (!author || !body) return null;
+    const key =
+        String(sourceKey || '').trim() ||
+        `manual:${Date.now()}:${author.slice(0, 40).toLowerCase().replace(/\s+/g, '-')}`;
+    const r = await pool.query(
+        `INSERT INTO google_reviews
+            (source_key, author_name, role, body, rating, initials, accent_color, column_index, sort_order, is_visible)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *`,
+        [
+            key,
+            author,
+            String(role || '').slice(0, 120),
+            body.slice(0, 2000),
+            Math.min(5, Math.max(1, Number(rating) || 5)),
+            String(initials || initialsFromName(author)).slice(0, 4),
+            String(color || '#8C523A').slice(0, 32),
+            Math.min(3, Math.max(0, Number(columnIndex) || 0)),
+            Math.max(0, Number(sortOrder) || 0),
+            Boolean(isVisible),
+        ],
+    );
+    return mapRow(r.rows[0]);
+}
+
+/** Admin: update review fields (content + layout + visibility). */
+export async function updateGoogleReview(id, fields = {}) {
+    const current = await pool.query(`SELECT * FROM google_reviews WHERE id = $1`, [pickId(id)]);
+    if (!current.rows[0]) return null;
+    const cur = current.rows[0];
+    const author =
+        fields.name !== undefined ? String(fields.name || '').trim() : cur.author_name;
+    const body = fields.text !== undefined ? String(fields.text || '').trim() : cur.body;
+    if (!author || !body) return null;
+    const r = await pool.query(
+        `UPDATE google_reviews SET
+            author_name = $2,
+            role = $3,
+            body = $4,
+            rating = $5,
+            initials = $6,
+            accent_color = $7,
+            column_index = $8,
+            sort_order = $9,
+            is_visible = $10,
+            updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [
+            pickId(id),
+            author,
+            fields.role !== undefined ? String(fields.role || '').slice(0, 120) : cur.role,
+            body.slice(0, 2000),
+            fields.rating !== undefined
+                ? Math.min(5, Math.max(1, Number(fields.rating) || 5))
+                : cur.rating,
+            fields.initials !== undefined
+                ? String(fields.initials || initialsFromName(author)).slice(0, 4)
+                : cur.initials,
+            fields.color !== undefined
+                ? String(fields.color || '#8C523A').slice(0, 32)
+                : cur.accent_color,
+            fields.columnIndex !== undefined
+                ? Math.min(3, Math.max(0, Number(fields.columnIndex) || 0))
+                : cur.column_index,
+            fields.sortOrder !== undefined
+                ? Math.max(0, Number(fields.sortOrder) || 0)
+                : cur.sort_order,
+            fields.isVisible !== undefined ? Boolean(fields.isVisible) : cur.is_visible,
+        ],
+    );
+    return mapRow(r.rows[0]);
+}
+
+export async function deleteGoogleReview(id) {
+    const r = await pool.query(`DELETE FROM google_reviews WHERE id = $1 RETURNING id`, [
+        pickId(id),
+    ]);
+    return Boolean(r.rows[0]);
+}
+
 /** Upsert a review synced from Google Places (keyed by source_key). */
 export async function upsertGoogleReviewFromPlace(review, index = 0) {
     const author = String(review.author_name || review.authorName || 'Guest').trim() || 'Guest';

@@ -650,6 +650,21 @@ export const api = {
         isVisible: Boolean(r.isVisible),
       }))
     },
+    create: async (payload) => {
+      const res = await http.post('/google-reviews/admin', payload)
+      if (res.data.success === false) throw new Error(res.data.message || 'Failed to create review')
+      return res.data.data
+    },
+    update: async (id, payload) => {
+      const res = await http.put(`/google-reviews/admin/${id}`, payload)
+      if (res.data.success === false) throw new Error(res.data.message || 'Failed to update review')
+      return res.data.data
+    },
+    remove: async (id) => {
+      const res = await http.delete(`/google-reviews/admin/${id}`)
+      if (res.data.success === false) throw new Error(res.data.message || 'Failed to delete review')
+      return res.data
+    },
     setVisibility: async (id, isVisible) => {
       const res = await http.put(`/google-reviews/${id}/visibility`, { isVisible })
       if (res.data.success === false) throw new Error(res.data.message || 'Failed to update visibility')

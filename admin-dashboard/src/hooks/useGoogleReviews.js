@@ -46,3 +46,39 @@ export function useSyncGoogleReviews() {
     onError: (err) => toast.error(err.message || 'Failed to sync Google reviews'),
   })
 }
+
+export function useCreateGoogleReview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload) => api.googleReviews.create(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.googleReviews.all })
+      toast.success('Review added')
+    },
+    onError: (err) => toast.error(err.message || 'Failed to create review'),
+  })
+}
+
+export function useUpdateGoogleReview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }) => api.googleReviews.update(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.googleReviews.all })
+      toast.success('Review updated')
+    },
+    onError: (err) => toast.error(err.message || 'Failed to update review'),
+  })
+}
+
+export function useDeleteGoogleReview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.googleReviews.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.googleReviews.all })
+      toast.success('Review deleted')
+    },
+    onError: (err) => toast.error(err.message || 'Failed to delete review'),
+  })
+}

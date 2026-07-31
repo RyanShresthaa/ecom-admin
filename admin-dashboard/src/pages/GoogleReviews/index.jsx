@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
-import { ArrowsClockwise, GoogleLogo, Eye, EyeSlash } from '@phosphor-icons/react'
+import {
+  ArrowsClockwise,
+  GoogleLogo,
+  Eye,
+  EyeSlash,
+  PencilSimple,
+  Plus,
+  Trash,
+} from '@phosphor-icons/react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +17,8 @@ import { Switch } from '@/components/ui/switch'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable } from '@/components/common/DataTable'
 import { DataTableToolbar } from '@/components/common/DataTableToolbar'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { ReviewFormDialog } from '@/pages/GoogleReviews/ReviewFormDialog'
 import {
   Select,
   SelectContent,
@@ -18,9 +28,12 @@ import {
 } from '@/components/ui/select'
 import {
   useBulkGoogleReviewVisibility,
+  useCreateGoogleReview,
+  useDeleteGoogleReview,
   useGoogleReviewsQuery,
   useSetGoogleReviewVisibility,
   useSyncGoogleReviews,
+  useUpdateGoogleReview,
 } from '@/hooks/useGoogleReviews'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
@@ -39,12 +52,18 @@ export default function GoogleReviews() {
   const [search, setSearch] = useState('')
   const [visibility, setVisibility] = useState('all')
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [deleting, setDeleting] = useState(null)
 
   const debouncedSearch = useDebouncedValue(search)
   const { data = [], isLoading, isFetching, refetch } = useGoogleReviewsQuery()
   const setOne = useSetGoogleReviewVisibility()
   const setAll = useBulkGoogleReviewVisibility()
   const syncReviews = useSyncGoogleReviews()
+  const createReview = useCreateGoogleReview()
+  const updateReview = useUpdateGoogleReview()
+  const deleteReview = useDeleteGoogleReview()
 
   const filtered = useMemo(() => {
     let rows = data
@@ -128,29 +147,79 @@ export default function GoogleReviews() {
           )
         },
       }),
+      columnHelper.display({
+        id: 'actions',
+        header: '',
+        cell: (info) => (
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => {
+                setEditing(info.row.original)
+                setFormOpen(true)
+              }}
+            >
+              <PencilSimple size={14} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={() => setDeleting(info.row.original)}
+            >
+              <Trash size={14} />
+            </Button>
+          </div>
+        ),
+      }),
     ],
     [setOne],
   )
+
+  async function handleFormSubmit(payload) {
+    if (editing?.id) {
+      await updateReview.mutateAsync({ id: editing.id, payload })
+    } else {
+      await createReview.mutateAsync(payload)
+    }
+    setFormOpen(false)
+    setEditing(null)
+  }
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Google reviews"
-        description="Choose which homepage customer reviews appear on the storefront. Hidden reviews stay in this list but are not shown to shoppers."
+        description="Homepage testimonials stored in the database. Edit, show/hide, add, or delete anytime — or sync more from Google Places."
         actions={
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-1.5"
-            disabled={syncReviews.isPending}
-            onClick={() => syncReviews.mutate()}
-          >
-            <ArrowsClockwise
-              size={15}
-              className={syncReviews.isPending ? 'animate-spin' : undefined}
-            />
-            Sync from Google
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-1.5"
+              disabled={syncReviews.isPending}
+              onClick={() => syncReviews.mutate()}
+            >
+              <ArrowsClockwise
+                size={15}
+                className={syncReviews.isPending ? 'animate-spin' : undefined}
+              />
+              Sync from Google
+            </Button>
+            <Button
+              type="button"
+              className="gap-1.5"
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+            >
+              <Plus size={15} weight="bold" />
+              Add review
+            </Button>
+          </div>
         }
       />
 
@@ -226,13 +295,43 @@ export default function GoogleReviews() {
               <div className="flex flex-col items-center gap-2 py-8 text-center">
                 <GoogleLogo size={28} className="text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  No Google reviews yet. Sync from Google Places or seed via migration.
+                  No reviews yet. Add one here or sync from Google Places.
                 </p>
               </div>
             }
           />
         </CardContent>
       </Card>
+
+      <ReviewFormDialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open)
+          if (!open) setEditing(null)
+        }}
+        review={editing}
+        onSubmit={handleFormSubmit}
+        isSubmitting={createReview.isPending || updateReview.isPending}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title="Delete this review?"
+        description={
+          deleting
+            ? `"${deleting.name}" will be removed from the homepage list. This can't be undone.`
+            : ''
+        }
+        confirmLabel="Delete review"
+        isLoading={deleteReview.isPending}
+        onConfirm={() => {
+          if (!deleting) return
+          deleteReview.mutate(deleting.id, {
+            onSuccess: () => setDeleting(null),
+          })
+        }}
+      />
     </div>
   )
 }

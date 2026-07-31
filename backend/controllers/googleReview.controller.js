@@ -7,6 +7,9 @@ import {
     setGoogleReviewVisibility,
     setAllGoogleReviewsVisibility,
     upsertGoogleReviewFromPlace,
+    createGoogleReview,
+    updateGoogleReview,
+    deleteGoogleReview,
 } from '../models/googleReview.model.js';
 import { pickId } from '../utils/sql.js';
 
@@ -88,6 +91,86 @@ export async function bulkGoogleReviewVisibilityController(req, res) {
             error: false,
             success: true,
         });
+    } catch (error) {
+        return res.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+export async function createGoogleReviewController(req, res) {
+    try {
+        const data = await createGoogleReview({
+            name: req.body?.name,
+            role: req.body?.role,
+            text: req.body?.text,
+            rating: req.body?.rating,
+            initials: req.body?.initials,
+            color: req.body?.color,
+            columnIndex: req.body?.columnIndex ?? req.body?.column_index,
+            sortOrder: req.body?.sortOrder ?? req.body?.sort_order,
+            isVisible: req.body?.isVisible ?? req.body?.is_visible ?? true,
+        });
+        if (!data) {
+            return res.status(400).json({
+                message: 'name and text are required',
+                error: true,
+                success: false,
+            });
+        }
+        return res.status(201).json({
+            message: 'Review created',
+            data,
+            error: false,
+            success: true,
+        });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(400).json({ message: 'Review already exists', error: true, success: false });
+        }
+        return res.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+export async function updateGoogleReviewController(req, res) {
+    try {
+        const id = pickId(req.params.id);
+        if (!id) {
+            return res.status(400).json({ message: 'id is required', error: true, success: false });
+        }
+        const data = await updateGoogleReview(id, {
+            name: req.body?.name,
+            role: req.body?.role,
+            text: req.body?.text,
+            rating: req.body?.rating,
+            initials: req.body?.initials,
+            color: req.body?.color,
+            columnIndex: req.body?.columnIndex ?? req.body?.column_index,
+            sortOrder: req.body?.sortOrder ?? req.body?.sort_order,
+            isVisible: req.body?.isVisible ?? req.body?.is_visible,
+        });
+        if (!data) {
+            return res.status(404).json({
+                message: 'Review not found (or name/text empty)',
+                error: true,
+                success: false,
+            });
+        }
+        return res.json({ message: 'Review updated', data, error: false, success: true });
+    } catch (error) {
+        return res.status(500).json({ message: error.message || error, error: true, success: false });
+    }
+}
+
+export async function deleteGoogleReviewController(req, res) {
+    try {
+        const id = pickId(req.params.id);
+        if (!id) {
+            return res.status(400).json({ message: 'id is required', error: true, success: false });
+        }
+        const ok = await deleteGoogleReview(id);
+        if (!ok) {
+            return res.status(404).json({ message: 'Review not found', error: true, success: false });
+        }
+        return res.json({ message: 'Review deleted', error: false, success: true });
     } catch (error) {
         return res.status(500).json({ message: error.message || error, error: true, success: false });
     }
