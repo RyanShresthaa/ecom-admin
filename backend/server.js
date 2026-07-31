@@ -163,6 +163,17 @@ async function start() {
             logger.info(`Swagger docs: http://localhost:${PORT}/api/docs`);
         }
         logger.info(`Health: /api/health  Live: /api/health/live  Ready: /api/health/ready  Metrics: /metrics`);
+        import('./config/sendEmail.js')
+            .then(({ getEmailProviderInfo }) => {
+                const email = getEmailProviderInfo();
+                logger.info('Email provider', email);
+                if (email.provider === 'smtp') {
+                    logger.warn(
+                        'Email using SMTP. On Render free tier this will fail — set RESEND_API_KEY and redeploy.',
+                    );
+                }
+            })
+            .catch(() => {});
     });
 
     registerProcessHandlers({

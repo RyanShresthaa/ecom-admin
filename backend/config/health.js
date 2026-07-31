@@ -7,6 +7,7 @@
 import os from 'os';
 import pool from './connectDB.js';
 import { dbQueryDuration } from './metrics.js';
+import { getEmailProviderInfo } from './sendEmail.js';
 
 function baseMeta() {
     const mem = process.memoryUsage();
@@ -77,6 +78,7 @@ export async function healthHandler(_req, res) {
             readiness: '/api/health/ready',
             metrics: '/metrics',
         },
+        email: getEmailProviderInfo(),
         ...baseMeta(),
     });
 }

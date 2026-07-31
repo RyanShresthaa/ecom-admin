@@ -6,6 +6,40 @@
  * works locally but fails in production unless you use Resend (or upgrade Render).
  */
 import nodemailer from 'nodemailer';
+import { logger } from '../utils/logger.js';
+
+function stripWrappingQuotes(value) {
+    const s = String(value || '').trim();
+    if (
+        (s.startsWith('"') && s.endsWith('"')) ||
+        (s.startsWith("'") && s.endsWith("'"))
+    ) {
+        return s.slice(1, -1).trim();
+    }
+    return s;
+}
+
+function getResendApiKey() {
+    return stripWrappingQuotes(process.env.RESEND_API_KEY || '');
+}
+
+/** Which transport will be used (no secrets). Safe for /api/health. */
+export function getEmailProviderInfo() {
+    const resend = Boolean(getResendApiKey());
+    const smtp = Boolean(
+        process.env.SMTP_HOST?.trim() &&
+            process.env.SMTP_USER?.trim() &&
+            process.env.SMTP_PASS?.trim(),
+    );
+    return {
+        provider: resend ? 'resend' : smtp ? 'smtp' : 'none',
+        resendConfigured: resend,
+        smtpConfigured: smtp,
+        from: resend
+            ? stripWrappingQuotes(process.env.RESEND_FROM || '') || 'onboarding@resend.dev'
+            : stripWrappingQuotes(process.env.SMTP_FROM || process.env.SMTP_USER || '') || null,
+    };
+}
 
 function getTransport() {
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -22,19 +56,25 @@ function getTransport() {
     });
 }
 
-function resolveFromAddress() {
+function resolveFromAddress(preferResend) {
+    if (preferResend) {
+        const raw =
+            stripWrappingQuotes(process.env.RESEND_FROM || '') ||
+            'Matina Crafts <onboarding@resend.dev>';
+        return raw.includes('<') ? raw : `"Matina Crafts" <${raw}>`;
+    }
     const raw =
-        process.env.RESEND_FROM?.trim() ||
-        process.env.SMTP_FROM?.trim() ||
-        process.env.SMTP_USER?.trim() ||
+        stripWrappingQuotes(process.env.SMTP_FROM || '') ||
+        stripWrappingQuotes(process.env.SMTP_USER || '') ||
         'Matina Crafts <onboarding@resend.dev>';
     return raw.includes('<') ? raw : `"Matina Crafts" <${raw}>`;
 }
 
 async function sendViaResend({ sendTo, subject, html, text }) {
-    const key = process.env.RESEND_API_KEY?.trim();
+    const key = getResendApiKey();
     if (!key) return null;
 
+    const from = resolveFromAddress(true);
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -42,7 +82,7 @@ async function sendViaResend({ sendTo, subject, html, text }) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            from: resolveFromAddress(),
+            from,
             to: [sendTo],
             subject,
             html,
@@ -54,11 +94,12 @@ async function sendViaResend({ sendTo, subject, html, text }) {
         const body = await res.text().catch(() => '');
         throw new Error(`Resend failed (${res.status}): ${body.slice(0, 240)}`);
     }
+    logger.info('email_sent', { provider: 'resend', to: sendTo, from });
     return { sent: true, provider: 'resend' };
 }
 
 export async function verifySmtp() {
-    if (process.env.RESEND_API_KEY?.trim()) {
+    if (getResendApiKey()) {
         return { ok: true, provider: 'resend' };
     }
     const t = getTransport();
@@ -67,25 +108,30 @@ export async function verifySmtp() {
     return { ok: true, provider: 'smtp' };
 }
 
-/** Sends immediately (Resend HTTPS or SMTP). Used by auth OTP and the email worker. */
+/**
+ * Sends immediately.
+ * If RESEND_API_KEY is set, SMTP is never used (avoids silent Gmail sends / Render SMTP blocks).
+ */
 export async function sendEmailDirect({ sendTo, subject, html, text }) {
-    if (process.env.RESEND_API_KEY?.trim()) {
+    if (getResendApiKey()) {
         return sendViaResend({ sendTo, subject, html, text });
     }
 
     const t = getTransport();
     if (!t) {
         throw new Error(
-            'Email is not configured. Set RESEND_API_KEY (recommended on Render) or SMTP_HOST/SMTP_USER/SMTP_PASS.',
+            'Email is not configured. Set RESEND_API_KEY (required on Render free tier) or SMTP_HOST/SMTP_USER/SMTP_PASS.',
         );
     }
+    const from = resolveFromAddress(false);
     await t.sendMail({
-        from: resolveFromAddress(),
+        from,
         to: sendTo,
         subject,
         text: text || subject,
         html,
     });
+    logger.info('email_sent', { provider: 'smtp', to: sendTo, from });
     return { sent: true, provider: 'smtp' };
 }
 
