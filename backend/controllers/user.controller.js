@@ -92,10 +92,9 @@ function parseVerifyEmailOtp(token) {
 }
 
 function isAutoVerifyEmailEnabled() {
-    return (
-        process.env.NODE_ENV !== 'production' ||
-        String(process.env.AUTO_VERIFY_EMAIL || '').toLowerCase() === 'true'
-    );
+    // Opt-in only. Local/dev used to skip OTP automatically; that hid the verify step.
+    // Set AUTO_VERIFY_EMAIL=true when you want signup without email (e.g. no SMTP).
+    return String(process.env.AUTO_VERIFY_EMAIL || '').toLowerCase() === 'true';
 }
 
 /** Issue a fresh email-verify OTP and send it via SMTP immediately (not the queue). */
@@ -160,7 +159,10 @@ async function issueAuthCookies(response, userId, req, { recordLoginSuccess: sho
 
 export async function registerUserController(request, response) {
     try {
-        const { name, email, password } = request.body;
+        const { name, password } = request.body;
+        const email = String(request.body?.email || '')
+            .trim()
+            .toLowerCase();
         if (!name || !email || !password) {
             return response.status(400).json({
                 message: 'provide email, name, password',
@@ -175,26 +177,47 @@ export async function registerUserController(request, response) {
         const autoVerify = isAutoVerifyEmailEnabled();
         const existing = await findUserByEmail(email);
         if (existing) {
-            // Anti-enumeration: same shape as a new signup. Resend OTP only if still unverified.
+            // Same email = same account. Unverified → resend OTP. Verified → tell them to sign in.
             if (!autoVerify && !existing.verify_email) {
                 try {
                     await issueAndSendVerifyEmailOtp(existing);
                 } catch {
-                    /* ignore — still return generic success */
+                    /* ignore — still return success so they can enter OTP */
                 }
+                return response.json({
+                    message: REGISTER_RESPONSE_MSG,
+                    error: false,
+                    success: true,
+                    data: {
+                        email,
+                        requiresEmailVerification: true,
+                        resumedVerification: true,
+                    },
+                });
             }
-            return response.json({
-                message: REGISTER_RESPONSE_MSG,
-                error: false,
-                success: true,
-                data: {
-                    email: String(email).toLowerCase(),
-                    requiresEmailVerification: !autoVerify && !existing.verify_email,
-                },
+            return response.status(409).json({
+                message: 'An account with this email already exists. Please sign in.',
+                error: true,
+                success: false,
+                data: { email, alreadyRegistered: true },
             });
         }
         const hashed = await hashPassword(password);
-        const save = await createUser({ name, email, password: hashed });
+        let save;
+        try {
+            save = await createUser({ name, email, password: hashed });
+        } catch (err) {
+            // Race / unique violation on email
+            if (err?.code === '23505') {
+                return response.status(409).json({
+                    message: 'An account with this email already exists. Please sign in.',
+                    error: true,
+                    success: false,
+                    data: { email, alreadyRegistered: true },
+                });
+            }
+            throw err;
+        }
         const userId = pickId(save);
 
         if (autoVerify) {
@@ -662,8 +685,9 @@ export async function refreshToken(request, response) {
         }
         const token = extracted.token;
         if (!token) {
-            outcome = 'invalid';
-            return response.status(401).json({ message: 'Invalid token', error: true, success: false });
+            // No refresh cookie — normal for logged-out visitors; avoid noisy 401 in browser consoles.
+            outcome = 'missing';
+            return response.status(200).json({ message: 'No session', error: true, success: false });
         }
 
         let userId;
@@ -787,6 +811,33 @@ export async function userDetails(request, response) {
         const user = await findUserPublicById(request.userId);
         if (!user) {
             return response.status(404).json({ message: 'User not found', error: true, success: false });
+        }
+        const prefs = normalizeNotificationPrefs(user.notification_prefs);
+        return response.json({
+            message: 'user details',
+            data: {
+                ...user,
+                totpEnabled: Boolean(user.totp_enabled),
+                notification_prefs: prefs,
+                notificationPrefs: prefs,
+            },
+            error: false,
+            success: true,
+        });
+    } catch {
+        return response.status(500).json({ message: 'Something is wrong', error: true, success: false });
+    }
+}
+
+/** Soft session probe — always 200; `data` is the public user or null. */
+export async function sessionController(request, response) {
+    try {
+        if (!request.userId) {
+            return response.json({ message: 'No session', data: null, error: false, success: true });
+        }
+        const user = await findUserPublicById(request.userId);
+        if (!user) {
+            return response.json({ message: 'No session', data: null, error: false, success: true });
         }
         const prefs = normalizeNotificationPrefs(user.notification_prefs);
         return response.json({

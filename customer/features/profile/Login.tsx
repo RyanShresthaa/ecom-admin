@@ -159,6 +159,7 @@ const Login: React.FC = () => {
               src="/images/hero/gallery/center-left.png"
               alt="Matina Crafts"
               fill
+              sizes="(max-width: 1024px) 100vw, 42vw"
               className="object-cover object-center transition-transform duration-700 hover:scale-105"
               priority
             />

@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   ApiError,
-  fetchUserProfile,
+  fetchSessionProfile,
   loginWithGoogleCredential,
   loginWithPassword,
   logoutUser,
@@ -29,6 +29,7 @@ interface AuthContextType {
   completeTwoFactorLogin: (tempToken: string, code: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<{
     requiresEmailVerification: boolean;
+    email?: string;
   }>;
   googleLogin: (
     credential: string,
@@ -70,7 +71,7 @@ function toAuthError(err: unknown, fallback: string): Error {
 async function loadSessionUser(): Promise<User | null> {
   clearLegacyAuthStorage();
   try {
-    const profile = await fetchUserProfile();
+    const profile = await fetchSessionProfile();
     return toUser(profile);
   } catch (err) {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -145,8 +146,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       clearLegacyAuthStorage();
       const result = await registerUser({ name, email, password });
+      try {
+        localStorage.setItem('matina_wishlist', '[]');
+      } catch {
+        /* ignore */
+      }
       return {
-        requiresEmailVerification: Boolean(result?.requiresEmailVerification),
+        requiresEmailVerification: result?.requiresEmailVerification !== false,
+        email: typeof result?.email === 'string' ? result.email : email,
       };
     } catch (err) {
       throw toAuthError(err, 'Could not create account');

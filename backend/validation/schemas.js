@@ -14,6 +14,14 @@ import {
 } from '../utils/paymentMethodValidation.js';
 import { getCachedRegionMode } from '../utils/regionModeCache.js';
 
+/** Normalize emails for lookups / unique storage (case-insensitive). */
+const emailField = z
+    .string()
+    .trim()
+    .email()
+    .max(320)
+    .transform((v) => v.toLowerCase());
+
 const productLine = z.object({
     productId: z.union([z.string(), z.number()]),
     quantity: z.number().int().positive().max(9999).optional(),
@@ -75,7 +83,7 @@ export const addressUpdateBodySchema = addressBodySchema;
 /** POST /api/user/register */
 export const registerBodySchema = z.object({
     name: z.string().trim().min(1).max(200),
-    email: z.string().trim().email().max(320),
+    email: emailField,
     password: z.string().min(1).max(256),
     // captchaToken: z.string().max(8000).optional(),
     // recaptchaToken: z.string().max(8000).optional(),
@@ -84,7 +92,7 @@ export const registerBodySchema = z.object({
 /** POST /api/user/verify-email — email+otp (signup) or legacy `code` link token */
 export const verifyEmailBodySchema = z
     .object({
-        email: z.string().trim().email().max(320).optional(),
+        email: emailField.optional(),
         otp: z.string().trim().min(4).max(64).optional(),
         code: z.string().trim().min(4).max(128).optional(),
     })
@@ -96,12 +104,12 @@ export const verifyEmailBodySchema = z
 
 /** POST /api/user/resend-verify-email */
 export const resendVerifyEmailBodySchema = z.object({
-    email: z.string().trim().email().max(320),
+    email: emailField,
 });
 
 /** POST /api/user/login */
 export const loginBodySchema = z.object({
-    email: z.string().trim().email().max(320),
+    email: emailField,
     password: z.string().min(1).max(256),
     // captchaToken: z.string().max(8000).optional(),
     // recaptchaToken: z.string().max(8000).optional(),
@@ -128,25 +136,25 @@ export const changePinBodySchema = z.object({
 
 /** POST /api/user/forgot-pin */
 export const forgotPinBodySchema = z.object({
-    email: z.string().trim().email().max(320),
+    email: emailField,
 });
 
 /** POST /api/user/verify-forgot-pin-otp */
 export const verifyForgotPinOtpBodySchema = z.object({
-    email: z.string().trim().email().max(320),
+    email: emailField,
     otp: z.string().trim().min(4).max(32),
 });
 
 /** POST /api/user/reset-pin */
 export const resetPinBodySchema = z.object({
-    email: z.string().trim().email().max(320),
+    email: emailField,
     newPin: pinField,
     confirmPin: z.string(),
 });
 
 /** POST /api/user/login-pin */
 export const loginPinBodySchema = z.object({
-    email: z.string().trim().email().max(320),
+    email: emailField,
     pin: z.string().min(1).max(32),
     // captchaToken: z.string().max(8000).optional(),
     // recaptchaToken: z.string().max(8000).optional(),

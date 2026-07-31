@@ -57,6 +57,11 @@ const LEGACY_DEMO_IDS = new Set([
   'wh-2',
 ]);
 
+/** Real catalog ids from the API are numeric (stringified). Demo/mock hearts used slug-like ids. */
+function isRealCatalogProductId(id: string): boolean {
+  return /^\d+$/.test(String(id || '').trim());
+}
+
 const STORAGE_KEY = 'matina_wishlist';
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
@@ -106,13 +111,14 @@ function loadLocalWishlist(): WishlistItem[] {
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) return [];
-    return parsed
+    const cleaned = parsed
       .filter(
         (item: WishlistItem) =>
           item &&
           typeof item.id === 'string' &&
           typeof item.slug === 'string' &&
-          !LEGACY_DEMO_IDS.has(item.id),
+          !LEGACY_DEMO_IDS.has(item.id) &&
+          isRealCatalogProductId(item.id),
       )
       .map((item: WishlistItem) => ({
         ...item,
@@ -121,8 +127,21 @@ function loadLocalWishlist(): WishlistItem[] {
             ? item.image.replace(/^https?:\/\/(localhost|127\.0\.0\.1):\d+/i, '') || item.image
             : '',
       }));
+    // Drop stale mock rows from storage so they never sync onto a new account.
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return [];
+  }
+}
+
+function clearLocalWishlistStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, '[]');
+  } catch {
+    /* ignore */
   }
 }
 
@@ -155,15 +174,26 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
 
-    const local = loadLocalWishlist();
-    if (local.length > 0) {
-      await syncLocalWishlistToServer(local.map((i) => i.id));
-    }
-
     try {
       const lines = await fetchServerWishlist();
       const mapped = lines.map(wishlistLineToLocal);
-      setWishlist(mergeWishlists(local, mapped));
+
+      // New / empty accounts: do not import guest localStorage (avoids mock leftover hearts).
+      if (mapped.length === 0) {
+        clearLocalWishlistStorage();
+        setWishlist([]);
+        setIsSynced(true);
+        return;
+      }
+
+      const local = loadLocalWishlist();
+      if (local.length > 0) {
+        await syncLocalWishlistToServer(local.map((i) => i.id));
+        const refreshed = await fetchServerWishlist();
+        setWishlist(mergeWishlists(local, refreshed.map(wishlistLineToLocal)));
+      } else {
+        setWishlist(mapped);
+      }
       setIsSynced(true);
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {

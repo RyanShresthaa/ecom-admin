@@ -26,11 +26,16 @@ export default function GoogleSignInButton({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const [pageOrigin, setPageOrigin] = useState('');
 
   onCredentialRef.current = onCredential;
 
   const label = mode === 'signup' ? 'Sign up with Google' : 'Login with Google';
   const gsiText = mode === 'signup' ? 'signup_with' : 'signin_with';
+
+  useEffect(() => {
+    setPageOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
     const clientId = getGoogleClientId();
@@ -46,6 +51,15 @@ export default function GoogleSignInButton({
     let cancelled = false;
     setError('');
     setReady(false);
+
+    const originBlockedHint = () => {
+      const origin = window.location.origin;
+      return (
+        `Google rejected this page origin (${origin}). ` +
+        `Open Google Cloud → APIs & Services → Credentials → the Web client matching this ID → ` +
+        `Authorized JavaScript origins, add exactly "${origin}" and "http://localhost" (no trailing slash), Save, wait 2–5 min.`
+      );
+    };
 
     const mount = async () => {
       try {
@@ -69,6 +83,16 @@ export default function GoogleSignInButton({
           },
         });
         if (!cancelled) setReady(true);
+
+        // GIS logs origin errors to the console; surface a clear fix if the iframe never appears.
+        window.setTimeout(() => {
+          if (cancelled) return;
+          const iframe = host.querySelector('iframe');
+          if (!iframe) {
+            setError(originBlockedHint());
+            setReady(false);
+          }
+        }, 800);
       } catch (err) {
         if (!cancelled) {
           setReady(false);
@@ -145,6 +169,15 @@ export default function GoogleSignInButton({
       </div>
       {error ? (
         <p className="mt-2 text-[11px] text-red-700 text-center leading-snug">{error}</p>
+      ) : null}
+      {process.env.NODE_ENV === 'development' && pageOrigin ? (
+        <p className="mt-2 text-[10px] text-muted text-center leading-relaxed">
+          Google JS origins must include{' '}
+          <code className="text-[#2A170F] font-semibold">{pageOrigin}</code>
+          {' '}and <code className="text-[#2A170F] font-semibold">http://localhost</code>
+          {' '}on the Web client ending in <code>…ple7npfo</code>. Redirect URIs alone are not
+          enough.
+        </p>
       ) : null}
     </div>
   );

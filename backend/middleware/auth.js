@@ -56,5 +56,25 @@ const auth = async (req, res, next) => {
     }
 };
 
+/** Attach user when access JWT is valid; otherwise continue without 401 (for session probes). */
+export const optionalAuth = async (req, _res, next) => {
+    try {
+        const extracted = extractAccessToken(req);
+        if (extracted.error === 'malformed_authorization' || !extracted.token) {
+            return next();
+        }
+        const decoded = jwt.verify(extracted.token, getAccessSecret(), JWT_VERIFY_OPTIONS);
+        const userId = decoded.id ?? decoded._id;
+        const user = await findUserById(userId);
+        if (user && user.status === 'Active') {
+            req.userId = user.id;
+            req.user = user;
+        }
+    } catch {
+        /* expired / invalid access — caller may refresh */
+    }
+    next();
+};
+
 export default auth;
 export const protect = auth;

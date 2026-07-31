@@ -22,6 +22,8 @@ import {
 
 type SignupStep = 'form' | 'otp';
 
+const PENDING_VERIFY_EMAIL_KEY = 'matina_pending_verify_email';
+
 const Signup: React.FC = () => {
   const [step, setStep] = useState<SignupStep>('form');
   const [name, setName] = useState('');
@@ -44,11 +46,46 @@ const Signup: React.FC = () => {
     setToast({ message, tone });
   }, []);
 
+  // Survive remounts / Strict Mode: resume OTP step if signup already succeeded.
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem(PENDING_VERIFY_EMAIL_KEY);
+      if (pending) {
+        setEmail(pending);
+        setStep('otp');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const t = window.setTimeout(() => setResendCooldown((s) => s - 1), 1000);
     return () => window.clearTimeout(t);
   }, [resendCooldown]);
+
+  const goToOtpStep = (nextEmail: string) => {
+    const normalized = nextEmail.trim().toLowerCase();
+    setEmail(normalized);
+    setOtp('');
+    setStep('otp');
+    setResendCooldown(60);
+    try {
+      sessionStorage.setItem(PENDING_VERIFY_EMAIL_KEY, normalized);
+    } catch {
+      /* ignore */
+    }
+    showToast(`We emailed a 6-digit code to ${normalized}. Check inbox and spam.`);
+  };
+
+  const clearPendingVerify = () => {
+    try {
+      sessionStorage.removeItem(PENDING_VERIFY_EMAIL_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,15 +120,13 @@ const Signup: React.FC = () => {
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const result = await signup(name.trim(), trimmedEmail, password);
-      if (result.requiresEmailVerification) {
-        setEmail(trimmedEmail);
-        setOtp('');
-        setStep('otp');
-        setResendCooldown(60);
-        showToast(`We emailed a 6-digit code to ${trimmedEmail}. Check inbox and spam.`);
-      } else {
+      // Always collect OTP unless backend explicitly skipped verification (AUTO_VERIFY_EMAIL).
+      if (result.requiresEmailVerification === false) {
+        clearPendingVerify();
         router.push('/login?registered=true');
+        return;
       }
+      goToOtpStep(result.email || trimmedEmail);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account');
     } finally {
@@ -109,6 +144,7 @@ const Signup: React.FC = () => {
     setLoading(true);
     try {
       await verifySignupEmail({ email: email.trim().toLowerCase(), otp: otp.trim() });
+      clearPendingVerify();
       router.push('/login?verified=true');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid or expired code');
@@ -159,6 +195,7 @@ const Signup: React.FC = () => {
               src="/images/hero/gallery/center-left.png"
               alt="Matina Crafts"
               fill
+              sizes="(max-width: 1024px) 100vw, 42vw"
               className="object-cover object-center transition-transform duration-700 hover:scale-105"
               priority
             />
@@ -247,6 +284,7 @@ const Signup: React.FC = () => {
                     type="button"
                     disabled={loading}
                     onClick={() => {
+                      clearPendingVerify();
                       setStep('form');
                       setOtp('');
                       setError('');

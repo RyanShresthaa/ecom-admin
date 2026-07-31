@@ -179,12 +179,13 @@ async function refreshSession(): Promise<boolean> {
       if (!res.ok) return false;
       try {
         const json = (await res.json()) as Envelope<{ csrfToken?: string }>;
+        if (json.success === false) return false;
         const next = pickCsrfFromBody(json);
         if (next) setCsrfToken(next);
+        return true;
       } catch {
-        /* ignore parse errors */
+        return false;
       }
-      return true;
     })().finally(() => {
       refreshPromise = null;
     });
@@ -292,6 +293,38 @@ export type ApiUserProfile = {
 
 export async function fetchUserProfile(): Promise<ApiUserProfile> {
   return apiFetch<ApiUserProfile>('/user/user-details');
+}
+
+/**
+ * Quiet boot-time session check: always uses soft `/user/session` (HTTP 200),
+ * then one refresh attempt if needed. Avoids console 401 noise when logged out.
+ */
+export async function fetchSessionProfile(): Promise<ApiUserProfile | null> {
+  const readSession = async (): Promise<ApiUserProfile | null> => {
+    const res = await fetch(`${API_URL}/user/session`, {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    try {
+      const json = (await res.json()) as Envelope<ApiUserProfile | null>;
+      const csrfFromBody = pickCsrfFromBody(json as Envelope<unknown>);
+      if (csrfFromBody) setCsrfToken(csrfFromBody);
+      if (json.data && typeof json.data === 'object' && (json.data.email || json.data.name)) {
+        return json.data;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const first = await readSession();
+  if (first) return first;
+
+  const refreshed = await refreshSession();
+  if (!refreshed) return null;
+  return readSession();
 }
 
 type AuthLoginData = {

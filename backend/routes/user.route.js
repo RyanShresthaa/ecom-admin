@@ -12,6 +12,7 @@ import {
     refreshToken,
     registerUserController,
     userDetails,
+    sessionController,
     resetpassword,
     updateUserDetails,
     uploadAvatar,
@@ -37,7 +38,7 @@ import {
     verifyTwoFactorLoginController,
     getPublicProfileController,
 } from '../controllers/user.controller.js';
-import auth from '../middleware/auth.js';
+import auth, { optionalAuth } from '../middleware/auth.js';
 import upload from '../middleware/multer.js';
 import {
     loginLimiter,
@@ -93,6 +94,7 @@ userRouter.post('/verify-forgot-password-otp', passwordResetLimiter, verifyForgo
 userRouter.put('/reset-password', passwordResetLimiter, resetpassword);
 userRouter.post('/reset-password', passwordResetLimiter, resetpassword);
 userRouter.post('/refresh-token', refreshLimiter, refreshToken);
+userRouter.get('/session', optionalAuth, sessionController);
 userRouter.get('/user-details', auth, userDetails);
 userRouter.get('/csrf', getCsrfController);
 userRouter.post('/apply-seller', auth, applyForSellerController);

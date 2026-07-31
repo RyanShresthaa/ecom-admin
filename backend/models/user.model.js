@@ -8,7 +8,9 @@ const PUBLIC_FIELDS = `id, name, email, mobile, avatar, bio, verify_email, last_
     (pin_hash IS NOT NULL AND length(trim(pin_hash)) > 0) AS has_mobile_pin`;
 
 export async function findUserByEmail(email) {
-    const r = await pool.query(`SELECT * FROM users WHERE email = $1`, [email]);
+    const normalized = String(email || '').trim().toLowerCase();
+    if (!normalized) return null;
+    const r = await pool.query(`SELECT * FROM users WHERE lower(email) = $1`, [normalized]);
     return mapRow(r.rows[0]);
 }
 
@@ -23,11 +25,12 @@ export async function findUserByGoogleId(googleId) {
 }
 
 export async function createGoogleUser({ name, email, google_id, avatar }) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
     const r = await pool.query(
         `INSERT INTO users (name, email, password, google_id, avatar, verify_email)
          VALUES ($1, $2, NULL, $3, $4, true)
          RETURNING ${PUBLIC_FIELDS}`,
-        [name, email, google_id, avatar || ''],
+        [name, normalizedEmail, google_id, avatar || ''],
     );
     return mapRow(r.rows[0]);
 }
@@ -52,10 +55,11 @@ export async function findUserPublicById(id) {
 }
 
 export async function createUser({ name, email, password }) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
     const r = await pool.query(
         `INSERT INTO users (name, email, password) VALUES ($1, $2, $3)
          RETURNING ${PUBLIC_FIELDS}`,
-        [name, email, password],
+        [name, normalizedEmail, password],
     );
     return mapRow(r.rows[0]);
 }
