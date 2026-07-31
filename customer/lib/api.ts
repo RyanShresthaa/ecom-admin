@@ -341,6 +341,7 @@ export async function registerUser(opts: {
   name?: string;
   email?: string;
   requiresEmailVerification?: boolean;
+  emailSent?: boolean;
   message?: string;
 }> {
   return apiFetch('/user/register', {

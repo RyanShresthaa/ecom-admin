@@ -65,7 +65,7 @@ const Signup: React.FC = () => {
     return () => window.clearTimeout(t);
   }, [resendCooldown]);
 
-  const goToOtpStep = (nextEmail: string) => {
+  const goToOtpStep = (nextEmail: string, emailSent = true) => {
     const normalized = nextEmail.trim().toLowerCase();
     setEmail(normalized);
     setOtp('');
@@ -76,7 +76,14 @@ const Signup: React.FC = () => {
     } catch {
       /* ignore */
     }
-    showToast(`We emailed a 6-digit code to ${normalized}. Check inbox and spam.`);
+    if (emailSent) {
+      showToast(`We emailed a 6-digit code to ${normalized}. Check inbox and spam.`);
+    } else {
+      showToast(
+        `Account created, but email could not be sent yet. Tap Resend code — or ask the host to set RESEND_API_KEY on Render.`,
+        'err',
+      );
+    }
   };
 
   const clearPendingVerify = () => {
@@ -126,7 +133,7 @@ const Signup: React.FC = () => {
         router.push('/login?registered=true');
         return;
       }
-      goToOtpStep(result.email || trimmedEmail);
+      goToOtpStep(result.email || trimmedEmail, result.emailSent !== false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account');
     } finally {

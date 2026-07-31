@@ -8,6 +8,7 @@ import { OAuth2Client } from 'google-auth-library';
 
 import sendEmail, { sendEmailDirect } from '../config/sendEmail.js';
 import { enqueueEmail } from '../models/emailQueue.model.js';
+import { logger } from '../utils/logger.js';
 import {
     getAccessCookieOptions,
     getRefreshCookieOptions,
@@ -97,7 +98,7 @@ function isAutoVerifyEmailEnabled() {
     return String(process.env.AUTO_VERIFY_EMAIL || '').toLowerCase() === 'true';
 }
 
-/** Issue a fresh email-verify OTP and send it via SMTP immediately (not the queue). */
+/** Issue a fresh email-verify OTP and send it immediately (Resend/SMTP — not the queue). */
 async function issueAndSendVerifyEmailOtp(user) {
     const otp = String(generateOtp());
     const expiresAt = new Date(Date.now() + VERIFY_EMAIL_OTP_TTL_MS);
@@ -110,14 +111,22 @@ async function issueAndSendVerifyEmailOtp(user) {
     };
     try {
         await sendEmailDirect(mail);
-    } catch {
+        return { otp, emailSent: true };
+    } catch (err) {
+        logger.warn('verify_email_otp_send_failed', {
+            email: user.email,
+            error: String(err?.message || err),
+        });
+        // Last resort: queue (needs email:worker). Still report failure so the UI can warn.
         try {
             await enqueueEmail(mail);
-        } catch {
-            void sendEmail(mail).catch(() => {});
+        } catch (queueErr) {
+            logger.warn('verify_email_otp_enqueue_failed', {
+                error: String(queueErr?.message || queueErr),
+            });
         }
+        return { otp, emailSent: false, emailError: String(err?.message || err) };
     }
-    return otp;
 }
 
 function clearAuthCookies(response) {
@@ -179,19 +188,24 @@ export async function registerUserController(request, response) {
         if (existing) {
             // Same email = same account. Unverified → resend OTP. Verified → tell them to sign in.
             if (!autoVerify && !existing.verify_email) {
+                let emailSent = false;
                 try {
-                    await issueAndSendVerifyEmailOtp(existing);
+                    const sent = await issueAndSendVerifyEmailOtp(existing);
+                    emailSent = Boolean(sent?.emailSent);
                 } catch {
-                    /* ignore — still return success so they can enter OTP */
+                    /* ignore — still return success so they can enter OTP / resend */
                 }
                 return response.json({
-                    message: REGISTER_RESPONSE_MSG,
+                    message: emailSent
+                        ? REGISTER_RESPONSE_MSG
+                        : 'Account found. We could not email a code — use Resend on the next screen.',
                     error: false,
                     success: true,
                     data: {
                         email,
                         requiresEmailVerification: true,
                         resumedVerification: true,
+                        emailSent,
                     },
                 });
             }
@@ -219,13 +233,30 @@ export async function registerUserController(request, response) {
             throw err;
         }
         const userId = pickId(save);
+        let emailSent = true;
 
         if (autoVerify) {
             await updateUser(userId, { verify_email: true, verify_email_token: null });
         } else {
             try {
-                await issueAndSendVerifyEmailOtp({ id: userId, email: save.email, name: save.name });
+                const sent = await issueAndSendVerifyEmailOtp({
+                    id: userId,
+                    email: save.email,
+                    name: save.name,
+                });
+                emailSent = Boolean(sent?.emailSent);
+                if (!emailSent) {
+                    await logSecurityEvent({
+                        userId,
+                        action: 'auth.register_email_failed',
+                        ip: getClientIp(request),
+                        userAgent: getUserAgent(request),
+                        success: false,
+                        details: { reason: sent?.emailError || 'email_not_sent' },
+                    }).catch(() => {});
+                }
             } catch (err) {
+                emailSent = false;
                 await logSecurityEvent({
                     userId,
                     action: 'auth.register_email_failed',
@@ -248,13 +279,16 @@ export async function registerUserController(request, response) {
 
         biz.userRegistered();
         return response.json({
-            message: REGISTER_RESPONSE_MSG,
+            message: emailSent
+                ? REGISTER_RESPONSE_MSG
+                : 'Account created, but the verification email could not be sent. Tap Resend on the next screen.',
             error: false,
             success: true,
             data: {
                 name: save.name,
                 email: save.email,
                 requiresEmailVerification: !autoVerify,
+                emailSent: autoVerify ? true : emailSent,
             },
         });
     } catch (error) {

@@ -29,6 +29,7 @@ interface AuthContextType {
   completeTwoFactorLogin: (tempToken: string, code: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<{
     requiresEmailVerification: boolean;
+    emailSent?: boolean;
     email?: string;
   }>;
   googleLogin: (
@@ -153,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return {
         requiresEmailVerification: result?.requiresEmailVerification !== false,
+        emailSent: result?.emailSent !== false,
         email: typeof result?.email === 'string' ? result.email : email,
       };
     } catch (err) {
