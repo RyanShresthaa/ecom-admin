@@ -5,7 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Button from '@/shared/ui/Button';
 import { fetchProducts } from '@/lib/api';
 import { mapApiProducts } from '@/lib/mapProduct';
 import type { Product } from '@/shared/data/productData';
@@ -194,10 +193,11 @@ const Marketplace = () => {
                 />
 
                 <div className="self-center">
-                  <Link href={`/products/${product.slug}`}>
-                    <Button type="button" variant="secondary">
-                      View Product
-                    </Button>
+                  <Link
+                    href={`/products/${product.slug}`}
+                    className="relative inline-flex items-center justify-center px-9 py-3.5 text-[12px] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-white"
+                  >
+                    View Product
                   </Link>
                 </div>
               </div>
@@ -205,10 +205,11 @@ const Marketplace = () => {
         </div>
 
         <div className="flex justify-center mt-16 md:mt-20">
-          <Link href="/products">
-            <Button type="button" variant="primary">
-              Explore the Marketplace
-            </Button>
+          <Link
+            href="/products"
+            className="relative inline-flex items-center justify-center px-9 py-3.5 text-[12px] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer bg-primary text-white border-2 border-primary hover:bg-primary-dark hover:border-primary-dark shadow-[0_4px_16px_rgba(140,82,58,0.2)]"
+          >
+            Explore the Marketplace
           </Link>
         </div>
       </div>

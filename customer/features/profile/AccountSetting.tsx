@@ -74,6 +74,8 @@ const AccountSetting: React.FC = () => {
   const [twoFaError, setTwoFaError] = useState('');
   const [disableModalOpen, setDisableModalOpen] = useState(false);
   const [hasMobile, setHasMobile] = useState(false);
+  /** False for Google-only accounts until they set a local password. */
+  const [hasPassword, setHasPassword] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -88,6 +90,12 @@ const AccountSetting: React.FC = () => {
           setPrefs(next);
           setTotpEnabled(Boolean(next.totpEnabled));
           setHasMobile(Boolean(String(profile?.mobile || '').trim()));
+          setHasPassword(
+            profile?.hasPassword === true ||
+              profile?.has_password === true ||
+              // If profile omitted the flag, keep Change Password (safer default).
+              (profile?.hasPassword == null && profile?.has_password == null),
+          );
         }
       } catch {
         if (!cancelled) setPrefs(DEFAULT_PREFS);
@@ -190,7 +198,7 @@ const AccountSetting: React.FC = () => {
     e.preventDefault();
     setPasswordError('');
 
-    if (!currentPassword) {
+    if (hasPassword && !currentPassword) {
       setPasswordError('Please enter your current password.');
       return;
     }
@@ -209,7 +217,11 @@ const AccountSetting: React.FC = () => {
 
     setPasswordLoading(true);
     try {
-      await updatePassword({ currentPassword, password: newPassword });
+      await updatePassword({
+        ...(hasPassword ? { currentPassword } : {}),
+        password: newPassword,
+      });
+      setHasPassword(true);
       setPasswordModalOpen(false);
       await logout();
       router.push('/login?passwordChanged=true');
@@ -652,9 +664,13 @@ const AccountSetting: React.FC = () => {
                   className="p-4 bg-[#FAF6F2] hover:bg-[#F3EBE2] rounded-2xl border border-primary/5 flex items-center justify-between gap-4 transition-colors cursor-pointer text-left w-full"
                 >
                   <div>
-                    <h4 className="font-bold text-xs sm:text-sm text-[#2A170F]">Change Password</h4>
+                    <h4 className="font-bold text-xs sm:text-sm text-[#2A170F]">
+                      {hasPassword ? 'Change Password' : 'Set Password'}
+                    </h4>
                     <p className="text-[11px] text-muted font-medium mt-0.5">
-                      Update your password regularly to keep your account secure
+                      {hasPassword
+                        ? 'Update your password regularly to keep your account secure'
+                        : 'Create a password so you can sign in with email (not only Google)'}
                     </p>
                   </div>
                   <Icon icon="lucide:arrow-right" className="w-4 h-4 text-muted shrink-0" />
@@ -740,11 +756,12 @@ const AccountSetting: React.FC = () => {
             ) : (
               <>
                 <h3 className="font-heading text-2xl font-bold text-[#2A170F] mb-1">
-                  Change Password
+                  {hasPassword ? 'Change Password' : 'Set Password'}
                 </h3>
                 <p className="text-xs text-muted mb-6">
-                  Enter your current password and a new secure password. You will be logged out upon
-                  completion.
+                  {hasPassword
+                    ? 'Enter your current password and a new secure password. You will be logged out upon completion.'
+                    : 'Choose a password for email sign-in. Google sign-in will still work. You will be logged out when done.'}
                 </p>
 
                 {passwordError && (
@@ -755,45 +772,47 @@ const AccountSetting: React.FC = () => {
                 )}
 
                 <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <label className="text-xs font-bold text-[#2A170F]">Current Password</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPasswordMode('forgot');
-                          setPasswordError('');
-                        }}
-                        className="text-[11px] font-semibold text-[#7C4831] hover:underline cursor-pointer"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showCurrentPassword ? 'text' : 'password'}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                        className="w-full pl-4 pr-10 py-3 bg-[#FAF6F2] border border-[#E2D5C7] rounded-xl text-xs text-[#2A170F] focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground cursor-pointer"
-                      >
-                        <Icon
-                          icon={showCurrentPassword ? 'lucide:eye-off' : 'lucide:eye'}
-                          className="w-4 h-4"
+                  {hasPassword && (
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <label className="text-xs font-bold text-[#2A170F]">Current Password</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPasswordMode('forgot');
+                            setPasswordError('');
+                          }}
+                          className="text-[11px] font-semibold text-[#7C4831] hover:underline cursor-pointer"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          className="w-full pl-4 pr-10 py-3 bg-[#FAF6F2] border border-[#E2D5C7] rounded-xl text-xs text-[#2A170F] focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground cursor-pointer"
+                        >
+                          <Icon
+                            icon={showCurrentPassword ? 'lucide:eye-off' : 'lucide:eye'}
+                            className="w-4 h-4"
+                          />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div>
                     <label className="text-xs font-bold text-[#2A170F] block mb-1.5">
-                      New Password
+                      {hasPassword ? 'New Password' : 'Password'}
                     </label>
                     <div className="relative">
                       <input
@@ -819,7 +838,7 @@ const AccountSetting: React.FC = () => {
 
                   <div>
                     <label className="text-xs font-bold text-[#2A170F] block mb-1.5">
-                      Confirm New Password
+                      {hasPassword ? 'Confirm New Password' : 'Confirm Password'}
                     </label>
                     <div className="relative">
                       <input
@@ -859,10 +878,12 @@ const AccountSetting: React.FC = () => {
                       {passwordLoading ? (
                         <>
                           <Icon icon="lucide:loader-2" className="w-4 h-4 animate-spin" />
-                          <span>Updating...</span>
+                          <span>{hasPassword ? 'Updating...' : 'Saving...'}</span>
                         </>
-                      ) : (
+                      ) : hasPassword ? (
                         'Update & Sign Out'
+                      ) : (
+                        'Set Password & Sign Out'
                       )}
                     </button>
                   </div>

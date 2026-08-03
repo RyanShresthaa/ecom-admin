@@ -287,6 +287,9 @@ export type ApiUserProfile = {
   role?: string;
   bio?: string;
   avatar?: string | null;
+  /** True when the account has a local password (false for Google-only until they set one). */
+  hasPassword?: boolean;
+  has_password?: boolean;
   createdAt?: string;
   created_at?: string;
 };
@@ -437,15 +440,15 @@ export async function resetPasswordWithOtp(opts: {
   return 'Password updated successfully';
 }
 
-/** Change password while logged in (requires current password). */
+/** Change password while logged in. Current password required only if the account already has one. */
 export async function updatePassword(opts: {
-  currentPassword: string;
+  currentPassword?: string;
   password: string;
 }): Promise<void> {
   await apiFetch('/user/update-user', {
     method: 'PUT',
     json: {
-      currentPassword: opts.currentPassword,
+      ...(opts.currentPassword ? { currentPassword: opts.currentPassword } : {}),
       password: opts.password,
     },
   });

@@ -1,16 +1,14 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
 import useEmblaCarousel from 'embla-carousel-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { TextReveal } from '@/shared/ui/TextReveal';
-import Button from '@/shared/ui/Button';
 
-if (typeof window !== "undefined") {
+if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
 }
 
@@ -30,14 +28,14 @@ const productsData: Product[] = [
     title: 'Hand-Spun Dhaka Scarf',
     descriptionParagraphs: [
       'Dhaka is more than just a fabric; it is the woven identity of Nepal. Historically worn by royalty and made entirely of hand-spun cotton, the technique involves an incredibly complex supplementary weft style.',
-      'What makes Dhaka truly remarkable is that there are no written patterns or charts. Every geometric motif, from stars to flowers, is memorized by the artisan and woven intuitively, making each piece inherently unique.'
+      'What makes Dhaka truly remarkable is that there are no written patterns or charts. Every geometric motif, from stars to flowers, is memorized by the artisan and woven intuitively, making each piece inherently unique.',
     ],
     imageSrc: '/images/hero/textile/textile1.png',
     bullets: [
       '100% Hand-loomed organic cotton.',
       'Supports women weaver cooperatives in Palpa.',
-      'Dyed using natural, azo-free plant extracts.'
-    ]
+      'Dyed using natural, azo-free plant extracts.',
+    ],
   },
   {
     id: 'indigo-throw',
@@ -45,14 +43,14 @@ const productsData: Product[] = [
     title: 'Indigo Heritage Throw',
     descriptionParagraphs: [
       'Bringing traditional patterns into the modern home. Woven by hand using certified organic threads dyed with indigo and other native plants from the mid-hills of Nepal.',
-      'Every thread is hand-selected and carefully interlaced to ensure strength, durability, and a rich textural experience that highlights the organic beauty of raw craftsmanship.'
+      'Every thread is hand-selected and carefully interlaced to ensure strength, durability, and a rich textural experience that highlights the organic beauty of raw craftsmanship.',
     ],
     imageSrc: '/images/hero/gallery/right.png',
     bullets: [
       '100% Organic cotton & wild hemp.',
       'Ethically handmade by local women in Bhaktapur.',
-      'Colored using native Himalayan plant dyes.'
-    ]
+      'Colored using native Himalayan plant dyes.',
+    ],
   },
   {
     id: 'yak-shawl',
@@ -60,18 +58,17 @@ const productsData: Product[] = [
     title: 'Yak Wool Organic Wrap',
     descriptionParagraphs: [
       'Crafted from premium yak wool sourced from high-altitude Himalayan regions. Known for its incredible warmth, softness, and natural water-resistant properties.',
-      'Each shawl is hand-finished with meticulous hand-sewn details along the borders, creating a durable and highly functional heritage accessory that stands the test of time.'
+      'Each shawl is hand-finished with meticulous hand-sewn details along the borders, creating a durable and highly functional heritage accessory that stands the test of time.',
     ],
     imageSrc: '/images/hero/gallery/center-right.png',
     bullets: [
       '100% Pure high-altitude Himalayan yak wool.',
       'Meticulously hand-finished and bound.',
-      'Naturally warm, lightweight, and breathable.'
-    ]
-  }
+      'Naturally warm, lightweight, and breathable.',
+    ],
+  },
 ];
 
-// Sub-component for individual product slide
 const ProductSlide = ({ product }: { product: Product }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageWrapperRef = useRef<HTMLDivElement>(null);
@@ -81,7 +78,6 @@ const ProductSlide = ({ product }: { product: Product }) => {
     const wrapper = imageWrapperRef.current;
     if (!container || !wrapper) return;
 
-    // Apply scroll parallax to the active slide image wrapper
     const animation = gsap.fromTo(
       wrapper,
       { yPercent: -8 },
@@ -94,7 +90,7 @@ const ProductSlide = ({ product }: { product: Product }) => {
           end: 'bottom top',
           scrub: true,
         },
-      }
+      },
     );
 
     return () => {
@@ -108,8 +104,7 @@ const ProductSlide = ({ product }: { product: Product }) => {
       ref={containerRef}
       className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center px-4 md:px-12 py-4"
     >
-      {/* Left Column: Image with Scroll Parallax */}
-      <div className="relative aspect-square rounded-2xl overflow-hidden w-full bg-[#FAF8F5]  border border-[#E6D5C3]/30 hover:border-[#8C523A]/20 transition-all duration-500 group flex items-center justify-center">
+      <div className="relative aspect-square rounded-2xl overflow-hidden w-full bg-[#FAF8F5] border border-[#E6D5C3]/30 hover:border-[#8C523A]/20 transition-all duration-500 group flex items-center justify-center">
         <div
           ref={imageWrapperRef}
           className="absolute w-full h-[110%] top-[-10%] flex items-center justify-center p-6 sm:p-12"
@@ -120,12 +115,11 @@ const ProductSlide = ({ product }: { product: Product }) => {
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-            priority
+            priority={product.id === 'dhaka-scarf'}
           />
         </div>
       </div>
 
-      {/* Right Column: Product Detail Form */}
       <div className="flex flex-col text-left">
         <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-[#9E7D6F] mb-2 select-none">
           {product.tagline}
@@ -135,7 +129,6 @@ const ProductSlide = ({ product }: { product: Product }) => {
           {product.title}
         </h3>
 
-        {/* Paragraphs */}
         <div className="flex flex-col gap-4 text-xs sm:text-[14px] leading-relaxed text-[#664132]/95 font-secondary mb-8">
           {product.descriptionParagraphs.map((para, i) => (
             <p key={i}>{para}</p>
@@ -145,36 +138,50 @@ const ProductSlide = ({ product }: { product: Product }) => {
         <div className="w-full h-px bg-primary/5 mb-6" />
 
         <div className="mb-8">
-          <Link href="/products">
-            <Button
-              className="w-full sm:w-auto h-12 px-8 bg-[#C2A388] text-white hover:bg-[#B59479] hover:shadow-sm font-semibold text-[11px] sm:text-xs uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center border-none"
-            >
-              Explore the shop
-            </Button>
+          {/* Link-as-button: avoid <a><button> nesting (breaks SSR hydration) */}
+          <Link
+            href="/products"
+            className="w-full sm:w-auto h-12 px-8 bg-[#C2A388] text-white hover:bg-[#B59479] hover:shadow-sm font-semibold text-[11px] sm:text-xs uppercase tracking-[0.2em] transition-all duration-300 inline-flex items-center justify-center rounded-full"
+          >
+            Explore the shop
           </Link>
         </div>
 
-        {/* Bullet Points */}
         <ul className="flex flex-col gap-2.5 text-xs text-[#664132] font-secondary mb-8">
           {product.bullets.map((bullet, i) => (
             <li key={i} className="flex items-center gap-2.5">
-              <span className="text-[#8C523A] font-semibold text-[13px] select-none">✓</span>
+              <span className="text-[#8C523A] font-semibold text-[13px] select-none" aria-hidden>
+                ✓
+              </span>
               <span>{bullet}</span>
             </li>
           ))}
         </ul>
 
-        {/* Share Story */}
         <div className="flex items-center gap-3.5 text-xs text-[#9E7D6F] font-secondary">
-          <span className="uppercase tracking-wider text-[10px] font-semibold">Share this story:</span>
+          <span className="uppercase tracking-wider text-[10px] font-semibold">
+            Share this story:
+          </span>
           <div className="flex items-center gap-3 text-neutral-500">
-            <a href="#" className="hover:text-[#8C523A] transition-colors" aria-label="Share on Facebook">
+            <a
+              href="#"
+              className="hover:text-[#8C523A] transition-colors"
+              aria-label="Share on Facebook"
+            >
               <Icon icon="ph:facebook-logo-light" className="w-4 h-4" />
             </a>
-            <a href="#" className="hover:text-[#8C523A] transition-colors" aria-label="Share on Twitter">
+            <a
+              href="#"
+              className="hover:text-[#8C523A] transition-colors"
+              aria-label="Share on Twitter"
+            >
               <Icon icon="ph:twitter-logo-light" className="w-4 h-4" />
             </a>
-            <a href="#" className="hover:text-[#8C523A] transition-colors" aria-label="Share on Instagram">
+            <a
+              href="#"
+              className="hover:text-[#8C523A] transition-colors"
+              aria-label="Share on Instagram"
+            >
               <Icon icon="ph:instagram-logo-light" className="w-4 h-4" />
             </a>
           </div>
@@ -187,13 +194,21 @@ const ProductSlide = ({ product }: { product: Product }) => {
 const Textile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+  const [carouselReady, setCarouselReady] = useState(false);
 
-  // Setup Embla Carousel
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    loop: true,
-    duration: 35,
-    align: 'center'
-  });
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    carouselReady
+      ? {
+          loop: true,
+          duration: 35,
+          align: 'center',
+        }
+      : undefined,
+  );
+
+  useEffect(() => {
+    setCarouselReady(true);
+  }, []);
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -208,7 +223,6 @@ const Textile = () => {
     if (!headerEl) return;
 
     const ctx = gsap.context(() => {
-      // Header staggered reveal animation
       gsap.fromTo(
         headerEl.children,
         { opacity: 0, y: 30 },
@@ -223,7 +237,7 @@ const Textile = () => {
             start: 'top 85%',
             toggleActions: 'play none none none',
           },
-        }
+        },
       );
     }, containerRef);
 
@@ -236,19 +250,16 @@ const Textile = () => {
       className="w-full bg-[#FAF6F2] py-20 md:py-28 select-none relative"
     >
       <div className="container-custom max-w-6xl px-4 relative">
-
-        <div ref={headerRef} className="text-center max-w-3xl mx-auto mb-16 md:mb-10 flex flex-col items-center">
-          {/* <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-[#9E7D6F] mb-4 block">
-            FEATURED TEXTILE
-          </span> */}
+        <div
+          ref={headerRef}
+          className="text-center max-w-3xl mx-auto mb-16 md:mb-10 flex flex-col items-center"
+        >
           <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal text-[#2A170F] leading-tight tracking-tight">
             The Royal <span className="text-[#c89b5d]">Dhaka Weave </span>
-
           </h2>
         </div>
 
         <div className="relative w-full">
-
           <div className="overflow-hidden w-full" ref={emblaRef}>
             <div className="flex">
               {productsData.map((product) => (
@@ -258,7 +269,6 @@ const Textile = () => {
               ))}
             </div>
           </div>
-
 
           <button
             type="button"
@@ -277,9 +287,7 @@ const Textile = () => {
           >
             <Icon icon="ph:caret-right-light" className="w-5 h-5" />
           </button>
-
         </div>
-
       </div>
     </section>
   );

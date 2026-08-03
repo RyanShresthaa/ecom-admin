@@ -5,7 +5,8 @@ import pool from '../config/connectDB.js';
 import { mapRow } from '../utils/sql.js';
 
 const PUBLIC_FIELDS = `id, name, email, mobile, avatar, bio, verify_email, last_login_date, status, role, seller_request, notification_prefs, totp_enabled, created_at, updated_at,
-    (pin_hash IS NOT NULL AND length(trim(pin_hash)) > 0) AS has_mobile_pin`;
+    (pin_hash IS NOT NULL AND length(trim(pin_hash)) > 0) AS has_mobile_pin,
+    (password IS NOT NULL AND length(trim(password)) > 0) AS has_password`;
 
 export async function findUserByEmail(email) {
     const normalized = String(email || '').trim().toLowerCase();
