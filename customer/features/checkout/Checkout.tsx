@@ -296,21 +296,21 @@ export default function Checkout() {
 
   if (cart.length === 0 && !successOrderId) {
     return (
-      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20">
-        <div className="container-custom max-w-3xl mx-auto px-4">
-          <div className="bg-white rounded-3xl p-12 text-center border border-primary/10 shadow-xs flex flex-col items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-[#F5ECE8] text-primary flex items-center justify-center mb-6">
-              <Icon icon="ph:shopping-bag-open-light" className="w-10 h-10" />
+      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw] select-none">
+        <div className="w-full lg:max-w-none mx-auto">
+          <div className="bg-white rounded-3xl lg:rounded-[1.5vw] p-12 lg:p-[4vw] text-center border border-primary/10 shadow-xs flex flex-col items-center justify-center my-8 lg:my-[2vw]">
+            <div className="w-20 h-20 lg:w-[5vw] lg:h-[5vw] rounded-full bg-[#F5ECE8] text-primary flex items-center justify-center mb-6 lg:mb-[1.5vw]">
+              <Icon icon="ph:shopping-bag-open-light" className="w-10 h-10 lg:w-[2.5vw] lg:h-[2.5vw]" />
             </div>
-            <h1 className="font-heading text-2xl sm:text-3xl font-medium text-[#2A170F] mb-2">
+            <h1 className="font-heading text-2xl sm:text-3xl lg:text-[2vw] font-medium text-[#2A170F] mb-2 lg:mb-[0.5vw]">
               Your cart is empty
             </h1>
-            <p className="font-secondary text-sm text-body/70 max-w-md mb-8">
+            <p className="font-secondary text-sm lg:text-[0.85vw] text-body/70 max-w-md lg:max-w-none mb-8 lg:mb-[2vw]">
               Add handcrafted pieces to your cart before checking out.
             </p>
             <Link
               href="/products"
-              className="px-8 py-4 rounded-full bg-[#8C523A] text-white font-semibold text-xs uppercase tracking-wider hover:bg-primary-dark transition-all duration-300 shadow-md"
+              className="px-8 lg:px-[2vw] py-4 lg:py-[0.9vw] rounded-full bg-[#8C523A] text-white font-semibold text-xs lg:text-[0.75vw] uppercase tracking-wider hover:bg-primary-dark transition-all duration-300 shadow-md"
             >
               Browse products
             </Link>
@@ -322,40 +322,40 @@ export default function Checkout() {
 
   if (successOrderId) {
     return (
-      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20">
-        <div className="container-custom max-w-xl mx-auto px-4 text-center bg-white rounded-3xl border border-primary/10 p-10 shadow-xs">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-5">
-            <Icon icon="ph:check-bold" className="w-8 h-8" />
+      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw] select-none">
+        <div className="w-full lg:max-w-none mx-auto text-center bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-10 lg:p-[3vw] shadow-xs">
+          <div className="w-16 h-16 lg:w-[4vw] lg:h-[4vw] rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-5 lg:mb-[1.2vw]">
+            <Icon icon="ph:check-bold" className="w-8 h-8 lg:w-[2vw] lg:h-[2vw]" />
           </div>
-          <h1 className="font-heading text-3xl font-bold text-[#2A170F] mb-2">Order placed</h1>
-          <p className="font-secondary text-sm text-body/70 mb-2">
+          <h1 className="font-heading text-3xl lg:text-[2.2vw] font-bold text-[#2A170F] mb-2 lg:mb-[0.5vw]">Order placed</h1>
+          <p className="font-secondary text-sm lg:text-[0.85vw] text-body/70 mb-2 lg:mb-[0.5vw]">
             {successPaymentStatus.toUpperCase().includes('PAID')
               ? 'Payment received — thank you.'
               : 'Cash on delivery confirmed.'}
           </p>
           {successOrderId !== 'placed' && (
-            <p className="font-mono text-xs text-body/60 mb-6">Order #{successOrderId}</p>
+            <p className="font-mono text-xs lg:text-[0.75vw] text-body/60 mb-6 lg:mb-[1.5vw]">Order #{successOrderId}</p>
           )}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
+          <div className="flex flex-col sm:flex-row gap-3 lg:gap-[0.8vw] justify-center flex-wrap">
             {successInvoiceLineId && (
               <InvoiceButton
                 orderLineId={successInvoiceLineId}
                 orderId={successOrderId !== 'placed' ? successOrderId : undefined}
                 paymentStatus={successPaymentStatus}
                 deliveryStatus="pending"
-                className="px-6 py-3 rounded-full bg-primary text-white text-xs font-semibold uppercase tracking-wider inline-flex items-center justify-center gap-1.5 hover:bg-primary-dark"
+                className="px-6 lg:px-[1.5vw] py-3 lg:py-[0.7vw] rounded-full bg-primary text-white text-xs lg:text-[0.75vw] font-semibold uppercase tracking-wider inline-flex items-center justify-center gap-1.5 lg:gap-[0.4vw] hover:bg-primary-dark"
               />
             )}
             <button
               type="button"
               onClick={() => router.push('/orders')}
-              className="px-6 py-3 rounded-full border border-primary/25 text-primary-dark text-xs font-semibold uppercase tracking-wider"
+              className="px-6 lg:px-[1.5vw] py-3 lg:py-[0.7vw] rounded-full border border-primary/25 text-primary-dark text-xs lg:text-[0.75vw] font-semibold uppercase tracking-wider cursor-pointer"
             >
               View my orders
             </button>
             <Link
               href="/products"
-              className="px-6 py-3 rounded-full border border-primary/25 text-primary-dark text-xs font-semibold uppercase tracking-wider"
+              className="px-6 lg:px-[1.5vw] py-3 lg:py-[0.7vw] rounded-full border border-primary/25 text-primary-dark text-xs lg:text-[0.75vw] font-semibold uppercase tracking-wider"
             >
               Continue shopping
             </Link>
@@ -367,10 +367,10 @@ export default function Checkout() {
 
   if (loggedIn === null) {
     return (
-      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20">
-        <div className="container-custom max-w-3xl mx-auto px-4 text-center">
-          <h1 className="font-heading text-4xl font-bold text-[#2A170F] mb-4">Checkout</h1>
-          <p className="font-secondary text-sm text-body/70">Checking your session…</p>
+      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw]">
+        <div className="w-full lg:max-w-none mx-auto text-center">
+          <h1 className="font-heading text-4xl lg:text-[3vw] font-bold text-[#2A170F] mb-4 lg:mb-[1vw]">Checkout</h1>
+          <p className="font-secondary text-sm lg:text-[0.85vw] text-body/70">Checking your session…</p>
         </div>
       </div>
     );
@@ -378,33 +378,33 @@ export default function Checkout() {
 
   if (loggedIn === false) {
     return (
-      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20">
-        <div className="container-custom max-w-xl mx-auto px-4">
-          <div className="bg-white rounded-3xl border border-primary/10 p-10 shadow-xs text-center">
-            <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-5">
-              <Icon icon="ph:lock-key-fill" className="w-8 h-8" />
+      <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw]">
+        <div className="w-full lg:max-w-none mx-auto">
+          <div className="bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-10 lg:p-[3vw] shadow-xs text-center">
+            <div className="w-16 h-16 lg:w-[4vw] lg:h-[4vw] rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-5 lg:mb-[1.2vw]">
+              <Icon icon="ph:lock-key-fill" className="w-8 h-8 lg:w-[2vw] lg:h-[2vw]" />
             </div>
-            <h1 className="font-heading text-3xl font-bold text-[#2A170F] mb-3">
+            <h1 className="font-heading text-3xl lg:text-[2.2vw] font-bold text-[#2A170F] mb-3 lg:mb-[0.8vw]">
               Sign in required
             </h1>
-            <p className="font-secondary text-sm text-body/70 mb-2 leading-relaxed">
+            <p className="font-secondary text-sm lg:text-[0.85vw] text-body/70 mb-2 lg:mb-[0.5vw] leading-relaxed">
               Guest checkout is disabled. Please sign in to place an order. Your cart stays saved on
               this device.
             </p>
-            <p className="font-secondary text-xs text-body/50 mb-8">
+            <p className="font-secondary text-xs lg:text-[0.75vw] text-body/50 mb-8 lg:mb-[2vw]">
               Customer login pages are coming soon. You can keep shopping and return here after
               signing in.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 lg:gap-[0.8vw] justify-center">
               <Link
                 href="/cart"
-                className="inline-flex px-8 py-3.5 rounded-full bg-primary text-white text-xs font-semibold uppercase tracking-wider"
+                className="inline-flex px-8 lg:px-[2vw] py-3.5 lg:py-[0.8vw] rounded-full bg-primary text-white text-xs lg:text-[0.75vw] font-semibold uppercase tracking-wider"
               >
                 Back to cart
               </Link>
               <Link
                 href="/products"
-                className="inline-flex px-8 py-3.5 rounded-full border border-primary/25 text-primary-dark text-xs font-semibold uppercase tracking-wider"
+                className="inline-flex px-8 lg:px-[2vw] py-3.5 lg:py-[0.8vw] rounded-full border border-primary/25 text-primary-dark text-xs lg:text-[0.75vw] font-semibold uppercase tracking-wider"
               >
                 Continue shopping
               </Link>
@@ -416,40 +416,40 @@ export default function Checkout() {
   }
 
   return (
-    <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 select-none">
-      <div className="container-custom max-w-7xl mx-auto px-4 sm:px-6">
-        <h1 className="font-heading text-4xl sm:text-5xl font-bold text-[#2A170F] tracking-tight mb-2">
+    <div className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw] select-none">
+      <div className="w-full lg:max-w-none mx-auto">
+        <h1 className="font-heading text-4xl sm:text-5xl lg:text-[3.2vw] font-bold text-[#2A170F] tracking-tight mb-2 lg:mb-[0.5vw]">
           Checkout
         </h1>
-        <p className="font-secondary text-sm text-body/70 mb-8">
+        <p className="font-secondary text-sm sm:text-base lg:text-[0.9vw] text-body/70 mb-8 lg:mb-[2vw]">
           Review your order and choose a payment method.
         </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-7 flex flex-col gap-6">
-            <section className="bg-white rounded-3xl border border-primary/10 p-6 shadow-xs">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="font-heading text-xl font-bold text-[#2A170F]">Shipping address</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-[2vw] items-start">
+          <div className="lg:col-span-7 flex flex-col gap-6 lg:gap-[1.5vw]">
+            <section className="bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-6 lg:p-[1.5vw] shadow-xs">
+              <div className="flex items-center justify-between gap-3 lg:gap-[0.8vw] mb-4 lg:mb-[1vw]">
+                <h2 className="font-heading text-xl lg:text-[1.3vw] font-bold text-[#2A170F]">Shipping address</h2>
                 <Link
                   href="/addresses"
-                  className="text-xs font-semibold text-primary hover:underline shrink-0"
+                  className="text-xs lg:text-[0.75vw] font-semibold text-primary hover:underline shrink-0"
                 >
                   Manage addresses
                 </Link>
               </div>
 
               {addressesLoading && (
-                <p className="font-secondary text-sm text-body/60 mb-4">Loading saved addresses…</p>
+                <p className="font-secondary text-sm lg:text-[0.85vw] text-body/60 mb-4 lg:mb-[1vw]">Loading saved addresses…</p>
               )}
 
               {!addressesLoading && addresses.length > 0 && (
-                <div className="flex flex-col gap-2 mb-4">
+                <div className="flex flex-col gap-2 lg:gap-[0.5vw] mb-4 lg:mb-[1vw]">
                   {addresses.map((addr) => {
                     const id = String(addr.id ?? addr._id);
                     return (
                       <label
                         key={id}
-                        className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer ${
+                        className={`flex items-start gap-3 lg:gap-[0.8vw] p-4 lg:p-[1vw] rounded-2xl lg:rounded-[1vw] border cursor-pointer ${
                           selectedAddressId === id
                             ? 'border-primary bg-primary-lighter/20'
                             : 'border-primary/10'
@@ -460,9 +460,9 @@ export default function Checkout() {
                           name="address"
                           checked={selectedAddressId === id}
                           onChange={() => setSelectedAddressId(id)}
-                          className="mt-1"
+                          className="mt-1 lg:mt-[0.2vw]"
                         />
-                        <span className="font-secondary text-sm text-primary-dark">
+                        <span className="font-secondary text-sm lg:text-[0.85vw] text-primary-dark">
                           {String(addr.address_line || '')
                             .replace(/^\[[^\]]+\]\s*/, '')
                             .replace(/^.*? — /, '')}
@@ -478,7 +478,7 @@ export default function Checkout() {
                   <button
                     type="button"
                     onClick={() => setSelectedAddressId('')}
-                    className="text-xs text-primary font-semibold self-start"
+                    className="text-xs lg:text-[0.75vw] text-primary font-semibold self-start cursor-pointer"
                   >
                     + Use a new address
                   </button>
@@ -486,22 +486,22 @@ export default function Checkout() {
               )}
 
               {!addressesLoading && addresses.length === 0 && (
-                <p className="font-secondary text-sm text-body/60 mb-4">
+                <p className="font-secondary text-sm lg:text-[0.85vw] text-body/60 mb-4 lg:mb-[1vw]">
                   No saved addresses yet. Enter one below — it will be saved to your profile for next
                   time.
                 </p>
               )}
 
               {selectedAddress && (
-                <p className="font-secondary text-xs text-body/50 mb-1">
+                <p className="font-secondary text-xs lg:text-[0.75vw] text-body/50 mb-1 lg:mb-[0.2vw]">
                   Shipping to your selected saved address.
                 </p>
               )}
 
               {!selectedAddressId && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="flex flex-col gap-1 sm:col-span-2">
-                    <span className="text-[11px] uppercase tracking-wider text-body/60 font-semibold">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-[0.8vw]">
+                  <label className="flex flex-col gap-1 lg:gap-[0.2vw] sm:col-span-2">
+                    <span className="text-[11px] lg:text-[0.65vw] uppercase tracking-wider text-body/60 font-semibold">
                       Street address
                     </span>
                     <input
@@ -512,18 +512,18 @@ export default function Checkout() {
                         setForm((prev) => ({ ...prev, address_line: e.target.value }));
                         setFieldErrors((prev) => ({ ...prev, address_line: undefined }));
                       }}
-                      className={`h-11 rounded-xl border px-3 text-sm font-secondary focus:outline-none focus:border-primary ${
+                      className={`h-11 lg:h-[2.6vw] rounded-xl lg:rounded-[0.8vw] border px-3 lg:px-[0.8vw] text-sm lg:text-[0.8vw] font-secondary focus:outline-none focus:border-primary ${
                         fieldErrors.address_line ? 'border-red-400' : 'border-primary/15'
                       }`}
                     />
                     {fieldErrors.address_line && (
-                      <span className="text-[11px] text-red-600 font-secondary">
+                      <span className="text-[11px] lg:text-[0.65vw] text-red-600 font-secondary">
                         {fieldErrors.address_line}
                       </span>
                     )}
                   </label>
 
-                  <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 [&>div>label]:!mb-1 [&>div>label]:text-[11px] [&>div>label]:uppercase [&>div>label]:tracking-wider [&>div>label]:text-body/60 [&>div>label]:font-semibold [&>div>label]:!text-[11px]">
+                  <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-[0.8vw] [&>div>label]:!mb-1 [&>div>label]:text-[11px] [&>div>label]:lg:text-[0.65vw] [&>div>label]:uppercase [&>div>label]:tracking-wider [&>div>label]:text-body/60 [&>div>label]:font-semibold">
                     <CountryStateCityFields
                       country={form.country}
                       state={form.state}
@@ -545,17 +545,17 @@ export default function Checkout() {
                         setForm((prev) => ({ ...prev, city }));
                         setFieldErrors((prev) => ({ ...prev, city: undefined }));
                       }}
-                      triggerClassName="!rounded-xl !py-2.5 border-primary/15"
+                      triggerClassName="!rounded-xl lg:!rounded-[0.8vw] !py-2.5 lg:!py-[0.6vw] border-primary/15"
                     />
                   </div>
                   {(fieldErrors.country || fieldErrors.state || fieldErrors.city) && (
-                    <p className="sm:col-span-2 text-[11px] text-red-600 font-secondary">
+                    <p className="sm:col-span-2 text-[11px] lg:text-[0.65vw] text-red-600 font-secondary">
                       {fieldErrors.country || fieldErrors.state || fieldErrors.city}
                     </p>
                   )}
 
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] uppercase tracking-wider text-body/60 font-semibold">
+                  <label className="flex flex-col gap-1 lg:gap-[0.2vw]">
+                    <span className="text-[11px] lg:text-[0.65vw] uppercase tracking-wider text-body/60 font-semibold">
                       ZIP / Postal code
                     </span>
                     <input
@@ -567,19 +567,19 @@ export default function Checkout() {
                         setForm((prev) => ({ ...prev, pincode: e.target.value }));
                         setFieldErrors((prev) => ({ ...prev, pincode: undefined }));
                       }}
-                      className={`h-11 rounded-xl border px-3 text-sm font-secondary focus:outline-none focus:border-primary ${
+                      className={`h-11 lg:h-[2.6vw] rounded-xl lg:rounded-[0.8vw] border px-3 lg:px-[0.8vw] text-sm lg:text-[0.8vw] font-secondary focus:outline-none focus:border-primary ${
                         fieldErrors.pincode ? 'border-red-400' : 'border-primary/15'
                       }`}
                     />
                     {fieldErrors.pincode && (
-                      <span className="text-[11px] text-red-600 font-secondary">
+                      <span className="text-[11px] lg:text-[0.65vw] text-red-600 font-secondary">
                         {fieldErrors.pincode}
                       </span>
                     )}
                   </label>
 
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] uppercase tracking-wider text-body/60 font-semibold">
+                  <label className="flex flex-col gap-1 lg:gap-[0.2vw]">
+                    <span className="text-[11px] lg:text-[0.65vw] uppercase tracking-wider text-body/60 font-semibold">
                       Mobile phone
                     </span>
                     <input
@@ -591,18 +591,18 @@ export default function Checkout() {
                         setForm((prev) => ({ ...prev, mobile: e.target.value }));
                         setFieldErrors((prev) => ({ ...prev, mobile: undefined }));
                       }}
-                      className={`h-11 rounded-xl border px-3 text-sm font-secondary focus:outline-none focus:border-primary ${
+                      className={`h-11 lg:h-[2.6vw] rounded-xl lg:rounded-[0.8vw] border px-3 lg:px-[0.8vw] text-sm lg:text-[0.8vw] font-secondary focus:outline-none focus:border-primary ${
                         fieldErrors.mobile ? 'border-red-400' : 'border-primary/15'
                       }`}
                     />
                     {fieldErrors.mobile && (
-                      <span className="text-[11px] text-red-600 font-secondary">
+                      <span className="text-[11px] lg:text-[0.65vw] text-red-600 font-secondary">
                         {fieldErrors.mobile}
                       </span>
                     )}
                   </label>
 
-                  <p className="sm:col-span-2 text-[11px] text-body/50 font-secondary">
+                  <p className="sm:col-span-2 text-[11px] lg:text-[0.65vw] text-body/50 font-secondary">
                     Addresses are limited to the United States and Nepal. Pick country, then search
                     state/province and city from the list.
                   </p>
@@ -610,23 +610,23 @@ export default function Checkout() {
               )}
             </section>
 
-            <section className="bg-white rounded-3xl border border-primary/10 p-6 shadow-xs">
-              <h2 className="font-heading text-xl font-bold text-[#2A170F] mb-4">Items</h2>
-              <div className="flex flex-col gap-4">
+            <section className="bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-6 lg:p-[1.5vw] shadow-xs">
+              <h2 className="font-heading text-xl lg:text-[1.3vw] font-bold text-[#2A170F] mb-4 lg:mb-[1vw]">Items</h2>
+              <div className="flex flex-col gap-4 lg:gap-[1vw]">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-[#FAF6F2] border border-primary/10 shrink-0">
+                  <div key={item.id} className="flex items-center gap-4 lg:gap-[1vw]">
+                    <div className="relative w-16 h-16 lg:w-[4vw] lg:h-[4vw] rounded-xl lg:rounded-[0.8vw] overflow-hidden bg-[#FAF6F2] border border-primary/10 shrink-0">
                       {item.image ? (
                         <Image src={item.image} alt={item.name} fill className="object-cover" />
                       ) : null}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-heading text-sm font-semibold text-[#2A170F] truncate">
+                      <p className="font-heading text-sm lg:text-[0.9vw] font-semibold text-[#2A170F] truncate">
                         {item.name}
                       </p>
-                      <p className="font-secondary text-xs text-body/60">Qty {item.quantity}</p>
+                      <p className="font-secondary text-xs lg:text-[0.75vw] text-body/60">Qty {item.quantity}</p>
                     </div>
-                    <p className="font-secondary text-sm font-semibold text-primary-dark">
+                    <p className="font-secondary text-sm lg:text-[0.9vw] font-semibold text-primary-dark">
                       {formatMoney(item.price * item.quantity)}
                     </p>
                   </div>
@@ -635,26 +635,26 @@ export default function Checkout() {
             </section>
           </div>
 
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <section className="bg-white rounded-3xl border border-primary/10 p-6 shadow-xs flex flex-col gap-4">
-              <h2 className="font-heading text-xl font-bold text-[#2A170F]">Promo code</h2>
-              <form onSubmit={handleApplyPromo} className="flex gap-2">
+          <div className="lg:col-span-5 flex flex-col gap-6 lg:gap-[1.5vw]">
+            <section className="bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-6 lg:p-[1.5vw] shadow-xs flex flex-col gap-4 lg:gap-[1vw]">
+              <h2 className="font-heading text-xl lg:text-[1.3vw] font-bold text-[#2A170F]">Promo code</h2>
+              <form onSubmit={handleApplyPromo} className="flex gap-2 lg:gap-[0.5vw]">
                 <input
                   value={promoInput}
                   onChange={(e) => setPromoInput(e.target.value)}
                   placeholder="Enter code"
-                  className="flex-1 h-11 rounded-full border border-primary/15 px-4 text-sm font-secondary focus:outline-none focus:border-primary"
+                  className="flex-1 h-11 lg:h-[2.6vw] rounded-full border border-primary/15 px-4 lg:px-[1vw] text-sm lg:text-[0.8vw] font-secondary focus:outline-none focus:border-primary"
                 />
                 <button
                   type="submit"
-                  className="px-5 h-11 rounded-full bg-[#8C523A] text-white text-xs font-semibold uppercase tracking-wider"
+                  className="px-5 lg:px-[1.2vw] h-11 lg:h-[2.6vw] rounded-full bg-[#8C523A] text-white text-xs lg:text-[0.75vw] font-semibold uppercase tracking-wider cursor-pointer"
                 >
                   Apply
                 </button>
               </form>
               {promoMsg && (
                 <p
-                  className={`text-xs font-secondary ${
+                  className={`text-xs lg:text-[0.75vw] font-secondary ${
                     promoMsg.toLowerCase().includes('applied') || promoMsg.toLowerCase().includes('coupon')
                       ? 'text-emerald-700'
                       : 'text-red-600'
@@ -671,19 +671,19 @@ export default function Checkout() {
                     setPromoInput('');
                     setPromoMsg('');
                   }}
-                  className="text-xs text-body/60 hover:text-red-600 self-start"
+                  className="text-xs lg:text-[0.75vw] text-body/60 hover:text-red-600 self-start cursor-pointer"
                 >
                   Remove {promoCode}
                 </button>
               )}
             </section>
 
-            <section className="bg-white rounded-3xl border border-primary/10 p-6 shadow-xs flex flex-col gap-4">
-              <h2 className="font-heading text-xl font-bold text-[#2A170F]">Payment method</h2>
+            <section className="bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-6 lg:p-[1.5vw] shadow-xs flex flex-col gap-4 lg:gap-[1vw]">
+              <h2 className="font-heading text-xl lg:text-[1.3vw] font-bold text-[#2A170F]">Payment method</h2>
 
               {paymentMethods.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  <p className="text-xs text-body/70 font-secondary">
+                <div className="flex flex-col gap-2 lg:gap-[0.5vw]">
+                  <p className="text-xs lg:text-[0.75vw] text-body/70 font-secondary">
                     Saved methods from your profile. Card charges still complete via Stripe — you
                     don&apos;t re-enter card numbers here.
                   </p>
@@ -700,7 +700,7 @@ export default function Checkout() {
                     return (
                       <label
                         key={id}
-                        className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer ${
+                        className={`flex items-start gap-3 lg:gap-[0.8vw] p-4 lg:p-[1vw] rounded-2xl lg:rounded-[1vw] border cursor-pointer ${
                           selectedPaymentMethodId === id && payMethod === 'online'
                             ? 'border-primary bg-primary-lighter/20'
                             : 'border-primary/10'
@@ -714,21 +714,21 @@ export default function Checkout() {
                             setSelectedPaymentMethodId(id);
                             setPayMethod('online');
                           }}
-                          className="mt-1"
+                          className="mt-1 lg:mt-[0.2vw]"
                         />
-                        <span className="font-secondary text-sm text-primary-dark">
+                        <span className="font-secondary text-sm lg:text-[0.85vw] text-primary-dark">
                           <span className="font-semibold block capitalize">{label}</span>
-                          {meta ? <span className="text-xs text-body/60">{meta}</span> : null}
+                          {meta ? <span className="text-xs lg:text-[0.75vw] text-body/60">{meta}</span> : null}
                         </span>
                       </label>
                     );
                   })}
-                  <Link href="/payments" className="text-xs text-primary font-semibold self-start">
+                  <Link href="/payments" className="text-xs lg:text-[0.75vw] text-primary font-semibold self-start">
                     Manage payment methods
                   </Link>
                 </div>
               ) : (
-                <p className="text-xs text-body/70 font-secondary">
+                <p className="text-xs lg:text-[0.75vw] text-body/70 font-secondary">
                   No cards saved yet.{' '}
                   <Link href="/payments/new" className="text-primary font-semibold underline">
                     Add one in your profile
@@ -737,9 +737,9 @@ export default function Checkout() {
                 </p>
               )}
 
-              <div className="flex flex-col gap-2 pt-2 border-t border-primary/10">
+              <div className="flex flex-col gap-2 lg:gap-[0.5vw] pt-2 lg:pt-[0.5vw] border-t border-primary/10">
                 <label
-                  className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer ${
+                  className={`flex items-start gap-3 lg:gap-[0.8vw] p-4 lg:p-[1vw] rounded-2xl lg:rounded-[1vw] border cursor-pointer ${
                     payMethod === 'online'
                       ? 'border-primary bg-primary-lighter/20'
                       : 'border-primary/10'
@@ -750,15 +750,15 @@ export default function Checkout() {
                     name="payMethod"
                     checked={payMethod === 'online'}
                     onChange={() => setPayMethod('online')}
-                    className="mt-1"
+                    className="mt-1 lg:mt-[0.2vw]"
                   />
-                  <span className="font-secondary text-sm text-primary-dark">
+                  <span className="font-secondary text-sm lg:text-[0.85vw] text-primary-dark">
                     <span className="font-semibold block">Card (Stripe)</span>
                     Pay securely online. You&apos;ll be redirected — no card typing on this page.
                   </span>
                 </label>
                 <label
-                  className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer ${
+                  className={`flex items-start gap-3 lg:gap-[0.8vw] p-4 lg:p-[1vw] rounded-2xl lg:rounded-[1vw] border cursor-pointer ${
                     payMethod === 'cod'
                       ? 'border-primary bg-primary-lighter/20'
                       : 'border-primary/10'
@@ -769,9 +769,9 @@ export default function Checkout() {
                     name="payMethod"
                     checked={payMethod === 'cod'}
                     onChange={() => setPayMethod('cod')}
-                    className="mt-1"
+                    className="mt-1 lg:mt-[0.2vw]"
                   />
-                  <span className="font-secondary text-sm text-primary-dark">
+                  <span className="font-secondary text-sm lg:text-[0.85vw] text-primary-dark">
                     <span className="font-semibold block">Cash on delivery</span>
                     Available where offered — pay when your order arrives.
                   </span>
@@ -779,9 +779,9 @@ export default function Checkout() {
               </div>
             </section>
 
-            <section className="bg-white rounded-3xl border border-primary/10 p-6 shadow-xs flex flex-col gap-4">
-              <h2 className="font-heading text-xl font-bold text-[#2A170F]">Order summary</h2>
-              <div className="flex flex-col gap-2 font-secondary text-sm">
+            <section className="bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-6 lg:p-[1.5vw] shadow-xs flex flex-col gap-4 lg:gap-[1vw]">
+              <h2 className="font-heading text-xl lg:text-[1.3vw] font-bold text-[#2A170F]">Order summary</h2>
+              <div className="flex flex-col gap-2 lg:gap-[0.5vw] font-secondary text-sm lg:text-[0.85vw]">
                 <div className="flex justify-between">
                   <span className="text-body/70">Subtotal</span>
                   <span className="font-semibold">{formatMoney(displaySubtotal)}</span>
@@ -804,16 +804,16 @@ export default function Checkout() {
                     <span className="font-semibold">{formatMoney(displayTax)}</span>
                   </div>
                 )}
-                <div className="border-t border-primary/10 pt-3 mt-1 flex justify-between items-baseline">
-                  <span className="font-heading text-lg font-bold">Total</span>
-                  <span className="font-heading text-2xl font-extrabold text-primary">
+                <div className="border-t border-primary/10 pt-3 lg:pt-[0.8vw] mt-1 lg:mt-[0.2vw] flex justify-between items-baseline">
+                  <span className="font-heading text-lg lg:text-[1.2vw] font-bold">Total</span>
+                  <span className="font-heading text-2xl lg:text-[1.8vw] font-extrabold text-primary">
                     {formatMoney(displayTotal)}
                   </span>
                 </div>
               </div>
 
               {error && (
-                <p className="text-xs text-red-600 font-secondary bg-red-50 rounded-xl px-3 py-2">
+                <p className="text-xs lg:text-[0.75vw] text-red-600 font-secondary bg-red-50 rounded-xl lg:rounded-[0.8vw] px-3 lg:px-[0.8vw] py-2 lg:py-[0.5vw]">
                   {error}
                 </p>
               )}
@@ -822,11 +822,11 @@ export default function Checkout() {
                 type="button"
                 disabled={placing}
                 onClick={handlePlaceOrder}
-                className="w-full py-4 rounded-full bg-[#8C523A] text-white font-semibold text-xs uppercase tracking-[0.15em] hover:bg-primary-dark transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full py-4 lg:py-[0.9vw] rounded-full bg-[#8C523A] text-white font-semibold text-xs lg:text-[0.75vw] uppercase tracking-[0.15em] hover:bg-primary-dark transition-all disabled:opacity-60 flex items-center justify-center gap-2 lg:gap-[0.4vw] cursor-pointer"
               >
                 <Icon
                   icon={payMethod === 'online' ? 'ph:credit-card' : 'ph:truck'}
-                  className="w-4 h-4"
+                  className="w-4 h-4 lg:w-[1vw] lg:h-[1vw]"
                 />
                 {placing
                   ? payMethod === 'online'
@@ -839,7 +839,7 @@ export default function Checkout() {
 
               <Link
                 href="/cart"
-                className="w-full py-3 rounded-full border border-primary/20 text-center text-xs font-semibold uppercase tracking-wider text-primary-dark"
+                className="w-full py-3 lg:py-[0.7vw] rounded-full border border-primary/20 text-center text-xs lg:text-[0.75vw] font-semibold uppercase tracking-wider text-primary-dark"
               >
                 Back to cart
               </Link>

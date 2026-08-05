@@ -86,33 +86,33 @@ const NewCard: React.FC = () => {
   };
 
   return (
-    <section className="min-h-screen bg-[#FAF6F2] pt-20 sm:pt-24 pb-16 px-4 sm:px-6 lg:px-8 select-none">
-      <div className="container-custom max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <section className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw] select-none">
+      <div className="w-full lg:max-w-none mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-[2vw] items-start">
           
           <ProfileSidebar active="payments" />
 
           {/* RIGHT MAIN CONTENT */}
-          <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6">
+          <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6 lg:gap-[1.5vw]">
             
             {/* Header */}
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary-heading block mb-1">
+              <span className="text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-[0.25em] text-primary-heading block mb-1 lg:mb-[0.3vw]">
                 ACCOUNT
               </span>
-              <h1 className="font-heading text-3xl sm:text-4xl font-bold text-[#2A170F] tracking-tight">
+              <h1 className="font-heading text-3xl sm:text-4xl lg:text-[2.8vw] font-bold text-[#2A170F] tracking-tight">
                 Add New Card
               </h1>
-              <p className="font-secondary text-xs sm:text-sm text-body/80 mt-1">
+              <p className="font-secondary text-xs sm:text-sm lg:text-[0.85vw] text-body/80 mt-1 lg:mt-[0.3vw]">
                 Add a credit or debit card to your account
               </p>
             </div>
 
             {/* Graphical Live Card Preview */}
-            <div className="bg-[#2E2F33] text-white rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden max-w-xl">
-              <div className="flex items-center justify-between mb-6">
+            <div className="bg-[#2E2F33] text-white rounded-3xl lg:rounded-[1.5vw] p-6 sm:p-8 lg:p-[2vw] shadow-md relative overflow-hidden w-full lg:max-w-none">
+              <div className="flex items-center justify-between mb-6 lg:mb-[1.5vw]">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">
+                  <span className="text-[10px] lg:text-[0.65vw] font-bold uppercase tracking-widest text-gray-400 block">
                     CARD TYPE
                   </span>
                   <div className="text-base font-mono font-bold tracking-widest text-white mt-1">

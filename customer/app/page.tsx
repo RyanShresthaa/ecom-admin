@@ -1,15 +1,13 @@
-import Hero from "@/features/home/Hero";
 import AboutHero from "@/features/home/AboutHero";
-import Gallery from "@/features/home/Gallery";
-import History from "@/features/home/History";
 import Collection from "@/features/home/Collection";
 import Featured from "@/features/home/Featured";
-import Textile from "@/features/home/Textile";
+import Gallery from "@/features/home/Gallery";
+import Hero from "@/features/home/Hero";
 import Marketplace from "@/features/home/Marketplace";
-import Divider from "@/shared/ui/Divider";
-import WhyMatina from "@/features/home/WhyMatina";
 import Stats from "@/features/home/Stats";
 import Testimonials from "@/features/home/Testimonials";
+import Textile from "@/features/home/Textile";
+import WhyMatina from "@/features/home/WhyMatina";
 
 export default function Home() {
   return (

@@ -99,28 +99,28 @@ const NewAddress: React.FC = () => {
   };
 
   return (
-    <section className="min-h-screen bg-[#FAF6F2] pt-20 sm:pt-24 pb-16 px-4 sm:px-6 lg:px-8 select-none">
-      <div className="container-custom max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <section className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw] select-none">
+      <div className="w-full lg:max-w-none mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-[2vw] items-start">
           <ProfileSidebar active="addresses" />
 
-          <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6">
+          <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6 lg:gap-[1.5vw]">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary-heading block mb-1">
+              <span className="text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-[0.25em] text-primary-heading block mb-1 lg:mb-[0.3vw]">
                 ACCOUNT
               </span>
-              <h1 className="font-heading text-3xl sm:text-4xl font-bold text-[#2A170F] tracking-tight">
+              <h1 className="font-heading text-3xl sm:text-4xl lg:text-[2.8vw] font-bold text-[#2A170F] tracking-tight">
                 Add New Address
               </h1>
-              <p className="font-secondary text-xs sm:text-sm text-body/80 mt-1">
+              <p className="font-secondary text-xs sm:text-sm lg:text-[0.85vw] text-body/80 mt-1 lg:mt-[0.3vw]">
                 Add a new shipping or billing address to your account
               </p>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 sm:p-10 border border-primary/10">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <div className="bg-white rounded-3xl lg:rounded-[1.5vw] p-6 sm:p-10 lg:p-[2.5vw] border border-primary/10">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6 lg:gap-[1.5vw]">
                 {error ? (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-2xl">
+                  <div className="p-3 lg:p-[0.8vw] bg-red-50 border border-red-200 text-red-800 text-xs lg:text-[0.75vw] rounded-2xl lg:rounded-[1vw]">
                     {error}
                   </div>
                 ) : null}
@@ -155,9 +155,9 @@ const NewAddress: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-[1.2vw]">
                   <div>
-                    <label className="text-xs font-bold text-[#2A170F] block mb-2">Full Name</label>
+                    <label className="text-xs lg:text-[0.75vw] font-bold text-[#2A170F] block mb-2 lg:mb-[0.4vw]">Full Name</label>
                     <input
                       type="text"
                       value={fullName}
@@ -166,12 +166,12 @@ const NewAddress: React.FC = () => {
                       required
                       maxLength={80}
                       autoComplete="name"
-                      className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full px-4 lg:px-[1vw] py-3 lg:py-[0.6vw] bg-white border border-[#E2D5C7] rounded-2xl lg:rounded-[0.8vw] text-xs sm:text-sm lg:text-[0.75vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-[#2A170F] block mb-2">
+                    <label className="text-xs lg:text-[0.75vw] font-bold text-[#2A170F] block mb-2 lg:mb-[0.4vw]">
                       Street Address
                     </label>
                     <input
@@ -182,12 +182,12 @@ const NewAddress: React.FC = () => {
                       required
                       maxLength={200}
                       autoComplete="street-address"
-                      className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full px-4 lg:px-[1vw] py-3 lg:py-[0.6vw] bg-white border border-[#E2D5C7] rounded-2xl lg:rounded-[0.8vw] text-xs sm:text-sm lg:text-[0.75vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-[#2A170F] block mb-2">
+                    <label className="text-xs lg:text-[0.75vw] font-bold text-[#2A170F] block mb-2 lg:mb-[0.4vw]">
                       Phone Number
                     </label>
                     <input
@@ -205,12 +205,12 @@ const NewAddress: React.FC = () => {
                       maxLength={regionMode === 'nepal' ? 10 : 14}
                       inputMode="numeric"
                       autoComplete="tel"
-                      className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full px-4 lg:px-[1vw] py-3 lg:py-[0.6vw] bg-white border border-[#E2D5C7] rounded-2xl lg:rounded-[0.8vw] text-xs sm:text-sm lg:text-[0.75vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-[#2A170F] block mb-2">
+                    <label className="text-xs lg:text-[0.75vw] font-bold text-[#2A170F] block mb-2 lg:mb-[0.4vw]">
                       Apartment, Suite, etc. (Optional)
                     </label>
                     <input
@@ -219,7 +219,7 @@ const NewAddress: React.FC = () => {
                       onChange={(e) => setApartment(sanitizeSingleLine(e.target.value, 80))}
                       placeholder="Apt 5B"
                       maxLength={80}
-                      className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full px-4 lg:px-[1vw] py-3 lg:py-[0.6vw] bg-white border border-[#E2D5C7] rounded-2xl lg:rounded-[0.8vw] text-xs sm:text-sm lg:text-[0.75vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
 
@@ -233,7 +233,7 @@ const NewAddress: React.FC = () => {
                   />
 
                   <div>
-                    <label className="text-xs font-bold text-[#2A170F] block mb-2">
+                    <label className="text-xs lg:text-[0.75vw] font-bold text-[#2A170F] block mb-2 lg:mb-[0.4vw]">
                       Postal Code
                     </label>
                     <input
@@ -251,7 +251,7 @@ const NewAddress: React.FC = () => {
                       maxLength={regionMode === 'nepal' ? 6 : 10}
                       inputMode="numeric"
                       autoComplete="postal-code"
-                      className="w-full px-4 py-3 bg-white border border-[#E2D5C7] rounded-2xl text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                      className="w-full px-4 lg:px-[1vw] py-3 lg:py-[0.6vw] bg-white border border-[#E2D5C7] rounded-2xl lg:rounded-[0.8vw] text-xs sm:text-sm lg:text-[0.75vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
                 </div>

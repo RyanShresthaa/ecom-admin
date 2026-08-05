@@ -457,25 +457,25 @@ const Orders: React.FC = () => {
     : false;
 
   return (
-    <section className="min-h-screen bg-[#FAF6F2] pt-20 sm:pt-24 pb-16 px-4 sm:px-6 lg:px-8 select-none">
-      <div className="container-custom max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <section className="w-full bg-[#FAF6F2] min-h-screen pt-28 pb-20 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw] select-none">
+      <div className="w-full lg:max-w-none mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-[2vw] items-start">
           
           <ProfileSidebar active="orders" />
 
           {/* RIGHT MAIN CONTENT */}
-          <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6">
+          <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-6 lg:gap-[1.5vw]">
             
             {/* Header & Search Bar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 lg:gap-[1vw]">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary-heading block mb-1">
+                <span className="text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-[0.25em] text-primary-heading block mb-1 lg:mb-[0.3vw]">
                   ACCOUNT
                 </span>
-                <h1 className="font-heading text-3xl sm:text-4xl font-bold text-[#2A170F] tracking-tight">
+                <h1 className="font-heading text-3xl sm:text-4xl lg:text-[2.8vw] font-bold text-[#2A170F] tracking-tight">
                   My Orders
                 </h1>
-                <p className="font-secondary text-xs sm:text-sm text-body/80 mt-1">
+                <p className="font-secondary text-xs sm:text-sm lg:text-[0.85vw] text-body/80 mt-1 lg:mt-[0.3vw]">
                   {loading
                     ? 'Loading your orders…'
                     : statusCounts.all === 0
@@ -485,17 +485,17 @@ const Orders: React.FC = () => {
               </div>
 
               {/* Search Orders Pill */}
-              <div className="relative w-full md:w-64">
+              <div className="relative w-full md:w-64 lg:w-[16vw]">
                 <Icon
                   icon="lucide:search"
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"
+                  className="absolute left-3.5 lg:left-[0.8vw] top-1/2 -translate-y-1/2 w-4 h-4 lg:w-[1vw] lg:h-[1vw] text-muted"
                 />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search orders..."
-                  className="w-full pl-9 pr-4 py-2.5 bg-white border border-primary/15 rounded-full text-xs text-[#2A170F] placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full pl-9 lg:pl-[2.2vw] pr-4 lg:pr-[1vw] py-2.5 lg:py-[0.6vw] bg-white border border-primary/15 rounded-full text-xs lg:text-[0.75vw] text-[#2A170F] placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
             </div>
