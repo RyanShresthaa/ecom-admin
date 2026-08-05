@@ -36,13 +36,13 @@ const Story = () => {
     }, []);
 
     return (
-        <section className="w-full py-16 sm:py-24 md:py-28 select-none">
-            <div className="container-custom max-w-7xl mx-auto px-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-26 items-center">
+        <section className="w-full py-16 sm:py-24 md:py-28 lg:py-[6vw] select-none">
+            <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-[4vw] items-center w-full lg:max-w-none">
 
                     <div 
                         ref={containerRef}
-                        className="relative w-full aspect-square md:aspect-4/3.5 rounded-2xl md:rounded-2xl overflow-hidden"
+                        className="relative w-full aspect-square md:aspect-4/3.5 rounded-2xl lg:rounded-[1.4vw] overflow-hidden"
                     >
                         <div 
                             ref={imageWrapperRef}
@@ -59,21 +59,21 @@ const Story = () => {
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-start text-left">
-                        <span className="block text-[11px] sm:text-xs font-semibold tracking-[0.25em] text-[#c89b5d] uppercase mb-4">
+                    <div className="flex flex-col items-start text-left w-full lg:max-w-none">
+                        <span className="block text-[11px] sm:text-xs lg:text-[0.75vw] font-semibold tracking-[0.25em] text-[#c89b5d] uppercase mb-4 lg:mb-[0.8vw]">
                             Our Story
                         </span>
 
-                        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal leading-tight mb-6 tracking-tight">
+                        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal leading-tight lg:leading-[1.15] mb-6 lg:mb-[1.5vw] tracking-tight">
                             Preserving Heritage <br className="hidden sm:inline" />
                             Through Craftsmanship
                         </h2>
 
-                        <p className="font-secondary text-xs sm:text-sm leading-relaxed  max-w-xl mb-5 opacity-90">
+                        <p className="font-secondary text-xs sm:text-sm lg:text-[0.85vw] leading-relaxed lg:leading-[1.6vw] max-w-xl lg:max-w-none w-full mb-5 lg:mb-[1vw] opacity-90">
                             Founded in 2026, Matina Crafts was created with a mission to connect skilled Nepalese artisans with customers around the world. Every product is handcrafted in Nepal using traditional techniques passed down through generations.
                         </p>
 
-                        <p className="font-secondary text-xs sm:text-sm leading-relaxed max-w-xl mb-8 opacity-90">
+                        <p className="font-secondary text-xs sm:text-sm lg:text-[0.85vw] leading-relaxed lg:leading-[1.6vw] max-w-xl lg:max-w-none w-full mb-8 lg:mb-[2vw] opacity-90">
                             Our platform empowers local communities while preserving Nepal’s artistic heritage — making authentic craftsmanship accessible to collectors, designers, and conscious shoppers globally.
                         </p>
 

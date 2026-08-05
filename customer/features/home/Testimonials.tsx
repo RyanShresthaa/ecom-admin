@@ -6,11 +6,11 @@ import { fetchGoogleReviews, type GoogleReview } from '@/lib/api';
 const animationDurations = [35, 28, 32, 26];
 
 const StarRating = ({ rating }: { rating: number }) => (
-  <div className="flex gap-0.5">
+  <div className="flex gap-0.5 lg:gap-[0.1vw]">
     {Array.from({ length: 5 }, (_, i) => (
       <span
         key={i}
-        className={`text-lg ${i < rating ? 'text-amber-400' : 'text-gray-200'}`}
+        className={`text-lg lg:text-[1vw] ${i < rating ? 'text-amber-400' : 'text-gray-200'}`}
       >
         ★
       </span>
@@ -19,21 +19,21 @@ const StarRating = ({ rating }: { rating: number }) => (
 );
 
 const TestimonialCard = ({ t }: { t: GoogleReview }) => (
-  <div className="bg-white rounded-2xl p-5 sm:p-6 mb-4 border border-[#f0ebe6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-shadow duration-300 hover:shadow-[0_6px_20px_rgba(140,82,58,0.08)]">
-    <div className="flex items-center justify-between gap-3 mb-4">
+  <div className="bg-white rounded-2xl lg:rounded-[1.2vw] p-5 sm:p-6 lg:p-[1.2vw] mb-4 lg:mb-[1vw] border border-[#f0ebe6] shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-shadow duration-300 hover:shadow-[0_6px_20px_rgba(140,82,58,0.08)]">
+    <div className="flex items-center justify-between gap-3 lg:gap-[0.6vw] mb-4 lg:mb-[0.8vw]">
       <div
-        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 ring-2 ring-white shadow-sm"
+        className="w-10 h-10 lg:w-[2.4vw] lg:h-[2.4vw] rounded-full flex items-center justify-center text-white text-xs lg:text-[0.75vw] font-semibold shrink-0 ring-2 ring-white shadow-sm"
         style={{ backgroundColor: t.color }}
       >
         {t.initials}
       </div>
       <div className="min-w-0">
-        <span className="text-sm font-semibold text-[#2A170F]">{t.name}</span>
-        {t.role ? <span className="text-xs text-[#9E7D6F] ml-1.5">– {t.role}</span> : null}
+        <span className="text-sm lg:text-[0.85vw] font-semibold text-[#2A170F]">{t.name}</span>
+        {t.role ? <span className="text-xs lg:text-[0.7vw] text-[#9E7D6F] ml-1.5 lg:ml-[0.3vw]">– {t.role}</span> : null}
       </div>
     </div>
 
-    <p className="text-[13px] sm:text-sm leading-relaxed text-[#664132] mb-4">
+    <p className="text-[13px] sm:text-sm lg:text-[0.8vw] leading-relaxed lg:leading-[1.5vw] text-[#664132] mb-4 lg:mb-[0.8vw]">
       &ldquo;{t.text}&rdquo;
     </p>
 
@@ -86,7 +86,7 @@ const Testimonials = () => {
   if (loaded && reviews.length === 0) return null;
 
   return (
-    <section className="w-full py-16 sm:pb-20 md:pb-24 select-none overflow-hidden">
+    <section className="w-full py-16 sm:pb-20 md:pb-24 lg:py-[6vw] select-none overflow-hidden">
       <style>{`
         @keyframes testimonialUp {
           0%   { transform: translateY(0); }
@@ -101,13 +101,13 @@ const Testimonials = () => {
         }
       `}</style>
 
-      <div className="container-custom px-4 max-w-7xl mx-auto">
-        <div className="text-center mb-12 sm:mb-16">
-          <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal leading-tight tracking-tight text-[#2A170F] mb-4">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none mx-auto">
+        <div className="text-center mb-12 sm:mb-16 lg:mb-[3vw] flex flex-col items-center w-full lg:max-w-none">
+          <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal leading-tight lg:leading-[1.1] tracking-tight text-[#2A170F] mb-4 lg:mb-[0.8vw]">
             What Our{' '}
             <span className="text-(--primary-heading)">Customers Say</span>
           </h2>
-          <p className="text-xs sm:text-sm leading-relaxed text-[#664132] font-secondary max-w-md mx-auto">
+          <p className="text-xs sm:text-sm lg:text-[0.85vw] leading-relaxed lg:leading-[1.6vw] text-[#664132] font-secondary max-w-md lg:max-w-none w-full mx-auto">
             Trusted by customers worldwide for authentic Nepalese craftsmanship and reliable delivery.
           </p>
         </div>
@@ -118,9 +118,9 @@ const Testimonials = () => {
           </div>
         ) : (
           <div
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-[1.2vw] w-full"
             style={{
-              height: '680px',
+              height: 'clamp(500px, 42vw, 800px)',
               maskImage:
                 'linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%)',
               WebkitMaskImage:

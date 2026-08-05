@@ -59,7 +59,9 @@ const Navbar = () => {
       <nav
         className={`w-full z-50 transition-all duration-500 ease-in-out ${isHome || isAbout || isProductsPage || isContact || isBlog || isWishlist || isAuthPage || isCart ? 'fixed' : 'sticky'
           } top-0 left-0 ${visible ? 'translate-y-0' : '-translate-y-full'
-          } ${isAbout || isProductDetail || isContact || isBlog || isWishlist || isAuthPage || isCart
+          } ${isContact
+            ? 'bg-[#FAF6F2]/90 backdrop-blur-md border-b border-primary/10 py-1 text-[#2A170F]'
+            : isAbout || isProductDetail || isBlog || isWishlist || isAuthPage || isCart
             ? (scrolled
               ? 'bg-[#FAF6F2]/90 backdrop-blur-md border-b border-primary/10 py-1'
               : 'bg-transparent py-1 border-b border-transparent')
@@ -79,7 +81,7 @@ const Navbar = () => {
                 : 'text-white'
           }`}
       >
-        <div className="container-custom flex items-center justify-between lg:grid lg:grid-cols-3">
+        <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none flex items-center justify-between lg:grid lg:grid-cols-3">
 
           {/* Left Column — Logo (Desktop) / Hamburger (Mobile) */}
           <div className="flex items-center">
@@ -98,14 +100,14 @@ const Navbar = () => {
               className="hidden lg:flex items-center transition-transform duration-300 hover:scale-[1.03]"
               aria-label="Matina Crafts Home"
             >
-              <div className={`transition-all duration-300 ${(isHome || isProductsPage || (isContact && !scrolled)) && !scrolled ? 'brightness-0 invert' : ''
+              <div className={`transition-all duration-300 ${(isHome || isProductsPage) && !scrolled ? 'brightness-0 invert' : ''
                 }`}>
                 <Image
                   src="/images/logo/Vector.png"
                   alt="Matina Crafts Logo"
                   width={130}
                   height={40}
-                  className="h-8 md:h-18 w-auto object-contain"
+                  className="h-8 md:h-12 lg:h-[3.5vw] w-auto object-contain"
                   priority
                 />
               </div>
@@ -117,7 +119,7 @@ const Navbar = () => {
               className="lg:hidden flex items-center ml-3"
               aria-label="Matina Crafts Home"
             >
-              <div className={`transition-all duration-300 ${(isHome || isProductsPage || (isContact && !scrolled)) && !scrolled ? 'brightness-0 invert' : ''
+              <div className={`transition-all duration-300 ${(isHome || isProductsPage) && !scrolled ? 'brightness-0 invert' : ''
                 }`}>
                 <Image
                   src="/images/logo/Vector.png"
@@ -132,35 +134,31 @@ const Navbar = () => {
           </div>
 
           {/* Center Column — Navigation Links (Desktop only) */}
-          <div className="hidden lg:flex items-center  justify-center gap-12 text-[12px] font-semibold uppercase tracking-[0.18em]">
+          <div className="hidden lg:flex items-center justify-center gap-12 lg:gap-[3vw] text-[12px] lg:text-[0.75vw] font-semibold uppercase tracking-[0.18em]">
             <Link
               href="/"
-              className={`relative py-2 transition-colors duration-300 group ${isContact && !scrolled
-                ? 'text-white hover:text-white/80'
-                : (isAbout || isProductDetail || isContact || isBlog || isWishlist
-                  ? 'hover:text-primary-dark'
-                  : (isHome || isProductsPage)
-                    ? (scrolled ? 'hover:text-primary' : 'hover:text-secondary')
-                    : 'hover:text-secondary')
+              className={`relative py-2 transition-colors duration-300 group ${isAbout || isProductDetail || isContact || isBlog || isWishlist
+                ? 'hover:text-primary-dark'
+                : (isHome || isProductsPage)
+                  ? (scrolled ? 'hover:text-primary' : 'hover:text-secondary')
+                  : 'hover:text-secondary'
                 }`}
             >
               <span>Home</span>
-              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-current transition-transform duration-300 origin-center ${isActive('/') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] lg:h-[0.1vw] bg-current transition-transform duration-300 origin-center ${isActive('/') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`} />
             </Link>
             <Link
               href="/products"
-              className={`relative py-2 transition-colors duration-300 group ${isContact && !scrolled
-                ? 'text-white hover:text-white/80'
-                : (isAbout || isProductDetail || isContact || isBlog || isWishlist
-                  ? 'hover:text-primary-dark'
-                  : (isHome || isProductsPage)
-                    ? (scrolled ? 'hover:text-primary' : 'hover:text-secondary')
-                    : 'hover:text-secondary')
+              className={`relative py-2 transition-colors duration-300 group ${isAbout || isProductDetail || isContact || isBlog || isWishlist
+                ? 'hover:text-primary-dark'
+                : (isHome || isProductsPage)
+                  ? (scrolled ? 'hover:text-primary' : 'hover:text-secondary')
+                  : 'hover:text-secondary'
                 }`}
             >
               <span>Shop</span>
-              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-current transition-transform duration-300 origin-center ${isActive('/products') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] lg:h-[0.1vw] bg-current transition-transform duration-300 origin-center ${isActive('/products') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`} />
             </Link>
             <Link
@@ -173,7 +171,7 @@ const Navbar = () => {
                 }`}
             >
               <span>About</span>
-              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-current transition-transform duration-300 origin-center ${isActive('/about') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] lg:h-[0.1vw] bg-current transition-transform duration-300 origin-center ${isActive('/about') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`} />
             </Link>
             <Link
@@ -186,7 +184,7 @@ const Navbar = () => {
                 }`}
             >
               <span>Blogs</span>
-              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-current transition-transform duration-300 origin-center ${isBlog ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] lg:h-[0.1vw] bg-current transition-transform duration-300 origin-center ${isBlog ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`} />
             </Link>
             <Link
@@ -199,13 +197,13 @@ const Navbar = () => {
                 }`}
             >
               <span>Contact</span>
-              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] bg-current transition-transform duration-300 origin-center ${isActive('/contact') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              <span className={`absolute bottom-0 left-0 w-full h-[1.5px] lg:h-[0.1vw] bg-current transition-transform duration-300 origin-center ${isActive('/contact') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`} />
             </Link>
           </div>
 
           {/* Right Column — Icon Actions */}
-          <div className="flex items-center justify-end gap-5">
+          <div className="flex items-center justify-end gap-5 lg:gap-[1.5vw]">
             {/* Profile */}
             <Link
               href="/profile"
@@ -217,7 +215,7 @@ const Navbar = () => {
                 }`}
               aria-label="Profile"
             >
-              <Icon icon="lucide:user" className="w-[18px] h-[18px]" />
+              <Icon icon="lucide:user" className="w-[18px] h-[18px] lg:w-[1.2vw] lg:h-[1.2vw]" />
             </Link>
 
             {/* Wishlist / Heart */}
@@ -231,9 +229,9 @@ const Navbar = () => {
                 }`}
               aria-label="Wishlist"
             >
-              <Icon icon="lucide:heart" className="w-[18px] h-[18px]" />
+              <Icon icon="lucide:heart" className="w-[18px] h-[18px] lg:w-[1.2vw] lg:h-[1.2vw]" />
               {totalWishlistItems > 0 && (
-                <span className="absolute -top-2 -right-2.5 w-4 h-4 bg-primary text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute -top-2 -right-2.5 lg:-top-[0.4vw] lg:-right-[0.5vw] w-4 h-4 lg:w-[1vw] lg:h-[1vw] bg-primary text-white text-[9px] lg:text-[0.55vw] font-bold rounded-full flex items-center justify-center shadow-xs">
                   {totalWishlistItems}
                 </span>
               )}
@@ -250,9 +248,9 @@ const Navbar = () => {
                 }`}
               aria-label="Shopping bag"
             >
-              <Icon icon="lucide:shopping-bag" className="w-[18px] h-[18px]" />
+              <Icon icon="lucide:shopping-bag" className="w-[18px] h-[18px] lg:w-[1.2vw] lg:h-[1.2vw]" />
               {totalItems > 0 && (
-                <span className="absolute -top-2 -right-2.5 w-4 h-4 bg-primary text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-xs">
+                <span className="absolute -top-2 -right-2.5 lg:-top-[0.4vw] lg:-right-[0.5vw] w-4 h-4 lg:w-[1vw] lg:h-[1vw] bg-primary text-white text-[9px] lg:text-[0.55vw] font-bold rounded-full flex items-center justify-center shadow-xs">
                   {totalItems}
                 </span>
               )}

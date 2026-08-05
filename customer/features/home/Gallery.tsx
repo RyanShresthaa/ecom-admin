@@ -181,22 +181,22 @@ const Gallery = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative w-full bg-[#FAF6F2] pt-16 sm:pt-20 md:pt-24 overflow-hidden select-none"
+      className="relative w-full bg-[#FAF6F2] pt-16 sm:pt-20 md:pt-24 lg:pt-[5vw] overflow-hidden select-none"
     >
       {/* Heading */}
-      <div className="relative z-10 text-center mb-6 md:mb-8 px-4">
-        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal leading-[1.15] tracking-tight text-heading">
+      <div className="relative z-10 text-center mb-6 md:mb-8 lg:mb-[2.5vw] px-4 lg:px-[2vw]">
+        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal leading-[1.15] lg:leading-[1.1] tracking-tight text-heading">
           Crafted by Hand,
           <br />
           <span className="text-(--primary-heading)">Built for the World</span>
         </h2>
-        <p className="mt-4 text-xs sm:text-lg text-body/70 max-w-md mx-auto">
+        <p className="mt-4 lg:mt-[1vw] text-xs sm:text-sm lg:text-[0.8vw] text-body/70 max-w-md sm:max-w-xl lg:max-w-[40vw] mx-auto leading-relaxed lg:leading-[1.5vw]">
           Scroll through our curated collection of authentic Nepalese handcrafted treasures
         </p>
       </div>
 
       {/* Circle field */}
-      <div ref={fieldRef} className="relative w-full mx-auto cursor-grab active:cursor-grabbing" style={{ height: 'clamp(500px, 70vw, 750px)' }}>
+      <div ref={fieldRef} className="relative w-full mx-auto cursor-grab active:cursor-grabbing" style={{ height: 'clamp(500px, 52vw, 950px)' }}>
         {circles.map((c, i) => (
           <div
             key={i}
@@ -205,8 +205,8 @@ const Gallery = () => {
             style={{
               top: `${c.top}%`,
               left: `${c.left}%`,
-              width: `clamp(${Math.round(c.size * 0.5)}px, ${(c.size / 11).toFixed(1)}vw, ${c.size}px)`,
-              height: `clamp(${Math.round(c.size * 0.5)}px, ${(c.size / 11).toFixed(1)}vw, ${c.size}px)`,
+              width: `clamp(${Math.round(c.size * 0.45)}px, ${(c.size / 14.4).toFixed(2)}vw, ${Math.round(c.size * 1.6)}px)`,
+              height: `clamp(${Math.round(c.size * 0.45)}px, ${(c.size / 14.4).toFixed(2)}vw, ${Math.round(c.size * 1.6)}px)`,
               transform: 'translate(-50%, -50%)',
               opacity: 0,
             }}

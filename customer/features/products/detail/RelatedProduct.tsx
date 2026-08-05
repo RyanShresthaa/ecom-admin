@@ -80,9 +80,9 @@ export default function RelatedProduct({
   const categoryName = currentProduct?.category ?? 'Products';
 
   return (
-    <section className="mt-16 sm:mt-24 pt-16 border-t border-primary/10 select-none">
-      <div className="flex justify-between items-end mb-8 sm:mb-10 text-left">
-        <h2 className="font-heading text-2xl sm:text-3xl font-normal leading-tight text-primary-dark">
+    <section className="w-full mt-16 sm:mt-24 lg:mt-[5vw] pt-16 lg:pt-[3vw] border-t border-primary/10 select-none">
+      <div className="flex justify-between items-end mb-8 sm:mb-10 lg:mb-[2vw] text-left">
+        <h2 className="font-heading text-2xl sm:text-3xl lg:text-[2.2vw] font-normal leading-tight text-primary-dark">
           {title}
         </h2>
         <Link
@@ -91,7 +91,7 @@ export default function RelatedProduct({
               ? `/products?category=${encodeURIComponent(currentProduct.category)}`
               : '/products'
           }
-          className="inline-flex items-center gap-1.5 font-secondary text-xs sm:text-sm font-semibold text-primary hover:text-primary-dark transition-colors group cursor-pointer"
+          className="inline-flex items-center gap-1.5 lg:gap-[0.4vw] font-secondary text-xs sm:text-sm lg:text-[0.75vw] font-semibold text-primary hover:text-primary-dark transition-colors group cursor-pointer"
         >
           <span>View All {categoryName}</span>
           <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
@@ -99,13 +99,13 @@ export default function RelatedProduct({
       </div>
 
       {loading && (
-        <p className="font-secondary text-sm text-primary py-8 text-center">
+        <p className="font-secondary text-sm lg:text-[0.85vw] text-primary py-8 lg:py-[2vw] text-center">
           Loading recommendations…
         </p>
       )}
 
       {!loading && relatedProducts.length === 0 && (
-        <p className="font-secondary text-sm text-body/60 py-8 text-center">
+        <p className="font-secondary text-sm lg:text-[0.85vw] text-body/60 py-8 lg:py-[2vw] text-center">
           No recommendations yet.{' '}
           <Link href="/products" className="text-primary hover:underline">
             Browse the catalog
@@ -114,7 +114,7 @@ export default function RelatedProduct({
       )}
 
       {!loading && relatedProducts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-[2vw]">
           {relatedProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}

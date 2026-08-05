@@ -187,7 +187,7 @@ const Signup: React.FC = () => {
   );
 
   return (
-    <section className="h-screen max-h-screen bg-background flex items-center justify-center pt-16 sm:pt-20 pb-4 px-4 sm:px-6 lg:px-8 select-none overflow-hidden">
+    <section className="w-full min-h-screen lg:h-screen lg:min-h-0 bg-background flex items-center justify-center pt-16 sm:pt-20 lg:pt-[5vw] pb-4 lg:pb-[2vw] px-4 sm:px-8 lg:px-[5vw] select-none overflow-hidden">
       {toast ? (
         <FlashToast
           message={toast.message}
@@ -195,8 +195,8 @@ const Signup: React.FC = () => {
           onDismiss={() => setToast(null)}
         />
       ) : null}
-      <div className="container-custom max-w-4xl mx-auto w-full">
-        <div className="bg-white/90 rounded-3xl border border-primary/15 overflow-hidden grid grid-cols-1 lg:grid-cols-12 max-h-[85vh] lg:max-h-[580px]">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none mx-auto">
+        <div className="bg-white/90 rounded-3xl lg:rounded-[1.5vw] border border-primary/15 overflow-hidden grid grid-cols-1 lg:grid-cols-12 max-h-[92vh] lg:max-h-[88vh] w-full lg:max-w-none">
           <div className="lg:col-span-5 relative min-h-[140px] lg:min-h-full w-full overflow-hidden">
             <Image
               src="/images/hero/gallery/center-left.png"
@@ -209,36 +209,36 @@ const Signup: React.FC = () => {
             <div className="absolute inset-0 bg-black/10" />
           </div>
 
-          <div className="lg:col-span-7 bg-[#F7F0E9] p-5 sm:p-7 lg:p-8 flex flex-col justify-center relative overflow-y-auto">
-            <div className="flex items-center gap-8 border-b border-[#E5D7C8] pb-2.5 mb-4">
+          <div className="lg:col-span-7 bg-[#F7F0E9] p-5 sm:p-7 lg:p-[1.8vw] flex flex-col justify-center relative overflow-y-auto min-h-0">
+            <div className="flex items-center gap-8 lg:gap-[2vw] border-b border-[#E5D7C8] pb-2 lg:pb-[0.4vw] mb-3 lg:mb-[0.6vw]">
               <Link
                 href="/login"
-                className="relative text-base font-bold pb-1 transition-colors cursor-pointer text-muted hover:text-foreground"
+                className="relative text-base lg:text-[1vw] font-bold pb-1 lg:pb-[0.3vw] transition-colors cursor-pointer text-muted hover:text-foreground"
               >
                 Login
               </Link>
 
               <button
                 type="button"
-                className="relative text-base font-bold pb-1 transition-colors cursor-pointer text-[#1E2B4D]"
+                className="relative text-base lg:text-[1vw] font-bold pb-1 lg:pb-[0.3vw] transition-colors cursor-pointer text-[#1E2B4D]"
               >
                 Sign Up
-                <span className="absolute bottom-0 left-0 w-full h-[2.5px] bg-[#1E2B4D] rounded-full" />
+                <span className="absolute bottom-0 left-0 w-full h-[2.5px] lg:h-[0.15vw] bg-[#1E2B4D] rounded-full" />
               </button>
             </div>
 
             {error && (
-              <div className="mb-3 p-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center gap-2">
-                <Icon icon="lucide:alert-circle" className="w-4 h-4 shrink-0" />
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 text-red-700 text-xs lg:text-[0.75vw] rounded-lg flex items-center gap-2">
+                <Icon icon="lucide:alert-circle" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {step === 'otp' ? (
-              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3">
-                <div className="rounded-xl border border-[#E2D5C7] bg-white/70 px-3.5 py-3">
-                  <p className="text-sm font-semibold text-[#1E2B4D]">Verify your email</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-body">
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3 lg:gap-[0.8vw]">
+                <div className="rounded-xl border border-[#E2D5C7] bg-white/70 px-3.5 lg:px-[1vw] py-3 lg:py-[0.6vw]">
+                  <p className="text-sm lg:text-[0.85vw] font-semibold text-[#1E2B4D]">Verify your email</p>
+                  <p className="mt-1 text-[11px] lg:text-[0.7vw] leading-relaxed text-body">
                     We sent a 6-digit code to{' '}
                     <span className="font-semibold text-[#2A170F]">{email}</span>. Enter it below
                     to activate your account, then sign in.
@@ -246,8 +246,8 @@ const Signup: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1">
-                    <Icon icon="ph:password-bold" className="w-3.5 h-3.5 text-primary" />
+                  <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1 lg:mb-[0.2vw]">
+                    <Icon icon="ph:password-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                     Verification code
                   </label>
                   <input
@@ -258,7 +258,7 @@ const Signup: React.FC = () => {
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 8))}
                     placeholder="••••••"
                     required
-                    className="w-full px-3.5 py-2.5 bg-white/90 border border-[#E2D5C7] rounded-lg text-sm tracking-[0.35em] text-center font-mono text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-3.5 lg:px-[1vw] py-2.5 lg:py-[0.5vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-sm lg:text-[0.85vw] tracking-[0.35em] text-center font-mono text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                 </div>
 
@@ -270,7 +270,7 @@ const Signup: React.FC = () => {
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <Icon icon="lucide:loader-2" className="w-4 h-4 animate-spin" />
+                      <Icon icon="lucide:loader-2" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] animate-spin" />
                       Verifying...
                     </span>
                   ) : (
@@ -283,7 +283,7 @@ const Signup: React.FC = () => {
                     type="button"
                     disabled={loading || resendCooldown > 0}
                     onClick={() => void handleResendOtp()}
-                    className="text-[11px] font-semibold text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                    className="text-[11px] lg:text-[0.7vw] font-semibold text-primary hover:underline disabled:opacity-50 disabled:no-underline"
                   >
                     {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
                   </button>
@@ -296,17 +296,17 @@ const Signup: React.FC = () => {
                       setOtp('');
                       setError('');
                     }}
-                    className="text-[11px] text-body hover:text-foreground"
+                    className="text-[11px] lg:text-[0.7vw] text-body hover:text-foreground"
                   >
                     Back to sign up
                   </button>
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleSignUpSubmit} className="flex flex-col gap-2.5">
+              <form onSubmit={handleSignUpSubmit} className="flex flex-col gap-2.5 lg:gap-[0.6vw]">
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1">
-                    <Icon icon="ph:user-bold" className="w-3.5 h-3.5 text-primary" />
+                  <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1 lg:mb-[0.2vw]">
+                    <Icon icon="ph:user-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                     FULL NAME
                   </label>
                   <input
@@ -317,13 +317,13 @@ const Signup: React.FC = () => {
                     required
                     maxLength={80}
                     autoComplete="name"
-                    className="w-full px-3.5 py-2 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-3.5 lg:px-[1vw] py-2 lg:py-[0.4vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-xs sm:text-sm lg:text-[0.8vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1">
-                    <Icon icon="ph:envelope-simple-bold" className="w-3.5 h-3.5 text-primary" />
+                  <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1 lg:mb-[0.2vw]">
+                    <Icon icon="ph:envelope-simple-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                     EMAIL
                   </label>
                   <input
@@ -334,13 +334,13 @@ const Signup: React.FC = () => {
                     required
                     maxLength={320}
                     autoComplete="email"
-                    className="w-full px-3.5 py-2 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-3.5 lg:px-[1vw] py-2 lg:py-[0.4vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-xs sm:text-sm lg:text-[0.8vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1">
-                    <Icon icon="ph:lock-simple-bold" className="w-3.5 h-3.5 text-primary" />
+                  <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1 lg:mb-[0.2vw]">
+                    <Icon icon="ph:lock-simple-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                     PASSWORD
                   </label>
                   <div className="relative">
@@ -352,22 +352,22 @@ const Signup: React.FC = () => {
                       required
                       maxLength={128}
                       autoComplete="new-password"
-                      className="w-full px-3.5 py-2 pr-10 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                      className="w-full px-3.5 lg:px-[1vw] py-2 lg:py-[0.4vw] pr-10 lg:pr-[2.5vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-xs sm:text-sm lg:text-[0.8vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1"
+                      className="absolute right-3 lg:right-[0.8vw] top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      <Icon icon={showPassword ? 'lucide:eye-off' : 'lucide:eye'} className="w-4 h-4" />
+                      <Icon icon={showPassword ? 'lucide:eye-off' : 'lucide:eye'} className="w-4 h-4 lg:w-[1vw] lg:h-[1vw]" />
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1">
-                    <Icon icon="ph:lock-simple-bold" className="w-3.5 h-3.5 text-primary" />
+                  <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1 lg:mb-[0.2vw]">
+                    <Icon icon="ph:lock-simple-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                     CONFIRM PASSWORD
                   </label>
                   <div className="relative">
@@ -379,31 +379,31 @@ const Signup: React.FC = () => {
                       required
                       maxLength={128}
                       autoComplete="new-password"
-                      className="w-full px-3.5 py-2 pr-10 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                      className="w-full px-3.5 lg:px-[1vw] py-2 lg:py-[0.4vw] pr-10 lg:pr-[2.5vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-xs sm:text-sm lg:text-[0.8vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1"
+                      className="absolute right-3 lg:right-[0.8vw] top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1"
                       aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     >
                       <Icon
                         icon={showConfirmPassword ? 'lucide:eye-off' : 'lucide:eye'}
-                        className="w-4 h-4"
+                        className="w-4 h-4 lg:w-[1vw] lg:h-[1vw]"
                       />
                     </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 my-0.5">
+                <div className="flex items-center gap-2 lg:gap-[0.4vw] my-0.5 lg:my-[0.1vw]">
                   <input
                     type="checkbox"
                     id="agreeTerms"
                     checked={agreeTerms}
                     onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-[#E2D5C7] text-primary focus:ring-primary accent-primary cursor-pointer"
+                    className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] rounded border-[#E2D5C7] text-primary focus:ring-primary accent-primary cursor-pointer"
                   />
-                  <label htmlFor="agreeTerms" className="text-[11px] text-body cursor-pointer">
+                  <label htmlFor="agreeTerms" className="text-[11px] lg:text-[0.75vw] text-body cursor-pointer">
                     I agree to the{' '}
                     <span className="font-semibold text-[#1E2B4D]">Terms & Conditions</span>
                   </label>
@@ -413,11 +413,11 @@ const Signup: React.FC = () => {
                   variant="primary"
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-1 py-2.5 shadow-none! hover:shadow-none!"
+                  className="w-full mt-1 lg:mt-[0.3vw] py-2.5 shadow-none! hover:shadow-none!"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <Icon icon="lucide:loader-2" className="w-4 h-4 animate-spin" />
+                      <Icon icon="lucide:loader-2" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] animate-spin" />
                       Creating Account...
                     </span>
                   ) : (
@@ -425,9 +425,9 @@ const Signup: React.FC = () => {
                   )}
                 </Button>
 
-                <div className="relative my-1 flex items-center justify-center">
+                <div className="relative my-1 lg:my-[0.3vw] flex items-center justify-center">
                   <div className="border-t border-[#E2D5C7] w-full" />
-                  <span className="bg-[#F7F0E9] px-3 text-[10px] font-bold tracking-wider text-muted uppercase shrink-0">
+                  <span className="bg-[#F7F0E9] px-3 lg:px-[0.8vw] text-[10px] lg:text-[0.65vw] font-bold tracking-wider text-muted uppercase shrink-0">
                     OR
                   </span>
                   <div className="border-t border-[#E2D5C7] w-full" />
@@ -439,7 +439,7 @@ const Signup: React.FC = () => {
                   onCredential={handleGoogleCredential}
                 />
 
-                <p className="text-center text-xs text-body mt-1">
+                <p className="text-center text-xs lg:text-[0.75vw] text-body mt-1 lg:mt-[0.3vw]">
                   Already have an account?{' '}
                   <Link
                     href="/login"

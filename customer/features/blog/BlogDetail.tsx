@@ -35,15 +35,15 @@ export default function BlogDetail({ post }: BlogDetailProps) {
     const categoryStyles = getCategoryStyles(post.category);
 
     return (
-        <main className="w-full min-h-screen pt-24 pb-24 px-4 sm:px-6 md:px-12 flex flex-col items-center">
-            <div className="w-full max-w-5xl">
+        <main className="w-full min-h-screen pt-24 pb-24 lg:py-[5vw] px-4 sm:px-8 lg:px-[5vw] select-none flex flex-col items-center">
+            <div className="w-full max-w-5xl lg:max-w-none">
                 {/* Back to blogs link */}
                 <Link
                     href="/blog"
-                    className="inline-flex items-center gap-2 text-xs md:text-sm text-primary/70 hover:text-primary transition-colors uppercase mb-8 group"
+                    className="inline-flex items-center gap-2 lg:gap-[0.5vw] text-xs md:text-sm lg:text-[0.75vw] text-primary/70 hover:text-primary transition-colors uppercase mb-8 lg:mb-[2vw] group"
                 >
                     <svg
-                        className="w-4 h-4 transform rotate-180 transition-transform group-hover:-translate-x-1"
+                        className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] transform rotate-180 transition-transform group-hover:-translate-x-1"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2.5"
@@ -55,17 +55,17 @@ export default function BlogDetail({ post }: BlogDetailProps) {
                 </Link>
 
                 {/* Main Article Container */}
-                <article className="w-full  p-8 md:p-12 lg:p-16 text-foreground flex flex-col gap-6 md:gap-8">
+                <article className="w-full p-8 md:p-12 lg:p-[4vw] text-foreground flex flex-col gap-6 md:gap-8 lg:gap-[2vw]">
                     
-                    <div className="text-sm font-light text-primary uppercase tracking-wider font-primary">
+                    <div className="text-sm lg:text-[0.75vw] font-light text-primary uppercase tracking-wider font-primary">
                         {post.date}
                     </div>
 
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl text-primary font-heading  -mt-2">
+                    <h1 className="text-4xl md:text-5xl lg:text-[3.5vw] text-primary font-heading -mt-2 lg:-mt-[0.5vw] leading-tight lg:leading-[1.15]">
                         {post.title}
                     </h1>
 
-                    <div className="relative w-full aspect-3/2 overflow-hidden rounded-2xl border border-primary group">
+                    <div className="relative w-full aspect-3/2 overflow-hidden rounded-2xl lg:rounded-[1.4vw] border border-primary group my-2 lg:my-[0.5vw]">
                         <Image
                             src={post.image}
                             alt={post.title}
@@ -75,27 +75,27 @@ export default function BlogDetail({ post }: BlogDetailProps) {
                         />
                     </div>
 
-                    <h2 className="text-2xl md:text-3xl text-primary font-heading mt-2">
+                    <h2 className="text-2xl md:text-3xl lg:text-[2vw] text-primary font-heading mt-2 lg:mt-[0.5vw]">
                         {post.subtitle}
                     </h2>
 
-                    <p className="text-primary text-base md:text-lg -mt-4">
+                    <p className="text-primary text-base md:text-lg lg:text-[0.9vw] leading-relaxed lg:leading-[1.6vw] -mt-4 lg:-mt-[0.8vw]">
                         {post.content}
                     </p>
 
                     {post.learnItems && post.learnItems.length > 0 && (
-                        <div className="flex flex-col gap-6 pt-4 border-t border-border/50">
-                            <h3 className="text-xl md:text-2xl text-primary font-heading">
+                        <div className="flex flex-col gap-6 lg:gap-[1.5vw] pt-4 lg:pt-[1vw] border-t border-border/50">
+                            <h3 className="text-xl md:text-2xl lg:text-[1.5vw] text-primary font-heading">
                                 {post.learnSectionTitle}
                             </h3>
                             
-                            <ul className="flex flex-col gap-6 list-none p-0 m-0">
+                            <ul className="flex flex-col gap-6 lg:gap-[1.2vw] list-none p-0 m-0">
                                 {post.learnItems.map((item, idx) => (
-                                    <li key={idx} className="flex flex-col gap-1">
-                                        <p className="font-semibold text-primary text-base md:text-lg font-primary">
+                                    <li key={idx} className="flex flex-col gap-1 lg:gap-[0.3vw]">
+                                        <p className="font-semibold text-primary text-base md:text-lg lg:text-[1vw] font-primary">
                                             {item.title}
                                         </p>
-                                        <p className="text-primary text-base font-light">
+                                        <p className="text-primary text-base lg:text-[0.85vw] font-light leading-relaxed lg:leading-[1.5vw]">
                                             {item.description}
                                         </p>
                                     </li>
@@ -104,7 +104,7 @@ export default function BlogDetail({ post }: BlogDetailProps) {
                         </div>
                     )}
 
-                    <p className="text-primary text-base md:text-lg font-light pt-6 border-t border-primary/50">
+                    <p className="text-primary text-base md:text-lg lg:text-[0.9vw] font-light leading-relaxed lg:leading-[1.6vw] pt-6 lg:pt-[1.5vw] border-t border-primary/50">
                         {post.conclusion}
                     </p>
                     

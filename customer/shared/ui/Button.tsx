@@ -12,7 +12,7 @@ export const Button = ({
   ...props
 }: ButtonProps) => {
   const baseStyles =
-    "relative inline-flex items-center justify-center px-9 py-3.5 text-[12px] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.97] hover:scale-[1.02]";
+    "relative inline-flex items-center justify-center px-9 lg:px-[2.2vw] py-3.5 lg:py-[0.8vw] text-[12px] lg:text-[0.75vw] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.97] hover:scale-[1.02]";
 
   const variants: Record<string, string> = {
     // Solid terracotta — filled pill button with white text

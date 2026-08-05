@@ -75,39 +75,39 @@ const Vision = () => {
   }, []);
 
   return (
-    <section className="w-full pt-8 pb-16 sm:pb-24 select-none bg-background">
-      <div className="container-custom max-w-7xl mx-auto px-4 text-center">
-        <span className="block text-[11px] sm:text-xs font-semibold tracking-[0.25em] text-primary-heading uppercase mb-4">
+    <section className="w-full pt-8 pb-16 sm:pb-24 lg:pb-[6vw] select-none bg-background">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none mx-auto text-center">
+        <span className="block text-[11px] sm:text-xs lg:text-[0.75vw] font-semibold tracking-[0.25em] text-primary-heading uppercase mb-4 lg:mb-[0.8vw]">
           What We Believe
         </span>
-        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal leading-tight text-primary-dark mb-12 sm:mb-16 tracking-tight">
+        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal leading-tight text-primary-dark mb-12 sm:mb-16 lg:mb-[3vw] tracking-tight">
           Our Core Values
         </h2>
 
         <div 
           ref={containerRef}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-[2vw] w-full lg:max-w-none"
         >
           {valueCards.map((card, index) => (
             <div 
               key={index}
-              className="value-card p-8 border border-primary/20 rounded-2xl bg-secondary/50 flex flex-col items-start text-left gap-4"
+              className="value-card p-8 lg:p-[1.8vw] border border-primary/20 rounded-2xl lg:rounded-[1.2vw] bg-secondary/50 flex flex-col items-start text-left gap-4 lg:gap-[1vw] w-full lg:max-w-none"
             >
-              <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center">
+              <div className="w-10 h-10 lg:w-[2.4vw] lg:h-[2.4vw] rounded-full bg-secondary/50 flex items-center justify-center shrink-0">
                 <Image 
                   src={card.icon} 
                   alt={`${card.title} icon`} 
                   width={20} 
                   height={20}
-                  className="w-5 h-5 object-contain"
+                  className="w-5 h-5 lg:w-[1.2vw] lg:h-[1.2vw] object-contain"
                 />
               </div>
 
               <div>
-                <h4 className="font-heading text-lg sm:text-xl font-semibold text-primary-dark mb-2">
+                <h4 className="font-heading text-lg sm:text-xl lg:text-[1.2vw] font-semibold text-primary-dark mb-2 lg:mb-[0.4vw]">
                   {card.title}
                 </h4>
-                <p className="font-secondary text-xs sm:text-sm leading-relaxed text-body opacity-95">
+                <p className="font-secondary text-xs sm:text-sm lg:text-[0.8vw] leading-relaxed lg:leading-[1.5vw] text-body opacity-95">
                   {card.description}
                 </p>
               </div>

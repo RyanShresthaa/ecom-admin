@@ -46,31 +46,31 @@ const WhyUs = () => {
   }, []);
 
   return (
-    <section className="w-full pb-16 sm:pb-24 select-none bg-background">
-      <div className="container-custom max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+    <section className="w-full pb-16 sm:pb-24 lg:pb-[6vw] select-none bg-background">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-[4vw] items-center w-full lg:max-w-none">
           
-          <div className="flex flex-col items-start text-left gap-6">
+          <div className="flex flex-col items-start text-left gap-6 lg:gap-[1.5vw] w-full lg:max-w-none">
             <div>
-              <span className="block text-[11px] sm:text-xs font-semibold tracking-[0.25em] text-primary-heading uppercase mb-3">
+              <span className="block text-[11px] sm:text-xs lg:text-[0.75vw] font-semibold tracking-[0.25em] text-primary-heading uppercase mb-3 lg:mb-[0.6vw]">
                 Why Choose Us
               </span>
-              <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal leading-tight text-primary-dark mb-4 tracking-tight">
+              <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal leading-tight text-primary-dark mb-4 lg:mb-[0.8vw] tracking-tight">
                 More Than a Marketplace
               </h2>
-              <p className="font-secondary text-xs sm:text-sm leading-relaxed text-body opacity-95 max-w-xl">
+              <p className="font-secondary text-xs sm:text-sm lg:text-[0.85vw] leading-relaxed lg:leading-[1.6vw] text-body opacity-95 max-w-xl lg:max-w-none w-full">
                 We are a bridge between world-class artisans and conscious global shoppers — built on trust, transparency, and a deep love for Nepalese culture.
               </p>
             </div>
 
-            <ul className="space-y-3.5 w-full">
+            <ul className="space-y-3.5 lg:space-y-[0.8vw] w-full lg:max-w-none">
               {checklistItems.map((item, index) => (
                 <li 
                   key={index}
-                  className="flex items-center gap-3.5 text-xs sm:text-sm text-body"
+                  className="flex items-center gap-3.5 lg:gap-[0.8vw] text-xs sm:text-sm lg:text-[0.85vw] text-body"
                 >
-                  <div className="w-5 h-5 rounded-full bg-secondary-light/65 text-primary flex items-center justify-center shrink-0">
-                    <Icon icon="lucide:check" className="w-3 h-3 stroke-3" />
+                  <div className="w-5 h-5 lg:w-[1.4vw] lg:h-[1.4vw] rounded-full bg-secondary-light/65 text-primary flex items-center justify-center shrink-0">
+                    <Icon icon="lucide:check" className="w-3 h-3 lg:w-[0.8vw] lg:h-[0.8vw] stroke-3" />
                   </div>
                   <span className="font-secondary font-medium">{item}</span>
                 </li>
@@ -80,7 +80,7 @@ const WhyUs = () => {
 
           <div 
             ref={containerRef}
-            className="relative w-full aspect-square md:aspect-4/3.5  rounded-3xl overflow-hidden"
+            className="relative w-full aspect-square md:aspect-4/3.5 rounded-3xl lg:rounded-[1.6vw] overflow-hidden"
           >
             <div 
               ref={imageWrapperRef}

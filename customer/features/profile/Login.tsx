@@ -144,7 +144,7 @@ const Login: React.FC = () => {
   );
 
   return (
-    <section className="h-screen max-h-screen bg-background flex items-center justify-center pt-16 sm:pt-20 pb-4 px-4 sm:px-6 lg:px-8 select-none overflow-hidden">
+    <section className="w-full min-h-screen lg:h-screen lg:min-h-0 bg-background flex items-center justify-center pt-16 sm:pt-20 lg:pt-[5vw] pb-4 lg:pb-[2vw] px-4 sm:px-8 lg:px-[5vw] select-none overflow-hidden">
       {toast ? (
         <FlashToast
           message={toast.message}
@@ -152,8 +152,8 @@ const Login: React.FC = () => {
           onDismiss={() => setToast(null)}
         />
       ) : null}
-      <div className="container-custom max-w-4xl mx-auto w-full">
-        <div className="bg-white/90 rounded-3xl border border-primary/15 overflow-hidden grid grid-cols-1 lg:grid-cols-12 max-h-[82vh] lg:max-h-[580px]">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none mx-auto">
+        <div className="bg-white/90 rounded-3xl lg:rounded-[1.5vw] border border-primary/15 overflow-hidden grid grid-cols-1 lg:grid-cols-12 max-h-[90vh] lg:max-h-[85vh] w-full lg:max-w-none">
           <div className="lg:col-span-5 relative min-h-[180px] lg:min-h-full w-full overflow-hidden">
             <Image
               src="/images/hero/gallery/center-left.png"
@@ -166,61 +166,61 @@ const Login: React.FC = () => {
             <div className="absolute inset-0 bg-black/10" />
           </div>
 
-          <div className="lg:col-span-7 bg-[#F7F0E9] p-6 sm:p-8 lg:p-10 flex flex-col justify-center relative overflow-y-auto">
-            <div className="flex items-center gap-8 border-b border-[#E5D7C8] pb-3 mb-5">
+          <div className="lg:col-span-7 bg-[#F7F0E9] p-6 sm:p-8 lg:p-[2vw] flex flex-col justify-center relative overflow-y-auto min-h-0">
+            <div className="flex items-center gap-8 lg:gap-[2vw] border-b border-[#E5D7C8] pb-2.5 lg:pb-[0.4vw] mb-4 lg:mb-[0.8vw]">
               <button
                 type="button"
-                className="relative text-base font-bold pb-1.5 transition-colors cursor-pointer text-[#1E2B4D]"
+                className="relative text-base lg:text-[1vw] font-bold pb-1.5 lg:pb-[0.4vw] transition-colors cursor-pointer text-[#1E2B4D]"
               >
                 Login
-                <span className="absolute bottom-0 left-0 w-full h-[2.5px] bg-[#1E2B4D] rounded-full" />
+                <span className="absolute bottom-0 left-0 w-full h-[2.5px] lg:h-[0.15vw] bg-[#1E2B4D] rounded-full" />
               </button>
 
               <Link
                 href="/signup"
-                className="relative text-base font-bold pb-1.5 transition-colors cursor-pointer text-muted hover:text-foreground"
+                className="relative text-base lg:text-[1vw] font-bold pb-1.5 lg:pb-[0.4vw] transition-colors cursor-pointer text-muted hover:text-foreground"
               >
                 Sign Up
               </Link>
             </div>
 
             {isJustVerified && !error && (
-              <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg flex items-center gap-2">
-                <Icon icon="lucide:check-circle" className="w-4 h-4 text-green-600 shrink-0" />
+              <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs lg:text-[0.75vw] rounded-lg flex items-center gap-2">
+                <Icon icon="lucide:check-circle" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] text-green-600 shrink-0" />
                 <span>Email verified. Sign in with your password to continue.</span>
               </div>
             )}
 
             {isJustRegistered && !isJustVerified && !error && (
-              <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg flex items-center gap-2">
-                <Icon icon="lucide:check-circle" className="w-4 h-4 text-green-600 shrink-0" />
+              <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs lg:text-[0.75vw] rounded-lg flex items-center gap-2">
+                <Icon icon="lucide:check-circle" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] text-green-600 shrink-0" />
                 <span>Account created successfully! Please log in to continue to checkout.</span>
               </div>
             )}
 
             {isPasswordChanged && !error && (
-              <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg flex items-center gap-2">
-                <Icon icon="lucide:check-circle" className="w-4 h-4 text-green-600 shrink-0" />
+              <div className="mb-4 p-2.5 bg-green-50 border border-green-200 text-green-800 text-xs lg:text-[0.75vw] rounded-lg flex items-center gap-2">
+                <Icon icon="lucide:check-circle" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] text-green-600 shrink-0" />
                 <span>Password changed successfully. Please log in with your new password.</span>
               </div>
             )}
 
             {error && (
-              <div className="mb-4 p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center gap-2">
-                <Icon icon="lucide:alert-circle" className="w-4 h-4 shrink-0" />
+              <div className="mb-4 p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs lg:text-[0.75vw] rounded-lg flex items-center gap-2">
+                <Icon icon="lucide:alert-circle" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {twoFaToken ? (
-              <form onSubmit={handleTwoFaSubmit} className="flex flex-col gap-3.5">
-                <p className="text-xs text-body leading-relaxed">
+              <form onSubmit={handleTwoFaSubmit} className="flex flex-col gap-3.5 lg:gap-[1vw]">
+                <p className="text-xs lg:text-[0.75vw] text-body leading-relaxed">
                   Enter the 6-digit code from your authenticator app, or resend a backup code to
                   your email.
                 </p>
                 <div>
-                  <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1.5">
-                    <Icon icon="ph:shield-check-bold" className="w-3.5 h-3.5 text-primary" />
+                  <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1.5 lg:mb-[0.3vw]">
+                    <Icon icon="ph:shield-check-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                     Authenticator code
                   </label>
                   <input
@@ -231,7 +231,7 @@ const Login: React.FC = () => {
                     onChange={(e) => setTwoFaCode(digitsOnly(e.target.value, 6))}
                     placeholder="123456"
                     required
-                    className="w-full px-3.5 py-2.5 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary tracking-[0.3em] text-center font-mono"
+                    className="w-full px-3.5 lg:px-[1vw] py-2.5 lg:py-[0.6vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-xs sm:text-sm lg:text-[0.8vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary tracking-[0.3em] text-center font-mono"
                   />
                 </div>
                 <Button
@@ -247,7 +247,7 @@ const Login: React.FC = () => {
                     type="button"
                     disabled={loading || resendCooldown > 0}
                     onClick={() => void handleResendTwoFaCode()}
-                    className="text-xs font-semibold text-[#7C4831] hover:underline cursor-pointer disabled:opacity-50 disabled:no-underline"
+                    className="text-xs lg:text-[0.75vw] font-semibold text-[#7C4831] hover:underline cursor-pointer disabled:opacity-50 disabled:no-underline"
                   >
                     {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
                   </button>
@@ -259,17 +259,17 @@ const Login: React.FC = () => {
                       setError('');
                       setResendCooldown(0);
                     }}
-                    className="text-xs font-semibold text-[#1E2B4D] hover:underline cursor-pointer"
+                    className="text-xs lg:text-[0.75vw] font-semibold text-[#1E2B4D] hover:underline cursor-pointer"
                   >
                     Back to login
                   </button>
                 </div>
               </form>
             ) : (
-            <form onSubmit={handleLoginSubmit} className="flex flex-col gap-3.5">
+            <form onSubmit={handleLoginSubmit} className="flex flex-col gap-3.5 lg:gap-[1vw]">
               <div>
-                <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1.5">
-                  <Icon icon="ph:envelope-simple-bold" className="w-3.5 h-3.5 text-primary" />
+                <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1.5 lg:mb-[0.3vw]">
+                  <Icon icon="ph:envelope-simple-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                   EMAIL
                 </label>
                 <input
@@ -280,13 +280,13 @@ const Login: React.FC = () => {
                   required
                   maxLength={320}
                   autoComplete="email"
-                  className="w-full px-3.5 py-2.5 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                  className="w-full px-3.5 lg:px-[1vw] py-2.5 lg:py-[0.6vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-xs sm:text-sm lg:text-[0.8vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                 />
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#664132] mb-1.5">
-                  <Icon icon="ph:lock-simple-bold" className="w-3.5 h-3.5 text-primary" />
+                <label className="flex items-center gap-1.5 lg:gap-[0.4vw] text-[10px] sm:text-[11px] lg:text-[0.7vw] font-bold uppercase tracking-wider text-[#664132] mb-1.5 lg:mb-[0.3vw]">
+                  <Icon icon="ph:lock-simple-bold" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw] text-primary" />
                   PASSWORD
                 </label>
                 <div className="relative">
@@ -298,24 +298,24 @@ const Login: React.FC = () => {
                     required
                     maxLength={128}
                     autoComplete="current-password"
-                    className="w-full px-3.5 py-2.5 pr-10 bg-white/90 border border-[#E2D5C7] rounded-lg text-xs sm:text-sm text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-3.5 lg:px-[1vw] py-2.5 lg:py-[0.6vw] pr-10 lg:pr-[2.5vw] bg-white/90 border border-[#E2D5C7] rounded-lg lg:rounded-[0.6vw] text-xs sm:text-sm lg:text-[0.8vw] text-[#2A170F] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1"
+                    className="absolute right-3 lg:right-[0.8vw] top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    <Icon icon={showPassword ? 'lucide:eye-off' : 'lucide:eye'} className="w-4 h-4" />
+                    <Icon icon={showPassword ? 'lucide:eye-off' : 'lucide:eye'} className="w-4 h-4 lg:w-[1vw] lg:h-[1vw]" />
                   </button>
                 </div>
               </div>
 
-              <div className="flex justify-end -mt-1">
+              <div className="flex justify-end -mt-1 lg:-mt-[0.3vw]">
                 <button
                   type="button"
                   onClick={() => setForgotModalOpen(true)}
-                  className="text-xs font-semibold text-[#1E2B4D] hover:underline cursor-pointer"
+                  className="text-xs lg:text-[0.75vw] font-semibold text-[#1E2B4D] hover:underline cursor-pointer"
                 >
                   Forgot Password?
                 </button>
@@ -325,11 +325,11 @@ const Login: React.FC = () => {
                 variant="primary"
                 type="submit"
                 disabled={loading}
-                className="w-full mt-1.5 py-3 shadow-none! hover:shadow-none!"
+                className="w-full mt-1.5 lg:mt-[0.4vw] py-3 shadow-none! hover:shadow-none!"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
-                    <Icon icon="lucide:loader-2" className="w-4 h-4 animate-spin" />
+                    <Icon icon="lucide:loader-2" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw] animate-spin" />
                     Logging in...
                   </span>
                 ) : (
@@ -337,9 +337,9 @@ const Login: React.FC = () => {
                 )}
               </Button>
 
-              <div className="relative my-2 flex items-center justify-center">
+              <div className="relative my-2 lg:my-[0.5vw] flex items-center justify-center">
                 <div className="border-t border-[#E2D5C7] w-full" />
-                <span className="bg-[#F7F0E9] px-3 text-[10px] font-bold tracking-wider text-muted uppercase shrink-0">
+                <span className="bg-[#F7F0E9] px-3 lg:px-[0.8vw] text-[10px] lg:text-[0.65vw] font-bold tracking-wider text-muted uppercase shrink-0">
                   OR
                 </span>
                 <div className="border-t border-[#E2D5C7] w-full" />
@@ -351,7 +351,7 @@ const Login: React.FC = () => {
                 onCredential={handleGoogleCredential}
               />
 
-              <p className="text-center text-xs text-body mt-2">
+              <p className="text-center text-xs lg:text-[0.75vw] text-body mt-2 lg:mt-[0.5vw]">
                 Don&apos;t have an account?{' '}
                 <Link
                   href="/signup"

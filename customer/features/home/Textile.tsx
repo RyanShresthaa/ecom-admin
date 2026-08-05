@@ -102,12 +102,12 @@ const ProductSlide = ({ product }: { product: Product }) => {
   return (
     <div
       ref={containerRef}
-      className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center px-4 md:px-12 py-4"
+      className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-[4vw] items-center px-4 md:px-12 lg:px-0 py-4 lg:py-[1vw] w-full"
     >
-      <div className="relative aspect-square rounded-2xl overflow-hidden w-full bg-[#FAF8F5] border border-[#E6D5C3]/30 hover:border-[#8C523A]/20 transition-all duration-500 group flex items-center justify-center">
+      <div className="relative aspect-square rounded-2xl lg:rounded-[1.2vw] overflow-hidden w-full bg-[#FAF8F5] border border-[#E6D5C3]/30 hover:border-[#8C523A]/20 transition-all duration-500 group flex items-center justify-center">
         <div
           ref={imageWrapperRef}
-          className="absolute w-full h-[110%] top-[-10%] flex items-center justify-center p-6 sm:p-12"
+          className="absolute w-full h-[110%] top-[-10%] flex items-center justify-center p-6 sm:p-12 lg:p-[2.5vw]"
         >
           <Image
             src={product.imageSrc}
@@ -120,37 +120,37 @@ const ProductSlide = ({ product }: { product: Product }) => {
         </div>
       </div>
 
-      <div className="flex flex-col text-left">
-        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-[#9E7D6F] mb-2 select-none">
+      <div className="flex flex-col text-left w-full">
+        <span className="text-[10px] sm:text-[11px] lg:text-[0.75vw] font-bold uppercase tracking-[0.25em] text-[#9E7D6F] mb-2 lg:mb-[0.5vw] select-none">
           {product.tagline}
         </span>
 
-        <h3 className="font-heading text-3xl sm:text-4xl font-normal text-[#2A170F] leading-tight tracking-tight mb-6">
+        <h3 className="font-heading text-3xl sm:text-4xl lg:text-[2.4vw] font-normal text-[#2A170F] leading-tight lg:leading-[1.15] tracking-tight mb-6 lg:mb-[1.2vw]">
           {product.title}
         </h3>
 
-        <div className="flex flex-col gap-4 text-xs sm:text-[14px] leading-relaxed text-[#664132]/95 font-secondary mb-8">
+        <div className="flex flex-col gap-4 lg:gap-[0.8vw] text-xs sm:text-[14px] lg:text-[0.8vw] leading-relaxed lg:leading-[1.5vw] text-[#664132]/95 font-secondary mb-8 lg:mb-[1.5vw] w-full">
           {product.descriptionParagraphs.map((para, i) => (
             <p key={i}>{para}</p>
           ))}
         </div>
 
-        <div className="w-full h-px bg-primary/5 mb-6" />
+        <div className="w-full h-px bg-primary/5 mb-6 lg:mb-[1.5vw]" />
 
-        <div className="mb-8">
+        <div className="mb-8 lg:mb-[1.5vw]">
           {/* Link-as-button: avoid <a><button> nesting (breaks SSR hydration) */}
           <Link
             href="/products"
-            className="w-full sm:w-auto h-12 px-8 bg-[#C2A388] text-white hover:bg-[#B59479] hover:shadow-sm font-semibold text-[11px] sm:text-xs uppercase tracking-[0.2em] transition-all duration-300 inline-flex items-center justify-center rounded-full"
+            className="w-full sm:w-auto h-12 lg:h-[2.8vw] px-8 lg:px-[2.2vw] bg-[#C2A388] text-white hover:bg-[#B59479] hover:shadow-sm font-semibold text-[11px] sm:text-xs lg:text-[0.7vw] uppercase tracking-[0.2em] transition-all duration-300 inline-flex items-center justify-center rounded-full"
           >
             Explore the shop
           </Link>
         </div>
 
-        <ul className="flex flex-col gap-2.5 text-xs text-[#664132] font-secondary mb-8">
+        <ul className="flex flex-col gap-2.5 lg:gap-[0.5vw] text-xs lg:text-[0.75vw] text-[#664132] font-secondary mb-8 lg:mb-[1.5vw]">
           {product.bullets.map((bullet, i) => (
-            <li key={i} className="flex items-center gap-2.5">
-              <span className="text-[#8C523A] font-semibold text-[13px] select-none" aria-hidden>
+            <li key={i} className="flex items-center gap-2.5 lg:gap-[0.6vw]">
+              <span className="text-[#8C523A] font-semibold text-[13px] lg:text-[0.8vw] select-none" aria-hidden>
                 ✓
               </span>
               <span>{bullet}</span>
@@ -158,31 +158,31 @@ const ProductSlide = ({ product }: { product: Product }) => {
           ))}
         </ul>
 
-        <div className="flex items-center gap-3.5 text-xs text-[#9E7D6F] font-secondary">
-          <span className="uppercase tracking-wider text-[10px] font-semibold">
+        <div className="flex items-center gap-3.5 lg:gap-[0.8vw] text-xs lg:text-[0.75vw] text-[#9E7D6F] font-secondary">
+          <span className="uppercase tracking-wider text-[10px] lg:text-[0.65vw] font-semibold">
             Share this story:
           </span>
-          <div className="flex items-center gap-3 text-neutral-500">
+          <div className="flex items-center gap-3 lg:gap-[0.6vw] text-neutral-500">
             <a
               href="#"
               className="hover:text-[#8C523A] transition-colors"
               aria-label="Share on Facebook"
             >
-              <Icon icon="ph:facebook-logo-light" className="w-4 h-4" />
+              <Icon icon="ph:facebook-logo-light" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw]" />
             </a>
             <a
               href="#"
               className="hover:text-[#8C523A] transition-colors"
               aria-label="Share on Twitter"
             >
-              <Icon icon="ph:twitter-logo-light" className="w-4 h-4" />
+              <Icon icon="ph:twitter-logo-light" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw]" />
             </a>
             <a
               href="#"
               className="hover:text-[#8C523A] transition-colors"
               aria-label="Share on Instagram"
             >
-              <Icon icon="ph:instagram-logo-light" className="w-4 h-4" />
+              <Icon icon="ph:instagram-logo-light" className="w-4 h-4 lg:w-[1vw] lg:h-[1vw]" />
             </a>
           </div>
         </div>
@@ -199,10 +199,10 @@ const Textile = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     carouselReady
       ? {
-          loop: true,
-          duration: 35,
-          align: 'center',
-        }
+        loop: true,
+        duration: 35,
+        align: 'center',
+      }
       : undefined,
   );
 
@@ -247,14 +247,14 @@ const Textile = () => {
   return (
     <section
       ref={containerRef}
-      className="w-full bg-[#FAF6F2] py-20 md:py-28 select-none relative"
+      className="w-full bg-[#FAF6F2] py-20 md:py-28 lg:py-[6vw] select-none relative"
     >
-      <div className="container-custom max-w-6xl px-4 relative">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none relative">
         <div
           ref={headerRef}
-          className="text-center max-w-3xl mx-auto mb-16 md:mb-10 flex flex-col items-center"
+          className="text-center w-full mx-auto mb-16 md:mb-10 lg:mb-[2.5vw] flex flex-col items-center"
         >
-          <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal text-[#2A170F] leading-tight tracking-tight">
+          <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal text-[#2A170F] leading-tight lg:leading-[1.1] tracking-tight">
             The Royal <span className="text-[#c89b5d]">Dhaka Weave </span>
           </h2>
         </div>
@@ -273,19 +273,19 @@ const Textile = () => {
           <button
             type="button"
             onClick={scrollPrev}
-            className="absolute -left-4 lg:-left-6 top-[225px] md:top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full border border-[#E6D5C3] bg-white/95 hover:bg-[#8C523A] hover:text-white flex items-center justify-center text-[#2A170F] transition-all duration-300 shadow-sm cursor-pointer hover:scale-105 active:scale-95"
+            className="absolute -left-4 lg:-left-[4vw] top-[225px] md:top-1/2 -translate-y-1/2 z-20 w-10 h-10 lg:w-[2.5vw] lg:h-[2.5vw] rounded-full border border-[#E6D5C3] bg-white/95 hover:bg-[#8C523A] hover:text-primary flex items-center justify-center text-[#2A170F] transition-all duration-300 shadow-sm cursor-pointer hover:scale-105 active:scale-95"
             aria-label="Previous slide"
           >
-            <Icon icon="ph:caret-left-light" className="w-5 h-5" />
+            <Icon icon="ph:caret-left-light" className="w-5 h-5 lg:w-[1.2vw] lg:h-[1.2vw]" />
           </button>
 
           <button
             type="button"
             onClick={scrollNext}
-            className="absolute -right-4 lg:-right-6 top-[225px] md:top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full border border-[#E6D5C3] bg-white/95 hover:bg-[#8C523A] hover:text-white flex items-center justify-center text-[#2A170F] transition-all duration-300 shadow-sm cursor-pointer hover:scale-105 active:scale-95"
+            className="absolute -right-4 lg:-right-[4vw] top-[225px] md:top-1/2 -translate-y-1/2 z-20 w-10 h-10 lg:w-[2.5vw] lg:h-[2.5vw] rounded-full border border-[#E6D5C3] bg-white/95 hover:bg-[#8C523A] hover:text-primary flex items-center justify-center text-[#2A170F] transition-all duration-300 shadow-sm cursor-pointer hover:scale-105 active:scale-95"
             aria-label="Next slide"
           >
-            <Icon icon="ph:caret-right-light" className="w-5 h-5" />
+            <Icon icon="ph:caret-right-light" className="w-5 h-5 lg:w-[1.2vw] lg:h-[1.2vw]" />
           </button>
         </div>
       </div>

@@ -71,39 +71,39 @@ const HowItWorks = () => {
   }, []);
 
   return (
-    <section className="w-full pb-16 sm:pb-24 select-none bg-background">
-      <div className="container-custom max-w-7xl mx-auto px-4 text-center">
-        <span className="block text-[11px] sm:text-xs font-semibold tracking-[0.25em] text-primary-heading uppercase mb-4">
+    <section className="w-full pb-16 sm:pb-24 lg:pb-[6vw] select-none bg-background">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none mx-auto text-center">
+        <span className="block text-[11px] sm:text-xs lg:text-[0.75vw] font-semibold tracking-[0.25em] text-primary-heading uppercase mb-4 lg:mb-[0.8vw]">
           How It Works
         </span>
-        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl font-normal leading-tight text-primary-dark mb-16 tracking-tight">
+        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal leading-tight text-primary-dark mb-16 lg:mb-[4vw] tracking-tight">
           From Artisan Hands to Your Home
         </h2>
 
         <div 
           ref={containerRef}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 sm:gap-10 max-w-5xl mx-auto items-start justify-center"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 sm:gap-10 lg:gap-[2.5vw] w-full lg:max-w-none mx-auto items-start justify-center"
         >
           {workSteps.map((step, index) => (
             <div 
               key={index}
-              className="work-step flex flex-col items-center gap-5 transition-transform duration-300"
+              className="work-step flex flex-col items-center gap-5 lg:gap-[1.2vw] transition-transform duration-300 w-full"
             >
-              <div className="relative w-20 h-20 rounded-full bg-secondary/50 border border-primary/50 flex items-center justify-center transition-all duration-300 hover:scale-[1.05] hover:bg-primary-lighter/60 cursor-pointer">
+              <div className="relative w-20 h-20 lg:w-[5vw] lg:h-[5vw] rounded-full bg-secondary/50 border border-primary/50 flex items-center justify-center transition-all duration-300 hover:scale-[1.05] hover:bg-primary-lighter/60 cursor-pointer shrink-0">
                 <Image 
                   src={step.icon} 
                   alt={`${step.label} icon`} 
                   width={28} 
                   height={28}
-                  className="w-7 h-7 object-contain animate-pulse-slow"
+                  className="w-7 h-7 lg:w-[1.8vw] lg:h-[1.8vw] object-contain animate-pulse-slow"
                 />
                 
-                <span className="absolute top-0.5 right-0.5 w-6 h-6 rounded-full bg-primary text-[9px] font-bold text-white flex items-center justify-center shadow-xs border border-background">
+                <span className="absolute top-0.5 right-0.5 lg:top-[0.1vw] lg:right-[0.1vw] w-6 h-6 lg:w-[1.5vw] lg:h-[1.5vw] rounded-full bg-primary text-[9px] lg:text-[0.6vw] font-bold text-white flex items-center justify-center shadow-xs border border-background">
                   {step.number}
                 </span>
               </div>
 
-              <span className="font-heading text-sm sm:text-base font-semibold text-primary-dark tracking-wide">
+              <span className="font-heading text-sm sm:text-base lg:text-[1vw] font-semibold text-primary-dark tracking-wide text-center">
                 {step.label}
               </span>
             </div>

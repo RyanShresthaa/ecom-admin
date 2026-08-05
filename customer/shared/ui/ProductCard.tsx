@@ -43,7 +43,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   };
 
   return (
-    <div className="group bg-white rounded-2xl border border-primary/10 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:shadow-md hover:border-primary/20 h-full select-none">
+    <div className="group bg-white rounded-2xl lg:rounded-[1.2vw] border border-primary/10 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:shadow-md hover:border-primary/20 h-full select-none w-full">
       <div>
         {/* Image Container */}
         <div className="relative w-full aspect-[4/3] overflow-hidden bg-[#FAF6F2]">
@@ -65,45 +65,45 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* Product Details */}
-        <div className="p-4 sm:p-5 flex flex-col items-start text-left gap-1.5">
+        <div className="p-4 sm:p-5 lg:p-[1.2vw] flex flex-col items-start text-left gap-1.5 lg:gap-[0.4vw]">
           <Link href={`/products/${product.slug}`}>
-            <h4 className="font-heading font-semibold text-primary-dark text-sm sm:text-base leading-tight hover:text-primary transition-colors cursor-pointer line-clamp-1">
+            <h4 className="font-heading font-semibold text-primary-dark text-sm sm:text-base lg:text-[1.05vw] leading-tight hover:text-primary transition-colors cursor-pointer line-clamp-1">
               {product.name}
             </h4>
           </Link>
 
           {/* Star Rating */}
-          <div className="flex items-center text-[#c89b5d] text-xs gap-0.5">
-            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
-            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
-            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
-            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
-            <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
+          <div className="flex items-center text-[#c89b5d] text-xs lg:text-[0.75vw] gap-0.5 lg:gap-[0.1vw]">
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw]" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw]" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw]" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw]" />
+            <Icon icon="ph:star-fill" className="w-3.5 h-3.5 lg:w-[0.9vw] lg:h-[0.9vw]" />
           </div>
 
           {/* Category & Location */}
-          <div className="flex flex-col gap-0.5 font-secondary text-[10px] sm:text-[11px] text-body/75 tracking-wide leading-tight">
+          <div className="flex flex-col gap-0.5 lg:gap-[0.1vw] font-secondary text-[10px] sm:text-[11px] lg:text-[0.7vw] text-body/75 tracking-wide leading-tight">
             <span>{product.category}</span>
             <span>{product.location}</span>
           </div>
 
           {/* Price & Wishlist Row */}
-          <div className="w-full flex items-center justify-between mt-1">
-            <span className="font-secondary font-bold text-primary text-[15px] sm:text-[16px] leading-tight">
+          <div className="w-full flex items-center justify-between mt-1 lg:mt-[0.3vw]">
+            <span className="font-secondary font-bold text-primary text-[15px] sm:text-[16px] lg:text-[1.1vw] leading-tight">
               {priceLabel}
             </span>
 
             <button
               type="button"
               onClick={handleWishlistToggle}
-              className={`p-1 rounded-full transition-colors cursor-pointer ${
+              className={`p-1 lg:p-[0.2vw] rounded-full transition-colors cursor-pointer ${
                 isWishlisted ? 'text-red-500' : 'text-primary hover:text-red-500'
               }`}
               aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             >
               <Icon
                 icon={isWishlisted ? 'ph:heart-fill' : 'ph:heart'}
-                className="w-5 h-5 transition-transform duration-300 active:scale-125"
+                className="w-5 h-5 lg:w-[1.2vw] lg:h-[1.2vw] transition-transform duration-300 active:scale-125"
               />
             </button>
           </div>
@@ -111,11 +111,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </div>
 
       {/* Action Buttons Row */}
-      <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-1 flex items-center gap-2 w-full">
+      <div className="px-4 sm:px-5 lg:px-[1.2vw] pb-4 sm:pb-5 lg:pb-[1.2vw] pt-1 lg:pt-[0.2vw] flex items-center gap-2 lg:gap-[0.5vw] w-full">
         <Link href={`/products/${product.slug}`} className="flex-1 min-w-0">
           <Button
             variant="primary"
-            className="w-full !px-1.5 !py-2.5 text-[9.5px] sm:text-[10.5px] tracking-wide whitespace-nowrap"
+            className="w-full !px-1.5 !py-2.5 lg:!py-[0.6vw] text-[9.5px] sm:text-[10.5px] lg:text-[0.65vw] tracking-wide whitespace-nowrap"
           >
             View Product
           </Button>
@@ -126,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             variant="secondary"
             onClick={handleAddToCart}
             disabled={!canAdd && !added}
-            className={`w-full !px-1.5 !py-2.5 text-[9.5px] sm:text-[10.5px] tracking-wide whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`w-full !px-1.5 !py-2.5 lg:!py-[0.6vw] text-[9.5px] sm:text-[10.5px] lg:text-[0.65vw] tracking-wide whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
               added ? 'bg-emerald-700 border-emerald-700 text-white hover:bg-emerald-800' : ''
             }`}
           >

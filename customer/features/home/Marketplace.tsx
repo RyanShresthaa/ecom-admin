@@ -95,28 +95,28 @@ const Marketplace = () => {
   return (
     <section
       ref={containerRef}
-      className="w-full bg-[#FAF6F2] py-20 md:py-28 select-none"
+      className="w-full bg-[#FAF6F2] py-20 md:py-28 lg:py-[6vw] select-none"
     >
-      <div className="container-custom px-4">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none">
         <div
           ref={headerRef}
-          className="text-center mx-auto mb-12 md:mb-16 flex flex-col items-center"
+          className="text-center w-full lg:max-w-none mx-auto mb-12 md:mb-16 lg:mb-[3.5vw] flex flex-col items-center"
         >
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-[#9E7D6F] mb-4 block">
+          <span className="text-[10px] sm:text-[11px] lg:text-[0.75vw] font-bold uppercase tracking-[0.25em] text-[#9E7D6F] mb-4 lg:mb-[0.8vw] block">
             SUSTAINABLE & FAIR TRADE
           </span>
-          <h2 className="font-heading text-3xl sm:text-4xl md:text-[42px] font-normal text-[#2A170F] leading-tight tracking-tight mb-8">
+          <h2 className="font-heading text-3xl sm:text-4xl md:text-[42px] lg:text-[3.2vw] font-normal text-[#2A170F] leading-tight lg:leading-[1.1] tracking-tight mb-8 lg:mb-[2vw]">
             Artisan Marketplace
           </h2>
 
-          <div className="w-full relative border-b border-primary/10 pb-0.5">
-            <div className="flex items-center justify-start md:justify-center gap-6 md:gap-8 overflow-x-auto whitespace-nowrap scrollbar-none py-1">
+          <div className="w-full relative border-b border-primary/10 pb-0.5 lg:pb-[0.1vw]">
+            <div className="flex items-center justify-start md:justify-center gap-6 md:gap-8 lg:gap-[2vw] overflow-x-auto whitespace-nowrap scrollbar-none py-1 lg:py-[0.3vw]">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setActiveCategory(cat)}
-                  className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.2em] pb-3 transition-all duration-300 relative cursor-pointer ${
+                  className={`text-[10px] sm:text-[11px] lg:text-[0.75vw] font-semibold uppercase tracking-[0.2em] pb-3 lg:pb-[0.6vw] transition-all duration-300 relative cursor-pointer ${
                     activeCategory === cat
                       ? 'text-[#2A170F] font-bold'
                       : 'text-[#9E7D6F] hover:text-[#2A170F]'
@@ -134,7 +134,7 @@ const Marketplace = () => {
 
         <div
           ref={gridRef}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-6 mx-auto"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-6 lg:gap-[2vw] w-full mx-auto"
         >
           {loading && (
             <div className="col-span-full py-12 text-center font-secondary text-sm text-primary">
@@ -158,10 +158,10 @@ const Marketplace = () => {
 
           {!loading &&
             filteredProducts.map((product) => (
-              <div key={product.id} className="flex flex-col items-center group">
+              <div key={product.id} className="flex flex-col items-center group w-full">
                 <Link
                   href={`/products/${product.slug}`}
-                  className="marketplace-image-container relative aspect-square w-full overflow-hidden border border-[#E6D5C3]/30 hover:border-[#8C523A]/20 transition-all duration-500 flex items-center justify-center"
+                  className="marketplace-image-container relative aspect-square w-full overflow-hidden border border-[#E6D5C3]/30 hover:border-[#8C523A]/20 transition-all duration-500 flex items-center justify-center rounded-2xl lg:rounded-[1.2vw]"
                 >
                   <div className="marketplace-image-wrapper absolute w-full h-[120%] top-[-10%]">
                     {product.image ? (
@@ -182,20 +182,20 @@ const Marketplace = () => {
                 </Link>
 
                 <Link href={`/products/${product.slug}`}>
-                  <h3 className="font-heading text-[17px] font-normal text-[#2A170F] text-center mt-5 mb-1 select-none hover:text-primary transition-colors">
+                  <h3 className="font-heading text-[17px] lg:text-[1.1vw] font-normal text-[#2A170F] text-center mt-5 lg:mt-[1vw] mb-1 lg:mb-[0.3vw] select-none hover:text-primary transition-colors">
                     {product.name}
                   </h3>
                 </Link>
 
                 <ProductPrice
                   product={product}
-                  className="font-secondary text-xs font-semibold text-[#9E7D6F] text-center mb-4 select-none"
+                  className="font-secondary text-xs lg:text-[0.8vw] font-semibold text-[#9E7D6F] text-center mb-4 lg:mb-[0.8vw] select-none"
                 />
 
                 <div className="self-center">
                   <Link
                     href={`/products/${product.slug}`}
-                    className="relative inline-flex items-center justify-center px-9 py-3.5 text-[12px] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-white"
+                    className="relative inline-flex items-center justify-center px-9 lg:px-[2.2vw] py-3.5 lg:py-[0.8vw] text-[12px] lg:text-[0.7vw] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-white"
                   >
                     View Product
                   </Link>
@@ -204,10 +204,10 @@ const Marketplace = () => {
             ))}
         </div>
 
-        <div className="flex justify-center mt-16 md:mt-20">
+        <div className="flex justify-center mt-16 md:mt-20 lg:mt-[4vw]">
           <Link
             href="/products"
-            className="relative inline-flex items-center justify-center px-9 py-3.5 text-[12px] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer bg-primary text-white border-2 border-primary hover:bg-primary-dark hover:border-primary-dark shadow-[0_4px_16px_rgba(140,82,58,0.2)]"
+            className="relative inline-flex items-center justify-center px-9 lg:px-[2.5vw] py-3.5 lg:py-[0.85vw] text-[12px] lg:text-[0.75vw] font-semibold uppercase tracking-[0.18em] font-primary rounded-full transition-all duration-300 cursor-pointer bg-primary text-white border-2 border-primary hover:bg-primary-dark hover:border-primary-dark shadow-[0_4px_16px_rgba(140,82,58,0.2)]"
           >
             Explore the Marketplace
           </Link>

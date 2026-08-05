@@ -241,12 +241,12 @@ const Contact: React.FC = () => {
   };
 
   const fieldClass = (name: ContactField) =>
-    `block w-full bg-transparent border px-6 py-2 text-primary placeholder-primary/30 focus:outline-none focus:border-primary transition-colors rounded-2xl ${
+    `block w-full bg-transparent border px-6 lg:px-[1.2vw] py-2 lg:py-[0.5vw] text-primary text-sm lg:text-[0.8vw] placeholder-primary/30 focus:outline-none focus:border-primary transition-colors rounded-2xl lg:rounded-[1vw] ${
       fieldErrors[name] ? "border-red-500" : "border-primary/40"
     }`;
 
   return (
-    <section className="w-full min-h-screen md:h-screen flex flex-col md:flex-row bg-background md:overflow-hidden">
+    <section className="w-full min-h-screen md:h-screen flex flex-col md:flex-row bg-background md:overflow-hidden select-none">
       <div className="relative w-full md:w-1/2 h-auto md:h-full flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-secondary/20">
         <div className="relative w-full h-[300px] md:h-full">
           <Image
@@ -259,20 +259,22 @@ const Contact: React.FC = () => {
           <div className="absolute w-full h-full top-0 left-0 bg-primary/40" />
         </div>
 
-        <div className="absolute bottom-0 w-full grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 md:p-6 shrink-0">
+        <div className="absolute bottom-0 w-full grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-[1vw] p-4 md:p-6 lg:p-[1.5vw] shrink-0">
           {contactDetails.map((detail, index) => (
             <div
               key={index}
-              className="bg-primary/80 backdrop-blur-sm border-2 border-secondary/50 p-6 flex flex-col justify-between items-center text-center min-h-[130px] rounded-2xl"
+              className="bg-primary/80 backdrop-blur-sm border-2 border-secondary/50 p-6 lg:p-[1.2vw] flex flex-col justify-between items-center text-center min-h-[130px] lg:min-h-[7.5vw] rounded-2xl lg:rounded-[1vw]"
             >
-              <div className="flex flex-col items-center gap-2">
-                {detail.icon}
-                <span className="text-sm font-heading text-secondary font-bold tracking-widest uppercase">
+              <div className="flex flex-col items-center gap-2 lg:gap-[0.4vw]">
+                {React.cloneElement(detail.icon, {
+                  className: "w-5 h-5 lg:w-[1.2vw] lg:h-[1.2vw] text-secondary",
+                })}
+                <span className="text-sm lg:text-[0.7vw] font-heading text-secondary font-bold tracking-widest uppercase">
                   {detail.label}
                 </span>
               </div>
               <p
-                className={`text-xs md:text-sm text-secondary-light/80 font-medium ${detail.className || ""}`}
+                className={`text-xs md:text-sm lg:text-[0.75vw] text-secondary-light/80 font-medium ${detail.className || ""}`}
               >
                 {detail.value}
               </p>
@@ -281,15 +283,15 @@ const Contact: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-full md:w-1/2 h-auto md:h-full flex items-center justify-center p-6 sm:p-12 md:pl-16 mt-10 overflow-y-auto">
-        <div className="w-full max-w-2xl flex flex-col gap-2 pb-8">
-          <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl text-primary text-center md:text-left mb-2">
+      <div className="w-full md:w-1/2 h-auto md:h-full flex items-center justify-center p-6 sm:p-12 md:pl-16 lg:px-[5vw] pt-20 md:pt-24 lg:pt-[6.5vw] pb-10 lg:pb-[3vw] mt-4 md:mt-0 overflow-y-auto">
+        <div className="w-full max-w-2xl lg:max-w-none flex flex-col gap-2 lg:gap-[0.5vw] pb-8 lg:pb-0">
+          <h1 className="font-heading text-4xl md:text-5xl lg:text-[3.2vw] text-primary text-center md:text-left mb-2 lg:mb-[1vw]">
             Get In Touch
           </h1>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="name" className="block text-primary text-sm font-semibold tracking-wider">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 lg:gap-[1vw]" noValidate>
+            <div className="flex flex-col gap-1.5 lg:gap-[0.3vw]">
+              <label htmlFor="name" className="block text-primary text-sm lg:text-[0.75vw] font-semibold tracking-wider">
                 Full Name
               </label>
               <input
@@ -302,17 +304,17 @@ const Contact: React.FC = () => {
                 value={formData.name}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`block w-full rounded-2xl bg-transparent border px-4 py-2 text-primary placeholder-primary/30 focus:outline-none focus:border-primary transition-colors ${
+                className={`block w-full bg-transparent border px-4 lg:px-[1.2vw] py-2 lg:py-[0.5vw] text-primary text-sm lg:text-[0.8vw] placeholder-primary/30 focus:outline-none focus:border-primary transition-colors rounded-2xl lg:rounded-[1vw] ${
                   fieldErrors.name ? "border-red-500" : "border-primary/40"
                 }`}
               />
               {fieldErrors.name ? (
-                <span className="text-xs text-red-600">{fieldErrors.name}</span>
+                <span className="text-xs lg:text-[0.7vw] text-red-600">{fieldErrors.name}</span>
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="phone" className="block text-primary text-sm font-semibold tracking-wider">
+            <div className="flex flex-col gap-1.5 lg:gap-[0.3vw]">
+              <label htmlFor="phone" className="block text-primary text-sm lg:text-[0.75vw] font-semibold tracking-wider">
                 Phone Number
               </label>
               <input
@@ -330,12 +332,12 @@ const Contact: React.FC = () => {
                 className={fieldClass("phone")}
               />
               {fieldErrors.phone ? (
-                <span className="text-xs text-red-600">{fieldErrors.phone}</span>
+                <span className="text-xs lg:text-[0.7vw] text-red-600">{fieldErrors.phone}</span>
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="block text-primary text-sm font-semibold tracking-wider">
+            <div className="flex flex-col gap-1.5 lg:gap-[0.3vw]">
+              <label htmlFor="email" className="block text-primary text-sm lg:text-[0.75vw] font-semibold tracking-wider">
                 Email Address
               </label>
               <input
@@ -351,12 +353,12 @@ const Contact: React.FC = () => {
                 className={fieldClass("email")}
               />
               {fieldErrors.email ? (
-                <span className="text-xs text-red-600">{fieldErrors.email}</span>
+                <span className="text-xs lg:text-[0.7vw] text-red-600">{fieldErrors.email}</span>
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="address" className="block text-primary text-sm font-semibold tracking-wider">
+            <div className="flex flex-col gap-1.5 lg:gap-[0.3vw]">
+              <label htmlFor="address" className="block text-primary text-sm lg:text-[0.75vw] font-semibold tracking-wider">
                 Address
               </label>
               <input
@@ -372,12 +374,12 @@ const Contact: React.FC = () => {
                 className={fieldClass("address")}
               />
               {fieldErrors.address ? (
-                <span className="text-xs text-red-600">{fieldErrors.address}</span>
+                <span className="text-xs lg:text-[0.7vw] text-red-600">{fieldErrors.address}</span>
               ) : null}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="message" className="block text-primary text-sm font-semibold tracking-wider">
+            <div className="flex flex-col gap-1.5 lg:gap-[0.3vw]">
+              <label htmlFor="message" className="block text-primary text-sm lg:text-[0.75vw] font-semibold tracking-wider">
                 How can we help?
               </label>
               <textarea
@@ -389,18 +391,18 @@ const Contact: React.FC = () => {
                 value={formData.message}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`block w-full bg-transparent border px-6 py-2 text-primary placeholder-primary/30 focus:outline-none focus:border-primary transition-colors rounded-3xl resize-none ${
+                className={`block w-full bg-transparent border px-6 lg:px-[1.2vw] py-2 lg:py-[0.5vw] text-primary text-sm lg:text-[0.8vw] placeholder-primary/30 focus:outline-none focus:border-primary transition-colors rounded-3xl lg:rounded-[1.2vw] resize-none ${
                   fieldErrors.message ? "border-red-500" : "border-primary/40"
                 }`}
               />
               {fieldErrors.message ? (
-                <span className="text-xs text-red-600">{fieldErrors.message}</span>
+                <span className="text-xs lg:text-[0.7vw] text-red-600">{fieldErrors.message}</span>
               ) : null}
             </div>
 
             {status !== "idle" && statusMsg ? (
               <p
-                className={`text-sm font-secondary ${
+                className={`text-sm lg:text-[0.8vw] font-secondary ${
                   status === "ok" ? "text-emerald-700" : "text-red-600"
                 }`}
               >
@@ -408,7 +410,7 @@ const Contact: React.FC = () => {
               </p>
             ) : null}
 
-            <div className="mt-2">
+            <div className="mt-2 lg:mt-[0.5vw]">
               <Button
                 variant="primary"
                 type="submit"

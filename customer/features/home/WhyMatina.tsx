@@ -23,38 +23,38 @@ const WhyMatina = () => {
   ];
 
   return (
-    <section className="w-full pb-16 sm:pb-24 md:pb-28 flex items-center justify-center select-none">
-      <div className="container-custom px-4 flex flex-col items-center max-w-6xl">
+    <section className="w-full pb-16 sm:pb-24 md:pb-28 lg:pb-[6vw] flex items-center justify-center select-none">
+      <div className="w-full px-4 sm:px-8 lg:px-[5vw] lg:max-w-none flex flex-col items-center">
         
         {/* Header */}
-        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl  font-normal leading-tight tracking-tight text-center text-[#2A170F] mb-12 sm:mb-16 md:mb-20">
-          Why <span className="text-(--primary-heading) ml-1.5">Matina Crafts</span>
+        <h2 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-[3.2vw] font-normal leading-tight lg:leading-[1.1] tracking-tight text-center text-[#2A170F] mb-12 sm:mb-16 md:mb-20 lg:mb-[3.5vw]">
+          Why <span className="text-(--primary-heading) ml-1.5 lg:ml-[0.4vw]">Matina Crafts</span>
         </h2>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-[2vw] w-full">
           {points.map((point, index) => (
             <div 
               key={index}
-              className="group flex flex-col gap-6 p-8 sm:p-10 rounded-[20px] bg-[#efe2d0] border border-primary/5 hover:bg-[#FAF6F2] hover:border-[#8C523A]/10 transition-all duration-500 ease-out hover:-translate-y-1 "
+              className="group flex flex-col gap-6 lg:gap-[1.5vw] p-8 sm:p-10 lg:p-[2.2vw] rounded-[20px] lg:rounded-[1.2vw] bg-[#efe2d0] border border-primary/5 hover:bg-[#FAF6F2] hover:border-[#8C523A]/10 transition-all duration-500 ease-out hover:-translate-y-1"
             >
               {/* Icon Box */}
-              <div className="w-12 h-12 rounded-xl bg-[#ebdbc4] flex items-center justify-center transition-colors duration-500 group-hover:bg-[#E6D5C3]">
+              <div className="w-12 h-12 lg:w-[3vw] lg:h-[3vw] rounded-xl lg:rounded-[0.8vw] bg-[#ebdbc4] flex items-center justify-center transition-colors duration-500 group-hover:bg-[#E6D5C3]">
                 <Image 
                   src={point.icon} 
                   alt={point.title} 
                   width={24} 
                   height={24} 
-                  className="w-5 h-5 object-contain"
+                  className="w-5 h-5 lg:w-[1.2vw] lg:h-[1.2vw] object-contain"
                 />
               </div>
 
               {/* Text */}
-              <div className="flex flex-col gap-3">
-                <h3 className="font-heading text-lg sm:text-xl lg:text-2xl font-normal leading-snug text-[#2A170F]">
+              <div className="flex flex-col gap-3 lg:gap-[0.8vw]">
+                <h3 className="font-heading text-lg sm:text-xl lg:text-[1.4vw] font-normal leading-snug lg:leading-[1.2] text-[#2A170F]">
                   {point.title}
                 </h3>
-                <p className="text-xs sm:text-sm leading-relaxed text-[#664132] font-secondary">
+                <p className="text-xs sm:text-sm lg:text-[0.85vw] leading-relaxed lg:leading-[1.6vw] text-[#664132] font-secondary">
                   {point.description}
                 </p>
               </div>
