@@ -26,16 +26,11 @@ export default function GoogleSignInButton({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
-  const [pageOrigin, setPageOrigin] = useState('');
 
   onCredentialRef.current = onCredential;
 
   const label = mode === 'signup' ? 'Sign up with Google' : 'Login with Google';
   const gsiText = mode === 'signup' ? 'signup_with' : 'signin_with';
-
-  useEffect(() => {
-    setPageOrigin(window.location.origin);
-  }, []);
 
   useEffect(() => {
     const clientId = getGoogleClientId();
@@ -169,15 +164,6 @@ export default function GoogleSignInButton({
       </div>
       {error ? (
         <p className="mt-2 text-[11px] text-red-700 text-center leading-snug">{error}</p>
-      ) : null}
-      {process.env.NODE_ENV === 'development' && pageOrigin ? (
-        <p className="mt-2 text-[10px] text-muted text-center leading-relaxed">
-          Google JS origins must include{' '}
-          <code className="text-[#2A170F] font-semibold">{pageOrigin}</code>
-          {' '}and <code className="text-[#2A170F] font-semibold">http://localhost</code>
-          {' '}on the Web client ending in <code>…ple7npfo</code>. Redirect URIs alone are not
-          enough.
-        </p>
       ) : null}
     </div>
   );
