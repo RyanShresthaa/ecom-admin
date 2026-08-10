@@ -224,16 +224,21 @@ export async function paymentController(request, response) {
             const currency = String(
                 process.env.STRIPE_CURRENCY || shopSettings?.currency || 'usd',
             ).toLowerCase();
+            // Stripe only accepts absolute http(s) image URLs — local paths like /images/... fail with "Not a valid URL".
+            const stripeSafeImages = (raw) => {
+                const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+                return list
+                    .map((u) => String(u || '').trim())
+                    .filter((u) => /^https?:\/\//i.test(u))
+                    .slice(0, 8);
+            };
+
             const line_items = summary.lines.map((item) => ({
                 price_data: {
                     currency,
                     product_data: {
                         name: item.product.name,
-                        images: Array.isArray(item.product.image)
-                            ? item.product.image
-                            : item.product.image
-                              ? [item.product.image]
-                              : [],
+                        images: stripeSafeImages(item.product.image),
                         metadata: { productId: String(item.productId) },
                     },
                     unit_amount: Math.round(Number(item.unitPrice) * 100),
@@ -242,21 +247,32 @@ export async function paymentController(request, response) {
             }));
 
             const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
-            const session = await Stripe.checkout.sessions.create({
-                submit_type: 'pay',
-                mode: 'payment',
-                payment_method_types: ['card'],
-                customer_email: user.email,
-                metadata: {
-                    userId: String(userId),
-                    addressId: String(pickId(addressId)),
-                    couponCode: coupon?.code || '',
-                    pendingCheckoutId: String(pending.id),
-                },
-                line_items,
-                success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-                cancel_url: `${baseUrl}/cancel`,
-            });
+            let session;
+            try {
+                session = await Stripe.checkout.sessions.create({
+                    submit_type: 'pay',
+                    mode: 'payment',
+                    payment_method_types: ['card'],
+                    customer_email: user.email,
+                    metadata: {
+                        userId: String(userId),
+                        addressId: String(pickId(addressId)),
+                        couponCode: coupon?.code || '',
+                        pendingCheckoutId: String(pending.id),
+                    },
+                    line_items,
+                    success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+                    cancel_url: `${baseUrl}/cancel`,
+                });
+            } catch (stripeErr) {
+                logger.error('Stripe checkout session create failed', {
+                    error: stripeErr?.message || String(stripeErr),
+                    type: stripeErr?.type,
+                    code: stripeErr?.code,
+                    pendingCheckoutId: pending.id,
+                });
+                throw stripeErr;
+            }
 
             await setPendingStripeSession(pending.id, session.id);
             return { ...session, pricing: summary, error: false, success: true };

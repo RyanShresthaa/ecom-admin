@@ -613,7 +613,14 @@ export default function Checkout() {
             <section className="bg-white rounded-3xl lg:rounded-[1.5vw] border border-primary/10 p-6 lg:p-[1.5vw] shadow-xs">
               <h2 className="font-heading text-xl lg:text-[1.3vw] font-bold text-[#2A170F] mb-4 lg:mb-[1vw]">Items</h2>
               <div className="flex flex-col gap-4 lg:gap-[1vw]">
-                {cart.map((item) => (
+                {cart.map((item) => {
+                  const previewLine = preview?.lines?.find(
+                    (l) => String(l.productId) === String(item.id),
+                  );
+                  const lineAmt = previewLine
+                    ? Number(previewLine.lineTotal)
+                    : item.price * item.quantity;
+                  return (
                   <div key={item.id} className="flex items-center gap-4 lg:gap-[1vw]">
                     <div className="relative w-16 h-16 lg:w-[4vw] lg:h-[4vw] rounded-xl lg:rounded-[0.8vw] overflow-hidden bg-[#FAF6F2] border border-primary/10 shrink-0">
                       {item.image ? (
@@ -627,10 +634,11 @@ export default function Checkout() {
                       <p className="font-secondary text-xs lg:text-[0.75vw] text-body/60">Qty {item.quantity}</p>
                     </div>
                     <p className="font-secondary text-sm lg:text-[0.9vw] font-semibold text-primary-dark">
-                      {formatMoney(item.price * item.quantity)}
+                      {formatMoney(lineAmt)}
                     </p>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           </div>

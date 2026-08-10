@@ -1,6 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import type { Product } from '@/shared/data/productData';
 import {
   ApiError,
@@ -63,8 +70,26 @@ function isRealCatalogProductId(id: string): boolean {
 }
 
 const STORAGE_KEY = 'matina_wishlist';
+const OWNER_KEY = 'matina_wishlist_owner';
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
+
+function getWishlistOwner(): string | null {
+  try {
+    return localStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setWishlistOwner(owner: string | null) {
+  try {
+    if (!owner) localStorage.removeItem(OWNER_KEY);
+    else localStorage.setItem(OWNER_KEY, owner);
+  } catch {
+    /* ignore */
+  }
+}
 
 function parsePrice(priceStr: string): number {
   const cleaned = String(priceStr).replace(/[^0-9.]/g, '');
@@ -139,7 +164,8 @@ function loadLocalWishlist(): WishlistItem[] {
 
 function clearLocalWishlistStorage() {
   try {
-    localStorage.setItem(STORAGE_KEY, '[]');
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(OWNER_KEY);
   } catch {
     /* ignore */
   }
@@ -163,10 +189,19 @@ function mergeWishlists(local: WishlistItem[], server: WishlistItem[]): Wishlist
 }
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoaded: authLoaded, isLoggedIn } = useAuth();
+  const { isLoaded: authLoaded, isLoggedIn, user } = useAuth();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
+  const wasLoggedInRef = useRef(false);
+  const skipPersistRef = useRef(false);
+
+  const resetLocalWishlistState = useCallback(() => {
+    skipPersistRef.current = true;
+    clearLocalWishlistStorage();
+    setWishlist([]);
+    setIsSynced(false);
+  }, []);
 
   const refreshFromServer = useCallback(async () => {
     if (!isLoggedIn) {
@@ -177,16 +212,24 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const lines = await fetchServerWishlist();
       const mapped = lines.map(wishlistLineToLocal);
+      const owner = getWishlistOwner();
+      const local = owner === 'guest' ? loadLocalWishlist() : [];
 
-      // New / empty accounts: do not import guest localStorage (avoids mock leftover hearts).
+      // Empty server wishlist: never import leftovers from another account
       if (mapped.length === 0) {
-        clearLocalWishlistStorage();
-        setWishlist([]);
+        if (local.length > 0) {
+          await syncLocalWishlistToServer(local.map((i) => i.id));
+          const refreshed = await fetchServerWishlist();
+          setWishlist(refreshed.map(wishlistLineToLocal));
+        } else {
+          clearLocalWishlistStorage();
+          setWishlist([]);
+        }
+        setWishlistOwner(user?.id != null ? String(user.id) : 'user');
         setIsSynced(true);
         return;
       }
 
-      const local = loadLocalWishlist();
       if (local.length > 0) {
         await syncLocalWishlistToServer(local.map((i) => i.id));
         const refreshed = await fetchServerWishlist();
@@ -194,32 +237,62 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } else {
         setWishlist(mapped);
       }
+      setWishlistOwner(user?.id != null ? String(user.id) : 'user');
       setIsSynced(true);
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         setIsSynced(false);
       }
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user?.id]);
 
   useEffect(() => {
-    setWishlist(loadLocalWishlist());
+    const owner = getWishlistOwner();
+    if (owner && owner !== 'guest') {
+      clearLocalWishlistStorage();
+      setWishlist([]);
+    } else {
+      setWishlist(loadLocalWishlist());
+    }
     setIsLoaded(true);
   }, []);
 
   useEffect(() => {
     if (!authLoaded) return;
-    void refreshFromServer();
-  }, [authLoaded, isLoggedIn, refreshFromServer]);
+
+    if (isLoggedIn) {
+      wasLoggedInRef.current = true;
+      void refreshFromServer();
+      return;
+    }
+
+    if (wasLoggedInRef.current) {
+      wasLoggedInRef.current = false;
+      resetLocalWishlistState();
+      return;
+    }
+
+    setIsSynced(false);
+  }, [authLoaded, isLoggedIn, refreshFromServer, resetLocalWishlistState]);
 
   useEffect(() => {
     if (!isLoaded) return;
+    if (skipPersistRef.current) {
+      skipPersistRef.current = false;
+      clearLocalWishlistStorage();
+      return;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(wishlist));
+      if (!isLoggedIn) {
+        setWishlistOwner(wishlist.length > 0 ? 'guest' : null);
+      } else if (user?.id != null) {
+        setWishlistOwner(String(user.id));
+      }
     } catch (e) {
       console.error('Failed to save wishlist', e);
     }
-  }, [wishlist, isLoaded]);
+  }, [wishlist, isLoaded, isLoggedIn, user?.id]);
 
   const isInWishlist = (id: string) => {
     return wishlist.some((item) => item.id === id || item.slug === id);

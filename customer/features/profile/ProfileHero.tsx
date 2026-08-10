@@ -43,7 +43,15 @@ function mapOrders(orders: ApiOrder[]): RecentOrderRow[] {
       (typeof o.productId === 'object' && o.productId) || o.product_details || null;
     const image = resolveProductImage(product);
     const title = product?.name || 'Order item';
-    const status = o.delivery_status || o.payment_status || 'Processing';
+    // Delivery status only — payment_status like "CASH ON DELIVERY" must not be shown as fulfillment.
+    const raw = String(o.delivery_status || 'pending').trim().toLowerCase();
+    const status = /\bdelivered\b/.test(raw)
+      ? 'Delivered'
+      : /\bcancel/.test(raw)
+        ? 'Cancelled'
+        : /ship|transit|dispatch|out.?for/.test(raw)
+          ? 'In Transit'
+          : 'Pending';
     const totalNum = Number(o.totalAmt ?? o.lineTotal ?? o.subTotalAmt ?? 0);
     const date = o.createdAt
       ? new Date(o.createdAt).toLocaleDateString(undefined, {

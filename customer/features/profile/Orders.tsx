@@ -13,10 +13,13 @@ import {
   addProductReview,
   cancelMyOrder,
   fetchMyOrders,
+  fetchMyReturns,
   formatMoney,
+  requestReturn,
   type ApiAddress,
   type ApiOrder,
   type ApiProduct,
+  type ApiReturn,
 } from '@/lib/api';
 import { getShopFxSettings } from '@/lib/currency';
 import { generateSlug, type Product } from '@/shared/data/productData';
@@ -59,6 +62,14 @@ type ReviewTarget = {
   image: string;
 };
 
+type ReturnTarget = {
+  orderRowId: string;
+  title: string;
+  image: string;
+};
+
+type ReturnResolution = 'refund' | 'exchange' | 'damaged';
+
 type TrackTarget = {
   orderId: string;
   tracking: string;
@@ -75,8 +86,20 @@ const TRACK_STEPS = [
   { key: 'packed', label: 'Packed', match: /pack|ready|prepar/i },
   { key: 'shipped', label: 'Shipped', match: /ship|transit|dispatch|progress/i },
   { key: 'out', label: 'Out for delivery', match: /out.?for|courier/i },
-  { key: 'delivered', label: 'Delivered', match: /deliver/i },
+  // Use "delivered" word — not /deliver/ which also matches "CASH ON DELIVERY".
+  { key: 'delivered', label: 'Delivered', match: /\bdelivered\b/i },
 ] as const;
+
+/** Fulfillment label from delivery_status only (never payment_status — COD contains "DELIVERY"). */
+function toCustomerDeliveryStatus(deliveryStatus?: string | null): string {
+  const raw = String(deliveryStatus || 'pending').trim().toLowerCase();
+  if (/\bcancel/i.test(raw)) return 'Cancelled';
+  if (/\bdelivered\b/i.test(raw)) return 'Delivered';
+  if (/\breturned\b/i.test(raw)) return 'Returned';
+  if (/ship|transit|dispatch|out.?for|progress/i.test(raw)) return 'In Transit';
+  if (/pending|processing|placed|confirmed|pack|ready|prepar/i.test(raw)) return 'Pending';
+  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Pending';
+}
 
 function resolveProductImage(product: {
   image?: unknown;
@@ -121,7 +144,7 @@ function formatShipTo(addr: ApiAddress | Record<string, unknown> | null | undefi
 function activeTrackIndex(status: string, deliveryStatus?: string): number {
   const raw = `${deliveryStatus || ''} ${status || ''}`;
   if (/cancel/i.test(raw)) return -1;
-  if (/deliver/i.test(raw)) return TRACK_STEPS.length - 1;
+  if (/\bdelivered\b/i.test(raw)) return TRACK_STEPS.length - 1;
   for (let i = TRACK_STEPS.length - 1; i >= 0; i -= 1) {
     if (TRACK_STEPS[i].match.test(raw)) return i;
   }
@@ -132,7 +155,29 @@ function activeTrackIndex(status: string, deliveryStatus?: string): number {
 function isPastCancelWindow(status?: string): boolean {
   const s = String(status || '').toLowerCase().trim();
   if (!s) return false;
-  return /ship|out.?for|transit|deliver|dispatch|return|cancel/i.test(s);
+  return /ship|out.?for|transit|\bdelivered\b|dispatch|return|cancel/i.test(s);
+}
+
+function canRequestReturn(deliveryStatus?: string): boolean {
+  return /\bdelivered\b/i.test(String(deliveryStatus || ''));
+}
+
+function returnRowId(r: ApiReturn): string {
+  return String(r.order_row_id ?? r.orderRowId ?? '');
+}
+
+function returnStatusLabel(status?: string): string {
+  const s = String(status || '').toLowerCase();
+  if (s === 'approved') return 'Return approved';
+  if (s === 'rejected') return 'Return declined';
+  return 'Return pending';
+}
+
+function resolutionLabel(resolution?: string): string {
+  const r = String(resolution || 'refund').toLowerCase();
+  if (r === 'exchange') return 'Replace same item';
+  if (r === 'damaged') return 'Damaged — replace';
+  return 'Refund';
 }
 
 function mapApiOrders(rows: ApiOrder[]): OrderRecord[] {
@@ -164,14 +209,7 @@ function mapApiOrders(rows: ApiOrder[]): OrderRecord[] {
       (typeof details.category === 'string' ? details.category : '') ||
       'Handicraft';
 
-    const rawStatus = String(o.delivery_status || o.payment_status || 'Processing');
-    const status = /deliver/i.test(rawStatus)
-      ? 'Delivered'
-      : /cancel/i.test(rawStatus)
-        ? 'Cancelled'
-        : /transit|ship|progress|dispatch|out.?for/i.test(rawStatus)
-          ? 'In Transit'
-          : rawStatus;
+    const status = toCustomerDeliveryStatus(o.delivery_status);
     const groupId = String(o.orderId || o.id || o._id || '');
     const lineId = String(o.id ?? o._id ?? '');
     const tracking = groupId ? `MTN-${groupId.replace(/[^a-zA-Z0-9]/g, '').slice(-10).toUpperCase() || groupId}` : '—';
@@ -293,17 +331,55 @@ const Orders: React.FC = () => {
   const [reviewError, setReviewError] = useState('');
   const [reviewOk, setReviewOk] = useState('');
 
+  const [returnTarget, setReturnTarget] = useState<ReturnTarget | null>(null);
+  const [returnResolution, setReturnResolution] = useState<ReturnResolution>('refund');
+  const [returnReason, setReturnReason] = useState('');
+  const [returnBusy, setReturnBusy] = useState(false);
+  const [returnError, setReturnError] = useState('');
+  const [returnsByLine, setReturnsByLine] = useState<Record<string, ApiReturn>>({});
+
   const [trackTarget, setTrackTarget] = useState<TrackTarget | null>(null);
+
+  const loadReturns = async () => {
+    try {
+      const rows = await fetchMyReturns();
+      const map: Record<string, ApiReturn> = {};
+      for (const r of rows) {
+        const key = returnRowId(r);
+        if (!key) continue;
+        const prev = map[key];
+        if (!prev || Number(r.id) > Number(prev.id)) map[key] = r;
+      }
+      setReturnsByLine(map);
+    } catch {
+      setReturnsByLine({});
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const rows = await fetchMyOrders();
-        if (!cancelled) setOrders(mapApiOrders(rows));
+        const [orderRows, returnRows] = await Promise.all([
+          fetchMyOrders(),
+          fetchMyReturns().catch(() => [] as ApiReturn[]),
+        ]);
+        if (cancelled) return;
+        setOrders(mapApiOrders(orderRows));
+        const map: Record<string, ApiReturn> = {};
+        for (const r of returnRows) {
+          const key = returnRowId(r);
+          if (!key) continue;
+          const prev = map[key];
+          if (!prev || Number(r.id) > Number(prev.id)) map[key] = r;
+        }
+        setReturnsByLine(map);
       } catch {
-        if (!cancelled) setOrders([]);
+        if (!cancelled) {
+          setOrders([]);
+          setReturnsByLine({});
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -404,6 +480,63 @@ const Orders: React.FC = () => {
     setReviewComment('');
     setReviewError('');
     setReviewOk('');
+  };
+
+  const openReturn = (item: OrderItem, order: OrderRecord) => {
+    if (!canRequestReturn(order.deliveryStatus)) {
+      showToast('Returns are available after delivery.', 'err');
+      return;
+    }
+    const existing = returnsByLine[item.id];
+    const st = String(existing?.status || '').toLowerCase();
+    if (st === 'requested') {
+      showToast('A return request is already pending for this item.');
+      return;
+    }
+    if (st === 'approved') {
+      showToast('This item already has an approved return.');
+      return;
+    }
+    setReturnTarget({
+      orderRowId: item.id,
+      title: item.title,
+      image: item.image,
+    });
+    setReturnResolution('refund');
+    setReturnReason('');
+    setReturnError('');
+  };
+
+  const submitReturn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!returnTarget) return;
+    const reason = returnReason.trim();
+    if (!reason) {
+      setReturnError('Please tell us why you are returning this item.');
+      return;
+    }
+    setReturnBusy(true);
+    setReturnError('');
+    try {
+      await requestReturn({
+        orderRowId: returnTarget.orderRowId,
+        reason,
+        resolution: returnResolution,
+      });
+      await loadReturns();
+      showToast('Return requested — we will notify you when it is reviewed.');
+      setReturnTarget(null);
+    } catch (err) {
+      setReturnError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Could not submit return request',
+      );
+    } finally {
+      setReturnBusy(false);
+    }
   };
 
   const submitReview = async (e: React.FormEvent) => {
@@ -750,7 +883,8 @@ const Orders: React.FC = () => {
                               {formatMoney(item.price, currency)}
                             </span>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="flex items-center gap-2 flex-wrap justify-end">
                               <button
                                 type="button"
                                 onClick={() => handleReorder(item)}
@@ -768,6 +902,39 @@ const Orders: React.FC = () => {
                                 <Icon icon="ph:star-bold" className="w-3.5 h-3.5 text-amber-500" />
                                 <span>Review</span>
                               </button>
+
+                              {canRequestReturn(order.deliveryStatus) &&
+                                String(returnsByLine[item.id]?.status || '').toLowerCase() !==
+                                  'requested' &&
+                                String(returnsByLine[item.id]?.status || '').toLowerCase() !==
+                                  'approved' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openReturn(item, order)}
+                                    className="px-3.5 py-1.5 bg-white border border-[#E2D5C7] hover:bg-gray-50 text-[#2A170F] text-xs font-semibold rounded-full transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                                  >
+                                    <Icon icon="ph:package-bold" className="w-3.5 h-3.5 text-primary" />
+                                    <span>Return</span>
+                                  </button>
+                                )}
+                              </div>
+                              {returnsByLine[item.id] && (
+                                <p className="text-[10px] font-semibold text-muted max-w-[220px] text-right">
+                                  {returnStatusLabel(returnsByLine[item.id].status)}
+                                  {' · '}
+                                  {resolutionLabel(returnsByLine[item.id].resolution)}
+                                  {(returnsByLine[item.id].admin_note ||
+                                    returnsByLine[item.id].adminNote) && (
+                                    <>
+                                      <br />
+                                      <span className="font-medium text-[#2A170F]/80">
+                                        {returnsByLine[item.id].admin_note ||
+                                          returnsByLine[item.id].adminNote}
+                                      </span>
+                                    </>
+                                  )}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -934,6 +1101,133 @@ const Orders: React.FC = () => {
                   className="flex-1 py-2.5 rounded-full bg-[#7C4831] text-white text-xs font-bold hover:bg-[#5C321E] disabled:opacity-60 cursor-pointer"
                 >
                   {reviewBusy ? 'Posting…' : 'Post review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Return request modal */}
+      {returnTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="return-modal-title"
+          onClick={() => !returnBusy && setReturnTarget(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl border border-primary/10 p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-5">
+              <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-[#FAF6F2] border border-primary/10 shrink-0">
+                <SmartImage
+                  src={returnTarget.image}
+                  alt={returnTarget.title}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 id="return-modal-title" className="font-heading text-lg font-bold text-[#2A170F]">
+                  Request a return
+                </h2>
+                <p className="text-xs text-muted mt-0.5 line-clamp-2">{returnTarget.title}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                disabled={returnBusy}
+                onClick={() => setReturnTarget(null)}
+                className="text-muted hover:text-[#2A170F] cursor-pointer"
+              >
+                <Icon icon="lucide:x" className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitReturn} className="flex flex-col gap-4">
+              <fieldset className="space-y-2">
+                <legend className="text-xs font-bold text-[#2A170F] mb-1">What do you need?</legend>
+                {(
+                  [
+                    {
+                      value: 'refund' as const,
+                      title: 'Refund only',
+                      hint: 'Return the item for a refund (admin must approve)',
+                    },
+                    {
+                      value: 'exchange' as const,
+                      title: 'Replace same item',
+                      hint: 'Send a replacement of the same product',
+                    },
+                    {
+                      value: 'damaged' as const,
+                      title: 'Damaged item',
+                      hint: 'Arrived damaged — request a replacement',
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex gap-3 p-3 rounded-2xl border cursor-pointer transition-colors ${
+                      returnResolution === opt.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-[#E2D5C7] hover:bg-[#FAF6F2]'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="return-resolution"
+                      className="mt-1"
+                      checked={returnResolution === opt.value}
+                      onChange={() => setReturnResolution(opt.value)}
+                    />
+                    <span>
+                      <span className="block text-xs font-bold text-[#2A170F]">{opt.title}</span>
+                      <span className="block text-[11px] text-muted mt-0.5">{opt.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+
+              <div>
+                <label htmlFor="return-reason" className="text-xs font-bold text-[#2A170F]">
+                  Details
+                </label>
+                <textarea
+                  id="return-reason"
+                  rows={3}
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="Tell us what happened…"
+                  className="mt-1.5 w-full rounded-2xl border border-[#E2D5C7] bg-[#FAF6F2] px-3 py-2.5 text-sm text-[#2A170F] outline-none focus:border-primary"
+                />
+              </div>
+
+              <p className="text-[11px] text-muted leading-relaxed">
+                An admin will review your request. You&apos;ll get a notification with their decision
+                and message.
+              </p>
+
+              {returnError ? <p className="text-xs text-red-700">{returnError}</p> : null}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={returnBusy}
+                  onClick={() => setReturnTarget(null)}
+                  className="flex-1 py-2.5 rounded-full border border-[#E2D5C7] text-xs font-bold text-[#2A170F] hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={returnBusy}
+                  className="flex-1 py-2.5 rounded-full bg-[#7C4831] text-white text-xs font-bold hover:bg-[#5C321E] disabled:opacity-60 cursor-pointer"
+                >
+                  {returnBusy ? 'Submitting…' : 'Submit return'}
                 </button>
               </div>
             </form>

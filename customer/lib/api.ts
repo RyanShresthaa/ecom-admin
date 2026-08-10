@@ -4,7 +4,7 @@
  * (login later). Guests keep working via localStorage in the contexts.
  */
 
-import { toDisplayAmount, getShopFxSettings } from '@/lib/currency';
+import { toDisplayAmount, getShopFxSettings, unitPriceAfterDiscount } from '@/lib/currency';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api';
 
@@ -894,8 +894,11 @@ export type ApiReturn = {
   order_row_id?: number;
   orderRowId?: number;
   reason?: string;
+  /** refund | exchange | damaged */
+  resolution?: string;
   status?: string;
   admin_note?: string;
+  adminNote?: string;
   createdAt?: string;
   created_at?: string;
 };
@@ -907,12 +910,15 @@ export async function fetchMyReturns(): Promise<ApiReturn[]> {
 export async function requestReturn(opts: {
   orderRowId: string | number;
   reason: string;
+  /** refund = money back; exchange = replace same item; damaged = replace damaged item */
+  resolution: 'refund' | 'exchange' | 'damaged';
 }): Promise<ApiReturn> {
   return apiFetch<ApiReturn>('/return/request', {
     method: 'POST',
     json: {
       orderRowId: opts.orderRowId,
       reason: opts.reason,
+      resolution: opts.resolution,
     },
   });
 }
@@ -1030,8 +1036,9 @@ function productBasics(raw: ApiProduct | null | undefined, fallbackId: string | 
   const id = String(raw?.id ?? raw?._id ?? fallbackId);
   const image = firstProductImage(raw);
   const basePrice = Number(raw?.price ?? 0);
+  const discountPct = Number(raw?.discount ?? 0);
   const fx = getShopFxSettings();
-  const priceNum = toDisplayAmount(basePrice, fx);
+  const priceNum = toDisplayAmount(unitPriceAfterDiscount(basePrice, discountPct), fx);
   const currency = fx.currency || 'USD';
   const slug =
     (typeof details.slug === 'string' && details.slug) || slugify(name) || id;
@@ -1046,9 +1053,13 @@ function productBasics(raw: ApiProduct | null | undefined, fallbackId: string | 
     artisanLocation: (typeof details.location === 'string' && details.location) || 'Nepal',
     price: priceNum,
     priceString: formatMoney(priceNum, currency),
-    originalPrice: typeof details.originalPrice === 'string' ? details.originalPrice : undefined,
-    discountBadge:
-      Number(raw?.discount ?? 0) > 0 ? `${Number(raw?.discount)}% OFF` : undefined,
+    originalPrice:
+      discountPct > 0
+        ? formatMoney(toDisplayAmount(basePrice, fx), currency)
+        : typeof details.originalPrice === 'string'
+          ? details.originalPrice
+          : undefined,
+    discountBadge: discountPct > 0 ? `${discountPct}% OFF` : undefined,
     image,
     stock: Number(raw?.stock ?? 0),
   };

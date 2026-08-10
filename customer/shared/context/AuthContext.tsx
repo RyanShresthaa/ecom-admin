@@ -11,6 +11,7 @@ import {
   verifyTwoFactorLogin,
   type ApiUserProfile,
 } from '@/lib/api';
+import { clearAccountLocalData } from '@/lib/accountLocalData';
 
 export interface User {
   name: string;
@@ -117,6 +118,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Only hit /logout when we think a session exists; avoids noisy 401s when already logged out.
       if (user) await logoutUser();
       clearLegacyAuthStorage();
+      // Drop prior session cart before attaching a different account
+      if (user) clearAccountLocalData();
       setUser(null);
       const result = await loginWithPassword(email, password);
       if (result.requires2fa) {
@@ -146,12 +149,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = useCallback(async (name: string, email: string, password: string) => {
     try {
       clearLegacyAuthStorage();
+      // Do not wipe a true guest cart here — login merge only accepts owner === "guest".
+      // Logout / account-switch already clears prior account carts.
       const result = await registerUser({ name, email, password });
-      try {
-        localStorage.setItem('matina_wishlist', '[]');
-      } catch {
-        /* ignore */
-      }
       return {
         requiresEmailVerification: result?.requiresEmailVerification !== false,
         emailSent: result?.emailSent !== false,
@@ -166,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (user) await logoutUser();
       clearLegacyAuthStorage();
+      if (user) clearAccountLocalData();
       setUser(null);
       const result = await loginWithGoogleCredential(credential);
       if (result.requires2fa) {
@@ -183,6 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(async () => {
     await logoutUser();
     clearLegacyAuthStorage();
+    // Prevent next login/signup on this device from inheriting this session's cart
+    clearAccountLocalData();
     setUser(null);
   }, []);
 

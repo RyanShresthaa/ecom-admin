@@ -138,6 +138,7 @@ const Cart: React.FC = () => {
                             src={item.image}
                             alt={item.name}
                             fill
+                            sizes="(max-width: 640px) 80px, (max-width: 1024px) 96px, 6vw"
                             className="object-cover"
                           />
                         </div>

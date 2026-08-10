@@ -1399,6 +1399,15 @@ export async function deleteAccountController(request, response) {
         await deleteUserAccount(request.userId);
         return response.json({ message: 'Account deleted', error: false, success: true });
     } catch (error) {
+        const msg = String(error?.message || error || '');
+        if (/foreign key|violates foreign key/i.test(msg)) {
+            return response.status(409).json({
+                message:
+                    'This account still has linked records that could not be removed. Contact support.',
+                error: true,
+                success: false,
+            });
+        }
         return response.status(500).json({ message: error.message || error, error: true, success: false });
     }
 }

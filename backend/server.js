@@ -20,7 +20,7 @@ import pool from './config/connectDB.js';
 import { validateEnv } from './config/validateEnv.js';
 import { getCorsOptions, getHelmetOptions } from './config/security.js';
 import { setupSwagger, isSwaggerEnabled } from './config/swagger.js';
-import { initMonitoring, setupExpressErrorHandler } from './config/monitoring.js';
+import { initMonitoring, setupExpressErrorHandler, shutdownMonitoring } from './config/monitoring.js';
 import { initOpenTelemetry, shutdownOpenTelemetry } from './config/otel.js';
 import { registerProcessHandlers } from './config/processHandlers.js';
 import { healthHandler, livenessHandler, readinessHandler } from './config/health.js';
@@ -179,6 +179,7 @@ async function start() {
     registerProcessHandlers({
         server,
         onShutdown: async () => {
+            await shutdownMonitoring();
             await shutdownOpenTelemetry();
             try {
                 await closeRedis();

@@ -23,6 +23,11 @@ export function mapOrder(row) {
     o.couponCode = row.coupon_code;
     o.couponDiscount = Number(row.coupon_discount ?? 0);
     o.invoiceReceipt = row.invoice_receipt;
+    // Joined from users when listing for admin (optional)
+    if (row.customer_name != null || row.customer_email != null) {
+        o.customerName = row.customer_name || '';
+        o.customerEmail = row.customer_email || '';
+    }
     return o;
 }
 
@@ -89,8 +94,11 @@ export async function findAllOrders({ limit = 100, skip = 0 } = {}) {
     const safeSkip = Math.max(0, Number(skip) || 0);
     const r = await pool.query(
         `SELECT o.*,
+                u.name AS customer_name,
+                u.email AS customer_email,
                 CASE WHEN a.id IS NULL THEN NULL ELSE row_to_json(a.*) END AS address_row
          FROM orders o
+         LEFT JOIN users u ON u.id = o.user_id
          LEFT JOIN addresses a ON a.id = o.delivery_address
          ORDER BY o.created_at DESC
          LIMIT $1 OFFSET $2`,

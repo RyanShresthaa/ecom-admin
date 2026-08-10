@@ -82,8 +82,30 @@ export async function findUsers({ role, sellerRequest } = {}) {
     return r.rows.map(mapRow);
 }
 
+/**
+ * Permanently remove a customer account and personal shop data.
+ * Clears RESTRICT blockers first; cart, wishlist, addresses, orders, etc. CASCADE from users.
+ */
 export async function deleteUserAccount(id) {
-    await pool.query(`DELETE FROM users WHERE id = $1`, [id]);
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const uid = id;
+
+        // RESTRICT FKs — must go before users row
+        await client.query(`DELETE FROM credit_notes WHERE user_id = $1`, [uid]);
+        await client.query(`DELETE FROM sales_invoices WHERE user_id = $1`, [uid]);
+        // pending_checkouts.address_id is RESTRICT — remove before address CASCADE
+        await client.query(`DELETE FROM pending_checkouts WHERE user_id = $1`, [uid]);
+
+        await client.query(`DELETE FROM users WHERE id = $1`, [uid]);
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 }
 
 export async function exportUserData(id) {

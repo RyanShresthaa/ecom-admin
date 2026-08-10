@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Parent folder has a package-lock.json; pin Turbopack to this app so deps resolve.
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     remotePatterns: [
       {

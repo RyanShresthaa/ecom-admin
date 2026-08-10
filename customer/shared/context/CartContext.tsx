@@ -1,6 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import type { Product } from '@/shared/data/productData';
 import {
   ApiError,
@@ -15,7 +22,7 @@ import {
   validateCoupon,
   type ApiCoupon,
 } from '@/lib/api';
-import { getShopFxSettings, toDisplayAmount } from '@/lib/currency';
+import { getShopFxSettings, toDisplayAmount, unitPriceAfterDiscount } from '@/lib/currency';
 import { useAuth } from '@/shared/context/AuthContext';
 
 export interface CartItem {
@@ -59,6 +66,34 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'matina_cart';
 const PROMO_KEY = 'matina_cart_promo';
+const OWNER_KEY = 'matina_cart_owner';
+
+function getCartOwner(): string | null {
+  try {
+    return localStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setCartOwner(owner: string | null) {
+  try {
+    if (!owner) localStorage.removeItem(OWNER_KEY);
+    else localStorage.setItem(OWNER_KEY, owner);
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearLocalCartStorage() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(PROMO_KEY);
+    localStorage.removeItem(OWNER_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 function parsePrice(priceStr: string): number {
   const cleaned = String(priceStr).replace(/[^0-9.]/g, '');
@@ -72,11 +107,15 @@ function normalizeStock(value: unknown): number | undefined {
   return Number.isFinite(n) ? Math.max(0, n) : undefined;
 }
 
-/** Resolve display-currency unit price from a catalog product. */
+/** Resolve display-currency unit price from a catalog product (after product % discount). */
 function resolveDisplayPrice(product: Product): { amount: number; label: string } {
   const fx = getShopFxSettings();
   if (product.basePrice != null && Number.isFinite(product.basePrice)) {
-    const amount = toDisplayAmount(product.basePrice, fx);
+    const saleBase = unitPriceAfterDiscount(
+      product.basePrice,
+      Number(product.discountPercent) || 0,
+    );
+    const amount = toDisplayAmount(saleBase, fx);
     const currency =
       fx.currency ||
       (String(fx.region_mode || '').toLowerCase() === 'nepal' ? 'NPR' : 'USD');
@@ -98,13 +137,15 @@ function loadLocalCart(): CartItem[] {
 }
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoaded: authLoaded, isLoggedIn } = useAuth();
+  const { isLoaded: authLoaded, isLoggedIn, user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [coupon, setCoupon] = useState<ApiCoupon | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const wasLoggedInRef = useRef(false);
+  const skipPersistRef = useRef(false);
 
   const persistPromo = useCallback((code: string, nextCoupon: ApiCoupon | null, amount: number) => {
     try {
@@ -117,14 +158,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const resetLocalCartState = useCallback(() => {
+    // Prevent the persist effect from re-writing the old cart as a "guest" cart
+    skipPersistRef.current = true;
+    clearLocalCartStorage();
+    setCart([]);
+    setPromoCode('');
+    setCoupon(null);
+    setDiscountAmount(0);
+    setIsSynced(false);
+  }, []);
+
   const refreshFromServer = useCallback(async () => {
     if (!isLoggedIn) {
       setIsSynced(false);
       return;
     }
 
+    // Only merge a true guest cart. Never re-attach another account's leftovers.
+    const owner = getCartOwner();
     const local = loadLocalCart();
-    if (local.length > 0) {
+    if (owner === 'guest' && local.length > 0) {
       await syncLocalCartToServer(local.map((i) => ({ id: i.id, quantity: i.quantity })));
     }
 
@@ -132,34 +186,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const lines = await fetchServerCart();
       const mapped = lines.map(cartLineToLocal);
       setCart(mapped);
+      setCartOwner(user?.id != null ? String(user.id) : 'user');
       setIsSynced(true);
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         setIsSynced(false);
       }
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user?.id]);
 
   useEffect(() => {
-    const local = loadLocalCart();
-    setCart(local);
-
-    try {
-      const savedPromo = localStorage.getItem(PROMO_KEY);
-      if (savedPromo) {
-        const parsed = JSON.parse(savedPromo) as {
-          code?: string;
-          coupon?: ApiCoupon | null;
-          discount?: number;
-        };
-        if (parsed.code && parsed.coupon) {
-          setPromoCode(parsed.code);
-          setCoupon(parsed.coupon);
-          setDiscountAmount(Number(parsed.discount) || 0);
+    // Stale carts tagged to a previous user must not load for guests / next sessions
+    const owner = getCartOwner();
+    if (owner && owner !== 'guest') {
+      clearLocalCartStorage();
+      setCart([]);
+    } else {
+      setCart(loadLocalCart());
+      try {
+        const savedPromo = localStorage.getItem(PROMO_KEY);
+        if (savedPromo) {
+          const parsed = JSON.parse(savedPromo) as {
+            code?: string;
+            coupon?: ApiCoupon | null;
+            discount?: number;
+          };
+          if (parsed.code && parsed.coupon) {
+            setPromoCode(parsed.code);
+            setCoupon(parsed.coupon);
+            setDiscountAmount(Number(parsed.discount) || 0);
+          }
         }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
     }
 
     setIsLoaded(true);
@@ -167,17 +227,41 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (!authLoaded) return;
-    void refreshFromServer();
-  }, [authLoaded, isLoggedIn, refreshFromServer]);
+
+    if (isLoggedIn) {
+      wasLoggedInRef.current = true;
+      void refreshFromServer();
+      return;
+    }
+
+    // Logout / account delete / mid-login session wipe → drop device cart
+    if (wasLoggedInRef.current) {
+      wasLoggedInRef.current = false;
+      resetLocalCartState();
+      return;
+    }
+
+    setIsSynced(false);
+  }, [authLoaded, isLoggedIn, refreshFromServer, resetLocalCartState]);
 
   useEffect(() => {
     if (!isLoaded) return;
+    if (skipPersistRef.current) {
+      skipPersistRef.current = false;
+      clearLocalCartStorage();
+      return;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
+      if (!isLoggedIn) {
+        setCartOwner(cart.length > 0 ? 'guest' : null);
+      } else if (user?.id != null) {
+        setCartOwner(String(user.id));
+      }
     } catch (e) {
       console.error('Failed to save cart', e);
     }
-  }, [cart, isLoaded]);
+  }, [cart, isLoaded, isLoggedIn, user?.id]);
 
   // Recompute discount when cart or coupon changes
   useEffect(() => {

@@ -55,6 +55,14 @@ export function normalizeUsdNprRate(rate: unknown): number {
   return n;
 }
 
+/** Match backend/utils/pricing.js — catalog unit after product % discount. */
+export function unitPriceAfterDiscount(price: number, discountPercent = 0): number {
+  const p = Number(price) || 0;
+  const d = Number(discountPercent) || 0;
+  const off = Math.ceil((p * d) / 100);
+  return Math.max(0, p - off);
+}
+
 export function normalizeCurrencyCode(code: unknown, fallback = 'USD'): string {
   const c = String(code || fallback).trim().toUpperCase();
   if (c === 'NPR' || c === 'NRS' || c === 'RS') return 'NPR';

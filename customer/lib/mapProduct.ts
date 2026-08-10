@@ -1,7 +1,12 @@
 import type { Product, Artisan } from '@/shared/data/productData';
 import { generateSlug } from '@/shared/data/productData';
 import { formatMoney, type ApiProduct } from '@/lib/api';
-import { setShopFxSettings, toDisplayAmount, getShopFxSettings } from '@/lib/currency';
+import {
+  setShopFxSettings,
+  toDisplayAmount,
+  getShopFxSettings,
+  unitPriceAfterDiscount,
+} from '@/lib/currency';
 
 const PLACEHOLDER_IMAGE = '/images/logo/Vector.png';
 
@@ -53,7 +58,9 @@ export function mapApiProduct(
   const discountNum = Number(row.discount ?? 0);
   const fx = { ...getShopFxSettings(), ...settings };
   const basePrice = Number(row.price ?? 0);
-  const displayPrice = toDisplayAmount(basePrice, fx);
+  const saleBase = unitPriceAfterDiscount(basePrice, discountNum);
+  const displayPrice = toDisplayAmount(saleBase, fx);
+  const listPrice = toDisplayAmount(basePrice, fx);
   const currency =
     fx.currency ||
     (String(fx.region_mode || '').toLowerCase() === 'nepal' ? 'NPR' : 'USD');
@@ -76,10 +83,14 @@ export function mapApiProduct(
     location: details.location || 'Nepal',
     price: formatMoney(displayPrice, currency),
     basePrice,
+    discountPercent: discountNum > 0 ? discountNum : 0,
     image: primary,
     subtitle: details.subtitle || row.unit?.trim() || '',
     description: row.description?.trim() || '',
-    originalPrice: details.originalPrice || '',
+    originalPrice:
+      discountNum > 0
+        ? formatMoney(listPrice, currency)
+        : details.originalPrice || '',
     discount: discountNum > 0 ? `${discountNum}% OFF` : '',
     medium: details.medium || '',
     dimensions: details.dimensions || '',

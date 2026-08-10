@@ -24,6 +24,8 @@ export interface Product {
   price: string;
   /** Catalog/base amount (usually NPR) before FX conversion. */
   basePrice?: number;
+  /** Product % discount from admin (0–100). Applied before FX, same as checkout. */
+  discountPercent?: number;
   image: string;
   subtitle: string;
   description: string;

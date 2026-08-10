@@ -86,3 +86,62 @@ export async function sendLowStockAlert({ seller, products }) {
         logger.warn('Low stock email failed', e.message);
     }
 }
+
+export function returnDecisionHtml({ name, orderId, status, resolution, adminNote }) {
+    const decision = String(status || '').toLowerCase() === 'approved' ? 'approved' : 'declined';
+    const resLabel =
+        resolution === 'exchange'
+            ? 'replacement (same item)'
+            : resolution === 'damaged'
+              ? 'damaged item replacement'
+              : 'refund';
+    const noteBlock = adminNote
+        ? `<p><strong>Message from our team:</strong><br/>${String(adminNote).replace(/</g, '&lt;')}</p>`
+        : '';
+    return `
+    <h2>Return request ${decision}</h2>
+    <p>Hi ${name || 'there'},</p>
+    <p>Your return request for order <strong>${orderId}</strong> (${resLabel}) was <strong>${decision}</strong>.</p>
+    ${noteBlock}
+    <p>You can review details anytime under My Orders.</p>
+  `;
+}
+
+/** Email + SMS/push when admin approves or rejects a return. */
+export async function sendReturnDecisionNotification({
+    user,
+    orderId,
+    status,
+    resolution,
+    adminNote,
+}) {
+    if (!user?.email && !user?.id) return;
+    const decision = String(status || '').toLowerCase() === 'approved' ? 'approved' : 'declined';
+    const subject = `Return request ${decision} — ${orderId || 'your order'}`;
+
+    if (wantsOrderEmails(user) && user.email) {
+        try {
+            await queueTransactionalEmail({
+                sendTo: user.email,
+                subject,
+                html: returnDecisionHtml({
+                    name: user.name,
+                    orderId: orderId || 'your order',
+                    status,
+                    resolution,
+                    adminNote,
+                }),
+            });
+        } catch (e) {
+            logger.warn('Return decision email failed', e.message);
+        }
+    }
+
+    await notifyOrderUpdate({
+        user,
+        orderId: orderId || 'return',
+        status: adminNote
+            ? `Return ${decision}: ${adminNote}`
+            : `Return ${decision}`,
+    }).catch((e) => logger.warn('Return decision channel notify failed', e.message));
+}

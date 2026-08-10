@@ -276,6 +276,7 @@ const AccountSetting: React.FC = () => {
         confirm: 'DELETE',
         password: deletePassword || undefined,
       });
+      // logout also wipes local cart/wishlist so a new signup on this browser stays clean
       await logout();
       router.push('/login?accountDeleted=true');
     } catch (err) {

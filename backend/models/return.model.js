@@ -1,17 +1,39 @@
 /**
- * PostgreSQL: `order_returns` — link to order row + status.
+ * PostgreSQL: `order_returns` — link to order row + status + resolution.
  */
 import pool from '../config/connectDB.js';
 import { mapRow, mapRows, pickId } from '../utils/sql.js';
 
-export async function createReturnRequest({ orderRowId, userId, reason }) {
+const OPEN_STATUSES = ['requested'];
+
+function mapReturn(row) {
+    if (!row) return null;
+    const mapped = mapRow(row);
+    return {
+        ...mapped,
+        order_row_id: row.order_row_id,
+        resolution: row.resolution || mapped.resolution || 'refund',
+        admin_note: row.admin_note ?? mapped.adminNote ?? mapped.admin_note ?? '',
+    };
+}
+
+export async function createReturnRequest({ orderRowId, userId, reason, resolution = 'refund' }) {
     const r = await pool.query(
-        `INSERT INTO order_returns (order_row_id, user_id, reason) VALUES ($1, $2, $3) RETURNING *`,
-        [orderRowId, userId, reason],
+        `INSERT INTO order_returns (order_row_id, user_id, reason, resolution)
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [orderRowId, userId, reason || '', resolution],
     );
-    const row = mapRow(r.rows[0]);
-    row.order_row_id = r.rows[0].order_row_id;
-    return row;
+    return mapReturn(r.rows[0]);
+}
+
+export async function findOpenReturnForOrderRow(orderRowId) {
+    const r = await pool.query(
+        `SELECT * FROM order_returns
+         WHERE order_row_id = $1 AND LOWER(status) = ANY($2::text[])
+         ORDER BY id DESC LIMIT 1`,
+        [orderRowId, OPEN_STATUSES],
+    );
+    return mapReturn(r.rows[0]);
 }
 
 export async function findReturnsByUser(userId) {
@@ -19,19 +41,17 @@ export async function findReturnsByUser(userId) {
         `SELECT * FROM order_returns WHERE user_id = $1 ORDER BY created_at DESC`,
         [userId],
     );
-    return mapRows(r.rows);
+    return r.rows.map(mapReturn);
 }
 
 export async function findAllReturns() {
     const r = await pool.query(`SELECT * FROM order_returns ORDER BY created_at DESC`);
-    return mapRows(r.rows);
+    return r.rows.map(mapReturn);
 }
 
 export async function findReturnById(id) {
     const r = await pool.query(`SELECT * FROM order_returns WHERE id = $1`, [pickId(id)]);
-    const row = r.rows[0];
-    if (!row) return null;
-    return { ...mapRow(row), order_row_id: row.order_row_id };
+    return mapReturn(r.rows[0]);
 }
 
 export async function updateReturnStatus(id, status, adminNote) {
@@ -40,7 +60,5 @@ export async function updateReturnStatus(id, status, adminNote) {
          WHERE id = $3 RETURNING *`,
         [status, adminNote, id],
     );
-    const row = r.rows[0];
-    if (!row) return null;
-    return { ...mapRow(row), order_row_id: row.order_row_id };
+    return mapReturn(r.rows[0]);
 }
