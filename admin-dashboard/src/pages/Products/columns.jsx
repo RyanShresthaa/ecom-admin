@@ -23,10 +23,23 @@ export function getProductColumns({ onEdit, onDelete, currency = 'USD', formatPr
       header: 'Product',
       cell: (info) => {
         const product = info.row.original
+        const thumb = product.image || product.images?.[0]
+        const extra = Math.max(0, (product.images?.length || 0) - 1)
         return (
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
-              <Package size={16} />
+            <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-md bg-secondary text-muted-foreground">
+              {thumb ? (
+                <img src={thumb} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <Package size={16} />
+                </div>
+              )}
+              {extra > 0 ? (
+                <span className="absolute bottom-0 right-0 rounded-tl bg-black/65 px-1 text-[9px] font-medium text-white">
+                  +{extra}
+                </span>
+              ) : null}
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-medium text-foreground">{product.name}</span>

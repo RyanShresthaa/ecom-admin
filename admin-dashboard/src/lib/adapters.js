@@ -73,6 +73,11 @@ export function toBackendPaymentStatus(status) {
 export function mapProduct(row) {
   if (!row) return null
   const categoryName = row.category?.[0]?.name ?? 'Uncategorized'
+  const images = Array.isArray(row.image)
+    ? row.image.filter((u) => typeof u === 'string' && u.trim())
+    : typeof row.image === 'string' && row.image.trim()
+      ? [row.image.trim()]
+      : []
   return {
     id: String(row.id ?? row._id),
     name: row.name,
@@ -83,7 +88,10 @@ export function mapProduct(row) {
     stock: Number(row.stock ?? 0),
     sku: row.sku ?? `SKU-${row.id ?? row._id}`,
     status: row.publish === false ? 'inactive' : 'active',
-    image: Array.isArray(row.image) ? row.image[0] : row.image,
+    /** Full gallery; index 0 is the thumbnail. */
+    images,
+    /** Thumbnail URL (first gallery image). */
+    image: images[0] || '',
     createdAt: row.createdAt ?? row.created_at,
     rating: 0,
     _raw: row,
@@ -124,10 +132,21 @@ export function groupOrderLines(lines, usersById = new Map()) {
       line.lineTotal ?? line.line_total ?? details.lineTotal ?? unitPrice * qty,
     )
     const orderTotal = Number(line.totalAmt ?? line.total_amt)
+    const subTotal = Number(line.subTotalAmt ?? line.sub_total_amt ?? 0)
+    const taxAmt = Number(line.taxAmt ?? line.tax_amt ?? 0)
+    const shippingAmt = Number(line.shippingAmt ?? line.shipping_amt ?? 0)
+    const couponDiscount = Number(line.couponDiscount ?? line.coupon_discount ?? 0)
+    const couponCode = line.couponCode ?? line.coupon_code ?? null
+    const joinedName = String(line.customerName ?? line.customer_name ?? '').trim()
+    const joinedEmail = String(line.customerEmail ?? line.customer_email ?? '').trim()
+    const customerName =
+      joinedName || String(user?.name || '').trim() || joinedEmail || user?.email || 'Customer'
+    const customerEmail = joinedEmail || user?.email || ''
     const item = {
       productId: String(line.productId ?? line.product_id ?? ''),
       name: details.name ?? details.productName ?? 'Product',
       price: unitPrice,
+      lineTotal,
       qty,
     }
 
@@ -135,10 +154,15 @@ export function groupOrderLines(lines, usersById = new Map()) {
       groups.set(orderKey, {
         id: orderKey,
         lineIds: [],
-        customerName: user?.name ?? 'Customer',
-        customerEmail: user?.email ?? '',
+        customerName,
+        customerEmail,
         date: line.createdAt ?? line.created_at ?? new Date().toISOString(),
         items: [],
+        subtotal: Number.isFinite(subTotal) ? subTotal : 0,
+        taxAmt: Number.isFinite(taxAmt) ? taxAmt : 0,
+        shippingAmt: Number.isFinite(shippingAmt) ? shippingAmt : 0,
+        couponDiscount: Number.isFinite(couponDiscount) ? couponDiscount : 0,
+        couponCode,
         totalAmount: Number.isFinite(orderTotal) && orderTotal > 0 ? orderTotal : lineTotal,
         paymentStatus: toAdminPaymentStatus(line.paymentStatus ?? line.payment_status),
         deliveryStatus: toAdminDeliveryStatus(line.deliveryStatus ?? line.delivery_status),
@@ -147,11 +171,23 @@ export function groupOrderLines(lines, usersById = new Map()) {
     }
 
     const group = groups.get(orderKey)
+    // Prefer joined/user name if the first line had an empty placeholder.
+    if ((!group.customerName || group.customerName === 'Customer') && customerName !== 'Customer') {
+      group.customerName = customerName
+    }
+    if (!group.customerEmail && customerEmail) group.customerEmail = customerEmail
     group.lineIds.push(String(line.id ?? line._id))
     group.items.push(item)
     if (Number.isFinite(orderTotal) && orderTotal > 0) {
       // Same order total is duplicated on every line — take it once, don't sum.
       group.totalAmount = orderTotal
+      group.subtotal = Number.isFinite(subTotal) ? subTotal : group.subtotal
+      group.taxAmt = Number.isFinite(taxAmt) ? taxAmt : group.taxAmt
+      group.shippingAmt = Number.isFinite(shippingAmt) ? shippingAmt : group.shippingAmt
+      group.couponDiscount = Number.isFinite(couponDiscount)
+        ? couponDiscount
+        : group.couponDiscount
+      if (couponCode) group.couponCode = couponCode
     } else {
       group.totalAmount = Number((group.totalAmount + lineTotal).toFixed(2))
     }
@@ -202,8 +238,12 @@ export function buildSalesSeries(orders, days = 14) {
   }))
 }
 
-export function shopSettingsToAdmin(map) {
-  const mode = String(map.region_mode || 'us').toLowerCase() === 'nepal' ? 'nepal' : 'us'
+export function shopSettingsToAdmin(map = {}) {
+  // Accept snake_case (API) or camelCase (cached admin form)
+  const mode =
+    String(map.region_mode || map.regionMode || 'us').toLowerCase() === 'nepal'
+      ? 'nepal'
+      : 'us'
   const taxRate = Number(map.tax_percent ?? map.vat_standard_rate ?? (mode === 'nepal' ? 13 : 0))
   let taxRules = []
   if (Array.isArray(map.admin_tax_rules)) {
@@ -225,7 +265,10 @@ export function shopSettingsToAdmin(map) {
     currency: mode === 'nepal' ? 'NPR' : 'USD',
     // Catalog product prices are always stored in NPR
     priceBaseCurrency: 'NPR',
-    usdNprRate: Number(map.usd_npr_rate) > 0 ? Number(map.usd_npr_rate) : 133,
+    usdNprRate:
+      Number(map.usd_npr_rate ?? map.usdNprRate) > 0
+        ? Number(map.usd_npr_rate ?? map.usdNprRate)
+        : 133,
     region: map.tax_region ?? map.region ?? (mode === 'nepal' ? 'Nepal' : 'United States'),
     timezone: map.admin_timezone ?? map.timezone ?? (mode === 'nepal' ? 'Asia/Kathmandu' : 'America/New_York'),
     storeName: map.company_legal_name ?? map.store_name ?? '',

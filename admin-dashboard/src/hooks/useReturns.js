@@ -15,9 +15,10 @@ export function useUpdateReturn() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload) => api.returns.update(payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.returns.all })
-      toast.success('Return updated')
+      const verb = variables?.status === 'approved' ? 'approved' : 'declined'
+      toast.success(`Return ${verb} — customer notified`)
     },
     onError: (err) => toast.error(err.message || 'Failed to update return'),
   })

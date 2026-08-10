@@ -46,8 +46,8 @@ async function loadCatalog() {
   return catalogCache
 }
 
-async function loadUsersMap() {
-  if (usersCache) return usersCache
+async function loadUsersMap(force = false) {
+  if (!force && usersCache) return usersCache
   const res = await http.get('/admin/users')
   const users = res.data.data ?? []
   usersCache = new Map(users.map((u) => [String(u.id ?? u._id), u]))
@@ -58,7 +58,8 @@ async function loadGroupedOrders(force = false) {
   if (!force && ordersCache && Date.now() - ordersCacheAt < ORDERS_CACHE_MS) {
     return ordersCache
   }
-  const usersById = await loadUsersMap()
+  // Refresh users map with orders so new customers are not stuck as "Customer"
+  const usersById = await loadUsersMap(force)
   // Backend caps /order/all at 100/page — page until exhausted (max 50 pages safety)
   const allLines = []
   const limit = 100
@@ -84,15 +85,28 @@ function resolveCategoryRefs(categoryName, catalog) {
   return { category, subcategory }
 }
 
+function normalizeProductImages(form) {
+  let urls = []
+  if (Array.isArray(form.images)) {
+    urls = form.images
+  } else if (Array.isArray(form.image)) {
+    urls = form.image
+  } else if (typeof form.image === 'string' && form.image.trim()) {
+    urls = [form.image]
+  }
+  return urls.map((u) => String(u || '').trim()).filter(Boolean)
+}
+
 function toProductPayload(form, catalog) {
   const { category, subcategory } = resolveCategoryRefs(form.category, catalog)
-  const imageUrl = typeof form.image === 'string' ? form.image.trim() : ''
-  if (!imageUrl) {
-    throw new Error('Product image is required')
+  const images = normalizeProductImages(form)
+  if (!images.length) {
+    throw new Error('At least one product image is required')
   }
   return {
     name: form.name,
-    image: [imageUrl],
+    // Full gallery; first URL is the thumbnail (customer + admin convention)
+    image: images,
     category: category ? [category] : [],
     subcategory: subcategory ? [subcategory] : [],
     unit: 'pcs',
@@ -146,7 +160,7 @@ export const api = {
         http
           .get('/order/all', { params: { page: 1, limit: 100 } })
           .then(async (ordersRes) => {
-            const usersById = await loadUsersMap()
+            const usersById = await loadUsersMap(true)
             return groupOrderLines(ordersRes.data.data ?? [], usersById)
           }),
       ])
@@ -172,7 +186,7 @@ export const api = {
     },
     recentOrders: async (params = {}) => {
       const pageSize = params.pageSize ?? 5
-      const usersById = await loadUsersMap()
+      const usersById = await loadUsersMap(true)
       const ordersRes = await http.get('/order/all', {
         params: { page: 1, limit: Math.min(100, Math.max(pageSize * 3, 20)) },
       })
@@ -565,6 +579,7 @@ export const api = {
         orderRowId: String(r.order_row_id ?? r.orderRowId ?? ''),
         userId: String(r.user_id ?? r.userId ?? ''),
         reason: r.reason || '',
+        resolution: String(r.resolution || 'refund').toLowerCase(),
         status: r.status || 'requested',
         adminNote: r.admin_note ?? r.adminNote ?? '',
         createdAt: r.createdAt ?? r.created_at ?? null,
@@ -816,11 +831,13 @@ export const api = {
         /* fall back to public settings */
       }
       const res = await http.get('/shop/settings')
-      return shopSettingsToAdmin({ ...(res.data.data ?? {}), ...map })
+      // Public map is authoritative for region/currency after save; admin rows fill extras.
+      return shopSettingsToAdmin({ ...map, ...(res.data.data ?? {}) })
     },
     save: async (payload) => {
       const settings = adminSettingsToShop(payload)
       const res = await http.put('/shop/settings', { settings })
+      // Prefer server map so region_mode / currency match what the API applied
       return shopSettingsToAdmin(res.data.data ?? settings)
     },
   },

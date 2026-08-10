@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.7",
+    "@posthog/react": "^1.10.3",
     "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-dropdown-menu": "^2.1.4",
@@ -29,6 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "posthog-js": "^1.414.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.1",

@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Plus } from '@phosphor-icons/react'
@@ -25,13 +25,13 @@ import {
   useDeleteProduct,
 } from '@/hooks/useProducts'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { useSettingsQuery } from '@/hooks/useSettings'
+import { useLocale } from '@/context/LocaleContext'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
-import { toBaseAmount, toDisplayAmount } from '@/lib/currency'
 
 export default function Products() {
-  const { data: settings } = useSettingsQuery()
+  const { regionMode, currency, usdNprRate, formatCatalogPrice, toBase, loading: localeLoading } =
+    useLocale()
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
@@ -45,31 +45,13 @@ export default function Products() {
 
   const debouncedSearch = useDebouncedValue(search)
 
-  const fx = useMemo(() => {
-    const regionMode = settings?.regionMode === 'nepal' ? 'nepal' : 'us'
-    return {
-      regionMode,
-      usdNprRate: Number(settings?.usdNprRate) > 0 ? Number(settings.usdNprRate) : 133,
+  const fx = useMemo(
+    () => ({
+      regionMode: regionMode === 'nepal' ? 'nepal' : 'us',
+      usdNprRate: Number(usdNprRate) > 0 ? Number(usdNprRate) : 133,
       currency: regionMode === 'nepal' ? 'NPR' : 'USD',
-    }
-  }, [settings?.regionMode, settings?.usdNprRate])
-
-  /** Convert catalog NPR → display currency, then format. */
-  const formatPrice = useCallback(
-    (nprAmount) => {
-      const display = toDisplayAmount(nprAmount, fx)
-      const code = fx.currency
-      try {
-        return new Intl.NumberFormat(code === 'NPR' ? 'en-NP' : 'en-US', {
-          style: 'currency',
-          currency: code,
-          maximumFractionDigits: 2,
-        }).format(display)
-      } catch {
-        return `${code} ${display.toFixed(2)}`
-      }
-    },
-    [fx],
+    }),
+    [regionMode, usdNprRate],
   )
 
   const { data: categories = [] } = useQuery({
@@ -120,7 +102,8 @@ export default function Products() {
   function handleFormSubmit(values) {
     const payload = {
       ...values,
-      price: toBaseAmount(Number(values.price), fx),
+      // Form amount is in active display currency → persist catalog NPR
+      price: toBase(Number(values.price)),
     }
     if (editingProduct) {
       updateProduct.mutate(
@@ -143,19 +126,20 @@ export default function Products() {
       getProductColumns({
         onEdit: openEditDialog,
         onDelete: setDeletingProduct,
-        currency: fx.currency,
-        formatPrice,
+        currency,
+        formatPrice: formatCatalogPrice,
       }),
-    [fx.currency, formatPrice],
+    // Remount column defs whenever region/FX changes so cells reformat
+    [currency, formatCatalogPrice, regionMode, usdNprRate],
   )
 
-  const sample = formatPrice(4200)
+  const sample = formatCatalogPrice(4200)
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Products"
-        description={`Prices stored in NPR · showing ${fx.currency} (1 USD = ${fx.usdNprRate} NPR). Example: NPR 4,200 → ${sample}.`}
+        description={`Prices stored in NPR · showing ${currency} for ${regionMode === 'nepal' ? 'Nepal' : 'United States'} (1 USD = ${usdNprRate} NPR). Example: NPR 4,200 → ${sample}. Change region in Settings → Save.`}
         actions={
           <Button onClick={openAddDialog} className="gap-1.5">
             <Plus size={15} weight="bold" />
@@ -174,7 +158,7 @@ export default function Products() {
             }}
             searchPlaceholder="Search by name, SKU, or ID…"
             onRefresh={refetch}
-            isFetching={isFetching}
+            isFetching={isFetching || localeLoading}
             filters={
               <>
                 <Select value={category} onValueChange={handleFilterChange(setCategory)}>
@@ -206,6 +190,7 @@ export default function Products() {
           />
 
           <DataTable
+            key={`products-${regionMode}-${usdNprRate}-${currency}`}
             columns={columns}
             data={data?.rows}
             pageCount={data?.pageCount}
@@ -214,7 +199,7 @@ export default function Products() {
             onPaginationChange={setPagination}
             sorting={sorting}
             onSortingChange={setSorting}
-            isLoading={isLoading}
+            isLoading={isLoading || localeLoading}
             isFetching={isFetching}
           />
         </CardContent>

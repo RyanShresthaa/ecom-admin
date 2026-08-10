@@ -171,8 +171,8 @@ export default function Settings() {
             <CardHeader>
               <CardTitle>Store & regional settings</CardTitle>
               <CardDescription>
-                Switch between United States and Nepal. This updates currency, timezone, tax defaults,
-                and shipping address rules across the store.
+                Switch between United States and Nepal, then click Save settings. Product prices stay
+                stored in NPR; the list converts to USD (US) or shows NPR (Nepal).
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">

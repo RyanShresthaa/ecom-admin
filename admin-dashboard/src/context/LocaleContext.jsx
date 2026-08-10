@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef } from 'react'
 
 import { useAuth } from '@/context/AuthContext'
 import { useSettingsQuery } from '@/hooks/useSettings'
@@ -19,14 +19,25 @@ const DEFAULT_FX = {
 }
 
 function buildLocaleValue(data) {
-  const regionMode = data?.regionMode === 'nepal' ? 'nepal' : 'us'
+  const regionMode =
+    String(data?.regionMode || data?.region_mode || 'us').toLowerCase() === 'nepal'
+      ? 'nepal'
+      : 'us'
   const currency = regionMode === 'nepal' ? 'NPR' : 'USD'
   // Product catalog is always NPR; region only changes display currency.
   const priceBaseCurrency = 'NPR'
-  const usdNprRate = Number(data?.usdNprRate) > 0 ? Number(data.usdNprRate) : 133
+  const usdNprRate =
+    Number(data?.usdNprRate ?? data?.usd_npr_rate) > 0
+      ? Number(data?.usdNprRate ?? data?.usd_npr_rate)
+      : 133
   const timezone =
-    data?.timezone || (regionMode === 'nepal' ? 'Asia/Kathmandu' : 'America/New_York')
-  const region = data?.region || (regionMode === 'nepal' ? 'Nepal' : 'United States')
+    data?.timezone ||
+    data?.admin_timezone ||
+    (regionMode === 'nepal' ? 'Asia/Kathmandu' : 'America/New_York')
+  const region =
+    data?.region ||
+    data?.tax_region ||
+    (regionMode === 'nepal' ? 'Nepal' : 'United States')
   const fx = { currency, priceBaseCurrency, usdNprRate, regionMode }
 
   return {
@@ -84,12 +95,19 @@ export function LocaleProvider({ children }) {
   const { data, isLoading: settingsLoading, isFetching } = useSettingsQuery({
     enabled: isAuthenticated && !authLoading,
   })
+  const lastSettingsRef = useRef(null)
+  if (data) lastSettingsRef.current = data
 
   const value = useMemo(() => {
-    const locale = buildLocaleValue(data)
+    // Keep last known settings during refetch so prices don't flash back to US defaults
+    const source = data || lastSettingsRef.current
+    const locale = buildLocaleValue(source || undefined)
     return {
       ...locale,
-      loading: authLoading || (isAuthenticated && (settingsLoading || isFetching && !data)),
+      loading:
+        authLoading ||
+        (isAuthenticated && settingsLoading && !source) ||
+        (isAuthenticated && isFetching && !source),
     }
   }, [data, authLoading, isAuthenticated, settingsLoading, isFetching])
 

@@ -74,7 +74,9 @@ export function OrderDetailsDrawer({ order, open, onOpenChange }) {
                     </span>
                   </div>
                   <span className="font-mono text-sm font-medium tabular-nums">
-                    {formatCurrency(item.price * item.qty)}
+                    {formatCurrency(
+                      Number.isFinite(item.lineTotal) ? item.lineTotal : item.price * item.qty,
+                    )}
                   </span>
                 </div>
               ))}
@@ -83,11 +85,43 @@ export function OrderDetailsDrawer({ order, open, onOpenChange }) {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">Order total</span>
-            <span className="font-mono text-base font-semibold tabular-nums text-foreground">
-              {formatCurrency(order.totalAmount)}
-            </span>
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-mono tabular-nums">
+                {formatCurrency(order.subtotal ?? order.totalAmount)}
+              </span>
+            </div>
+            {Number(order.couponDiscount) > 0 && (
+              <div className="flex items-center justify-between text-emerald-700">
+                <span>
+                  Discount{order.couponCode ? ` (${order.couponCode})` : ''}
+                </span>
+                <span className="font-mono tabular-nums">
+                  -{formatCurrency(order.couponDiscount)}
+                </span>
+              </div>
+            )}
+            {Number(order.shippingAmt) > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Shipping</span>
+                <span className="font-mono tabular-nums">
+                  {formatCurrency(order.shippingAmt)}
+                </span>
+              </div>
+            )}
+            {Number(order.taxAmt) > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tax</span>
+                <span className="font-mono tabular-nums">{formatCurrency(order.taxAmt)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-sm font-semibold text-foreground">Order total</span>
+              <span className="font-mono text-base font-semibold tabular-nums text-foreground">
+                {formatCurrency(order.totalAmount)}
+              </span>
+            </div>
           </div>
         </div>
       </SheetContent>

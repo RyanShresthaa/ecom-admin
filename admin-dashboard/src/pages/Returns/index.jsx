@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Check, X } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,15 +25,40 @@ const columnHelper = createColumnHelper()
 function statusBadge(status) {
   const s = (status || '').toLowerCase()
   if (s === 'approved') return <Badge variant="success">Approved</Badge>
-  if (s === 'rejected') return <Badge variant="destructive">Rejected</Badge>
+  if (s === 'rejected') return <Badge variant="destructive">Declined</Badge>
   return <Badge variant="secondary">Requested</Badge>
+}
+
+function resolutionLabel(resolution) {
+  const r = String(resolution || 'refund').toLowerCase()
+  if (r === 'exchange') return 'Replace same item'
+  if (r === 'damaged') return 'Damaged — replace'
+  return 'Refund'
+}
+
+/** Local state so typing does not rebuild table columns (which steals focus). */
+function ReturnNoteInput({ rowId, notesRef }) {
+  const [value, setValue] = useState(() => notesRef.current[rowId] || '')
+
+  return (
+    <Input
+      className="h-8 w-[180px]"
+      placeholder="Required if declining…"
+      value={value}
+      onChange={(e) => {
+        const next = e.target.value
+        setValue(next)
+        notesRef.current[rowId] = next
+      }}
+    />
+  )
 }
 
 export default function Returns() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
-  const [notes, setNotes] = useState({})
+  const notesRef = useRef({})
 
   const debouncedSearch = useDebouncedValue(search)
   const { data = [], isLoading, isFetching, refetch } = useReturnsQuery()
@@ -50,7 +76,8 @@ export default function Returns() {
           r.id.includes(q) ||
           r.orderRowId.includes(q) ||
           r.reason.toLowerCase().includes(q) ||
-          r.userId.includes(q),
+          r.userId.includes(q) ||
+          String(r.resolution || '').toLowerCase().includes(q),
       )
     }
     return rows
@@ -71,10 +98,16 @@ export default function Returns() {
         header: 'Order row',
         cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
       }),
-      columnHelper.accessor('reason', {
-        header: 'Reason',
+      columnHelper.accessor('resolution', {
+        header: 'Request',
         cell: (info) => (
-          <span className="line-clamp-2 max-w-[240px] text-sm text-muted-foreground">
+          <span className="text-sm font-medium">{resolutionLabel(info.getValue())}</span>
+        ),
+      }),
+      columnHelper.accessor('reason', {
+        header: 'Customer reason',
+        cell: (info) => (
+          <span className="line-clamp-2 max-w-[220px] text-sm text-muted-foreground">
             {info.getValue() || '—'}
           </span>
         ),
@@ -85,20 +118,13 @@ export default function Returns() {
       }),
       columnHelper.display({
         id: 'note',
-        header: 'Admin note',
+        header: 'Message to customer',
         cell: (info) => {
           const row = info.row.original
           if ((row.status || '').toLowerCase() !== 'requested') {
             return <span className="text-xs text-muted-foreground">{row.adminNote || '—'}</span>
           }
-          return (
-            <Input
-              className="h-8 w-[160px]"
-              placeholder="Note…"
-              value={notes[row.id] ?? ''}
-              onChange={(e) => setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))}
-            />
-          )
+          return <ReturnNoteInput rowId={row.id} notesRef={notesRef} />
         },
       }),
       columnHelper.display({
@@ -114,13 +140,14 @@ export default function Returns() {
                 variant="outline"
                 className="h-8 gap-1"
                 disabled={updateReturn.isPending}
-                onClick={() =>
+                onClick={() => {
+                  const note = String(notesRef.current[row.id] || '').trim()
                   updateReturn.mutate({
                     id: row.id,
                     status: 'approved',
-                    adminNote: notes[row.id] || '',
+                    adminNote: note,
                   })
-                }
+                }}
               >
                 <Check size={14} /> Approve
               </Button>
@@ -129,29 +156,34 @@ export default function Returns() {
                 variant="ghost"
                 className="h-8 gap-1 text-destructive"
                 disabled={updateReturn.isPending}
-                onClick={() =>
+                onClick={() => {
+                  const note = String(notesRef.current[row.id] || '').trim()
+                  if (!note) {
+                    toast.error('Add a message explaining why the return was declined')
+                    return
+                  }
                   updateReturn.mutate({
                     id: row.id,
                     status: 'rejected',
-                    adminNote: notes[row.id] || '',
+                    adminNote: note,
                   })
-                }
+                }}
               >
-                <X size={14} /> Reject
+                <X size={14} /> Decline
               </Button>
             </div>
           )
         },
       }),
     ],
-    [notes, updateReturn],
+    [updateReturn],
   )
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Returns"
-        description="Review customer return requests — approve to restore stock or reject with a note."
+        description="Approve refunds or replacements — the customer is emailed/notified with your message."
       />
 
       <Card>
@@ -180,7 +212,7 @@ export default function Returns() {
                   <SelectItem value="all">All status</SelectItem>
                   <SelectItem value="requested">Requested</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="rejected">Declined</SelectItem>
                 </SelectContent>
               </Select>
             }
